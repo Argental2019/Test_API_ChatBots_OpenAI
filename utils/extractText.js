@@ -12,7 +12,7 @@ const PDFParser = require("pdf2json");
 
 export async function extractTextFromBuffer(buffer, mimeType) {
   try {
-    if (mimeType === "application/pdf") {
+    if (mimeType.includes("pdf")) {
       return await extractFromPDF(buffer);
     } else if (
       mimeType ===
