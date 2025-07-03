@@ -48,7 +48,7 @@ export async function extractTextFromBuffer(buffer, mimeType) {
 
   return fullText.trim();
 }*/
-export async function extractFromPDF(buffer) {
+/*export async function extractFromPDF(buffer) {
   return new Promise((resolve, reject) => {
     const pdfParser = new PDFParser();
 
@@ -65,6 +65,39 @@ export async function extractFromPDF(buffer) {
       ).join("\n\n");
 
       resolve(text.trim());
+    });
+
+    pdfParser.parseBuffer(buffer);
+  });
+}*/
+
+export async function extractFromPDF(buffer) {
+  return new Promise((resolve, reject) => {
+    const pdfParser = new PDFParser();
+
+    pdfParser.on("pdfParser_dataError", (err) => {
+      console.error("❌ Error leyendo PDF:", err.parserError);
+      reject("Error leyendo PDF.");
+    });
+
+    pdfParser.on("pdfParser_dataReady", (pdfData) => {
+      try {
+        if (!pdfData.FormImage || !Array.isArray(pdfData.FormImage.Pages)) {
+          console.warn("⚠️ PDF sin contenido visible o no estructurado");
+          return resolve("Este archivo PDF no tiene texto reconocible.");
+        }
+
+        const text = pdfData.FormImage.Pages.map((page) =>
+          page.Texts.map((t) =>
+            decodeURIComponent(t.R.map((r) => r.T).join("")),
+          ).join(" "),
+        ).join("\n\n");
+
+        resolve(text.trim());
+      } catch (err) {
+        console.error("❌ Error procesando estructura del PDF:", err);
+        reject("Error al procesar el contenido del PDF.");
+      }
     });
 
     pdfParser.parseBuffer(buffer);
