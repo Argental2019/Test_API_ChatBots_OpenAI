@@ -48,20 +48,33 @@ app.get("/drive/read", async (req, res) => {
       fields: "name, mimeType",
     });
 
+    console.log(`Procesando archivo: ${fileMeta.name} (${fileMeta.mimeType})`);
+
     const fileData = await drive.files.get(
       { fileId, alt: "media" },
       { responseType: "arraybuffer" },
     );
 
     const buffer = Buffer.from(fileData.data);
+    console.log(`Tamaño del buffer: ${buffer.length} bytes`);
+
     const content = await extractTextFromBuffer(buffer, fileMeta.mimeType);
+    console.log(
+      `Texto extraído (primeros 100 caracteres): ${content.substring(0, 100)}...`,
+    );
+
     res.json({
       name: fileMeta.name,
       content,
+      size: buffer.length,
+      mimeType: fileMeta.mimeType,
     });
   } catch (err) {
     console.error("Error leyendo archivo:", err);
-    res.status(500).send("Error leyendo archivo");
+    res.status(500).json({
+      error: "Error leyendo archivo",
+      details: err.message,
+    });
   }
 });
 
