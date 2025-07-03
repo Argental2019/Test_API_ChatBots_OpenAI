@@ -7,14 +7,18 @@
     "start": "node index.js"
   },
   "dependencies": {
+    "@babel/polyfill": "^7.12.1",
     "dotenv": "^16.3.1",
     "express": "^5.1.0",
     "googleapis": "^133.0.0",
     "libreoffice-convert": "^1.6.1",
     "mammoth": "^1.5.2",
+    "pdf-lib": "^1.17.1",
     "pdf-parse": "^1.0.1",
     "pdf2json": "^3.1.6",
+    "pdf2pic": "^3.2.0",
     "pdfjs-dist": "^4.0.0",
+    "tesseract.js": "^6.0.1",
     "tmp": "^0.2.3",
     "tmp-promise": "^3.0.3"
   }

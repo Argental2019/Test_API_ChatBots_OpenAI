@@ -1,10 +1,8 @@
 import mammoth from "mammoth";
-//import { getDocument } from "pdfjs-dist/build/pdf.mjs";
 import libre from "libreoffice-convert";
 //import { file as tmpFile } from "tmp-promise";
-import { createRequire } from "node:module";
-const require = createRequire(import.meta.url);
-const PDFParser = require("pdf2json");
+import { fromBuffer } from "pdf2pic";
+import Tesseract from "tesseract.js";
 
 /**
  * Extrae texto desde un buffer según el tipo MIME.
@@ -34,74 +32,34 @@ export async function extractTextFromBuffer(buffer, mimeType) {
   }
 }
 
-/*async function extractFromPDF(buffer) {
-  const uint8Array = new Uint8Array(buffer);
-  const pdf = await getDocument({ data: uint8Array }).promise;
-  let fullText = "";
-
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    const text = content.items.map((item) => item.str).join(" ");
-    fullText += text + "\n\n";
-  }
-
-  return fullText.trim();
-}*/
-/*export async function extractFromPDF(buffer) {
-  return new Promise((resolve, reject) => {
-    const pdfParser = new PDFParser();
-
-    pdfParser.on("pdfParser_dataError", (err) => {
-      console.error("❌ Error leyendo PDF:", err.parserError);
-      reject("Error leyendo PDF.");
-    });
-
-    pdfParser.on("pdfParser_dataReady", (pdfData) => {
-      const text = pdfData.FormImage.Pages.map((page) =>
-        page.Texts.map((t) =>
-          decodeURIComponent(t.R.map((r) => r.T).join("")),
-        ).join(" "),
-      ).join("\n\n");
-
-      resolve(text.trim());
-    });
-
-    pdfParser.parseBuffer(buffer);
-  });
-}*/
-
 export async function extractFromPDF(buffer) {
-  return new Promise((resolve, reject) => {
-    const pdfParser = new PDFParser();
-
-    pdfParser.on("pdfParser_dataError", (err) => {
-      console.error("❌ Error leyendo PDF:", err.parserError);
-      reject("Error leyendo PDF.");
+  try {
+    const convert = fromBuffer(buffer, {
+      density: 150,
+      format: "png",
+      width: 1200,
+      height: 1600,
     });
 
-    pdfParser.on("pdfParser_dataReady", (pdfData) => {
-      try {
-        if (!pdfData.FormImage || !Array.isArray(pdfData.FormImage.Pages)) {
-          console.warn("⚠️ PDF sin contenido visible o no estructurado");
-          return resolve("Este archivo PDF no tiene texto reconocible.");
-        }
+    const totalPages = await convert.numberOfPages();
 
-        const text = pdfData.FormImage.Pages.map((page) =>
-          page.Texts.map((t) =>
-            decodeURIComponent(t.R.map((r) => r.T).join("")),
-          ).join(" "),
-        ).join("\n\n");
+    let fullText = "";
 
-        resolve(text.trim());
-      } catch (err) {
-        console.error("❌ Error procesando estructura del PDF:", err);
-        reject("Error al procesar el contenido del PDF.");
-      }
-    });
+    for (let i = 1; i <= totalPages; i++) {
+      const result = await convert(i, false); // i = página, false = no guardar archivo
 
-    pdfParser.parseBuffer(buffer);
-  });
+      const ocr = await Tesseract.recognize(result.base64, "eng", {
+        logger: (m) => console.log(`OCR [página ${i}]`, m.status),
+      });
+
+      fullText += ocr.data.text + "\n\n";
+    }
+
+    return fullText.trim();
+  } catch (error) {
+    console.error("❌ Error extrayendo texto con OCR:", error);
+    return "Error procesando PDF con OCR.";
+  }
 }
 
 async function convertDOCtoDOCX(inputBuffer) {
