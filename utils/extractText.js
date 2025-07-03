@@ -3,7 +3,7 @@ import libre from "libreoffice-convert";
 //import { file as tmpFile } from "tmp-promise";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
-const PDFExtract = require("pdf.js-extract").PDFExtract;
+const PDFParser = require("pdf2json");
 
 /**
  * Extrae texto desde un buffer según el tipo MIME.
@@ -34,25 +34,36 @@ export async function extractTextFromBuffer(buffer, mimeType) {
 }
 
 export async function extractFromPDF(buffer) {
-  const pdfExtract = new PDFExtract();
-  const options = {};
-  try {
-    const data = await new Promise((resolve, reject) => {
-      pdfExtract.extractBuffer(buffer, options, (err, data) => {
-        if (err) return reject(err);
-        resolve(data);
-      });
-    });
-    // Extraer el texto de todas las páginas
-    const pagesText = data.pages.map((page) =>
-      page.content.map((item) => item.str).join(" "),
-    );
+  return new Promise((resolve, reject) => {
+    const pdfParser = new PDFParser();
 
-    return pagesText.join("\n\n").trim();
-  } catch (error) {
-    console.error("❌ Error extrayendo texto con pdf.js-extract:", error);
-    return "Error procesando PDF.";
-  }
+    pdfParser.on("pdfParser_dataError", (err) => {
+      console.error("❌ Error leyendo PDF:", err.parserError);
+      reject("Error leyendo PDF.");
+    });
+
+    pdfParser.on("pdfParser_dataReady", (pdfData) => {
+      try {
+        if (!pdfData.FormImage || !Array.isArray(pdfData.FormImage.Pages)) {
+          return resolve("Este PDF no tiene texto extraíble.");
+        }
+
+        // Extraer texto de cada página
+        const pagesText = pdfData.FormImage.Pages.map((page) =>
+          page.Texts.map((t) =>
+            decodeURIComponent(t.R.map((r) => r.T).join("")),
+          ).join(" "),
+        );
+
+        resolve(pagesText.join("\n\n").trim());
+      } catch (err) {
+        console.error("❌ Error procesando PDF:", err);
+        reject("Error procesando PDF.");
+      }
+    });
+
+    pdfParser.parseBuffer(buffer);
+  });
 }
 
 async function convertDOCtoDOCX(inputBuffer) {
