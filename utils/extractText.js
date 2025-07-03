@@ -1,7 +1,10 @@
 import mammoth from "mammoth";
-import { getDocument } from "pdfjs-dist/build/pdf.mjs";
+//import { getDocument } from "pdfjs-dist/build/pdf.mjs";
 import libre from "libreoffice-convert";
-import { file as tmpFile } from "tmp-promise";
+//import { file as tmpFile } from "tmp-promise";
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
+const PDFParser = require("pdf2json");
 
 /**
  * Extrae texto desde un buffer según el tipo MIME.
@@ -31,7 +34,7 @@ export async function extractTextFromBuffer(buffer, mimeType) {
   }
 }
 
-async function extractFromPDF(buffer) {
+/*async function extractFromPDF(buffer) {
   const uint8Array = new Uint8Array(buffer);
   const pdf = await getDocument({ data: uint8Array }).promise;
   let fullText = "";
@@ -44,6 +47,28 @@ async function extractFromPDF(buffer) {
   }
 
   return fullText.trim();
+}*/
+export async function extractFromPDF(buffer) {
+  return new Promise((resolve, reject) => {
+    const pdfParser = new PDFParser();
+
+    pdfParser.on("pdfParser_dataError", (err) => {
+      console.error("❌ Error leyendo PDF:", err.parserError);
+      reject("Error leyendo PDF.");
+    });
+
+    pdfParser.on("pdfParser_dataReady", (pdfData) => {
+      const text = pdfData.FormImage.Pages.map((page) =>
+        page.Texts.map((t) =>
+          decodeURIComponent(t.R.map((r) => r.T).join("")),
+        ).join(" "),
+      ).join("\n\n");
+
+      resolve(text.trim());
+    });
+
+    pdfParser.parseBuffer(buffer);
+  });
 }
 
 async function convertDOCtoDOCX(inputBuffer) {
