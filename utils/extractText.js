@@ -6,6 +6,7 @@ import { file as tmpFile } from "tmp-promise";
 /**
  * Extrae texto desde un buffer según el tipo MIME.
  */
+
 export async function extractTextFromBuffer(buffer, mimeType) {
   try {
     if (mimeType === "application/pdf") {
@@ -31,7 +32,8 @@ export async function extractTextFromBuffer(buffer, mimeType) {
 }
 
 async function extractFromPDF(buffer) {
-  const pdf = await getDocument({ data: buffer }).promise;
+  const uint8Array = new Uint8Array(buffer);
+  const pdf = await getDocument({ data: uint8Array }).promise;
   let fullText = "";
 
   for (let i = 1; i <= pdf.numPages; i++) {
