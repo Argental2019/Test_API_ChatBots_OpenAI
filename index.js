@@ -55,7 +55,7 @@ app.get("/drive/read", async (req, res) => {
 
     const buffer = Buffer.from(fileData.data);
     const content = await extractTextFromBuffer(buffer, fileMeta.mimeType);
-
+    console.log(content);
     res.json({
       name: fileMeta.name,
       content,
