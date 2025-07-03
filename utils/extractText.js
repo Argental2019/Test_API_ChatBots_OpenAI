@@ -1,9 +1,7 @@
 import mammoth from "mammoth";
 import libre from "libreoffice-convert";
 //import { file as tmpFile } from "tmp-promise";
-import { createRequire } from "node:module";
-const require = createRequire(import.meta.url);
-const PDFParser = require("pdf2json");
+import pdf from "pdf-parse"; // basado en documentación oficia
 
 /**
  * Extrae texto desde un buffer según el tipo MIME.
@@ -34,45 +32,19 @@ export async function extractTextFromBuffer(buffer, mimeType) {
 }
 
 export async function extractFromPDF(buffer) {
-  return new Promise((resolve, reject) => {
-    const pdfParser = new PDFParser();
+  try {
+    const data = await pdf(buffer); // pdf(buffer) retorna un objeto con `.text`, `.numpages`, etc.
+    const text = data.text?.trim();
 
-    pdfParser.on("pdfParser_dataError", (err) => {
-      console.error("❌ Error leyendo PDF:", err.parserError);
-      reject("Error leyendo PDF.");
-    });
+    if (!text) {
+      return "Este PDF no tiene texto extraíble.";
+    }
 
-    pdfParser.on("pdfParser_dataReady", (pdfData) => {
-      try {
-        if (!pdfData.FormImage || !Array.isArray(pdfData.FormImage.Pages)) {
-          console.log("📄 PDF sin estructura reconocida.");
-          return resolve("Este PDF no tiene texto extraíble.");
-        }
-        console.log(
-          "📄 Estructura PDF recibida:",
-          JSON.stringify(pdfData.FormImage.Pages, null, 2),
-        );
-        // Extraer texto de cada página
-        const pagesText = pdfData.FormImage.Pages.map((page) =>
-          page.Texts.map((t) =>
-            decodeURIComponent(t.R.map((r) => r.T).join("")),
-          ).join(" "),
-        );
-
-        const finalText = pagesText.join("\n\n").trim();
-
-        if (!finalText) {
-          console.log("📄 Texto vacío después de decodificar.");
-          return resolve("Este PDF no tiene texto extraíble.");
-        }
-        resolve(finalText);
-      } catch (err) {
-        console.error("❌ Error procesando PDF:", err);
-        reject("Error procesando PDF.");
-      }
-    });
-    pdfParser.parseBuffer(buffer);
-  });
+    return text;
+  } catch (error) {
+    console.error("❌ Error extrayendo texto con pdf-parse:", error);
+    return "Error procesando PDF.";
+  }
 }
 
 async function convertDOCtoDOCX(inputBuffer) {
