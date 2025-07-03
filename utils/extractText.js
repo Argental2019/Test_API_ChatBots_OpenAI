@@ -1,5 +1,7 @@
 import mammoth from "mammoth";
 import { getDocument } from "pdfjs-dist/build/pdf.mjs";
+import libre from "libreoffice-convert";
+import { file as tmpFile } from "tmp-promise";
 
 /**
  * Extrae texto desde un buffer según el tipo MIME.
@@ -13,6 +15,11 @@ export async function extractTextFromBuffer(buffer, mimeType) {
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     ) {
       const result = await mammoth.extractRawText({ buffer });
+      return result.value;
+    } else if (mimeType === "application/msword") {
+      // Convertir .doc a .docx
+      const converted = await convertDOCtoDOCX(buffer);
+      const result = await mammoth.extractRawText({ buffer: converted });
       return result.value;
     } else {
       return "Tipo de archivo no soportado para lectura.";
@@ -35,4 +42,15 @@ async function extractFromPDF(buffer) {
   }
 
   return fullText.trim();
+}
+
+async function convertDOCtoDOCX(inputBuffer) {
+  return new Promise((resolve, reject) => {
+    libre.convert(inputBuffer, ".docx", undefined, (err, done) => {
+      if (err) {
+        return reject(`Error al convertir DOC a DOCX: ${err}`);
+      }
+      resolve(done);
+    });
+  });
 }
