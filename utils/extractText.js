@@ -1,8 +1,9 @@
 import mammoth from "mammoth";
 import libre from "libreoffice-convert";
 //import { file as tmpFile } from "tmp-promise";
-import { fromBuffer } from "pdf2pic";
-import Tesseract from "tesseract.js";
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
+const PDFExtract = require("pdf.js-extract").PDFExtract;
 
 /**
  * Extrae texto desde un buffer según el tipo MIME.
@@ -33,32 +34,24 @@ export async function extractTextFromBuffer(buffer, mimeType) {
 }
 
 export async function extractFromPDF(buffer) {
+  const pdfExtract = new PDFExtract();
+  const options = {};
   try {
-    const convert = fromBuffer(buffer, {
-      density: 150,
-      format: "png",
-      width: 1200,
-      height: 1600,
-    });
-
-    const totalPages = await convert.numberOfPages();
-
-    let fullText = "";
-
-    for (let i = 1; i <= totalPages; i++) {
-      const result = await convert(i, false); // i = página, false = no guardar archivo
-
-      const ocr = await Tesseract.recognize(result.base64, "eng", {
-        logger: (m) => console.log(`OCR [página ${i}]`, m.status),
+    const data = await new Promise((resolve, reject) => {
+      pdfExtract.extractBuffer(buffer, options, (err, data) => {
+        if (err) return reject(err);
+        resolve(data);
       });
+    });
+    // Extraer el texto de todas las páginas
+    const pagesText = data.pages.map((page) =>
+      page.content.map((item) => item.str).join(" "),
+    );
 
-      fullText += ocr.data.text + "\n\n";
-    }
-
-    return fullText.trim();
+    return pagesText.join("\n\n").trim();
   } catch (error) {
-    console.error("❌ Error extrayendo texto con OCR:", error);
-    return "Error procesando PDF con OCR.";
+    console.error("❌ Error extrayendo texto con pdf.js-extract:", error);
+    return "Error procesando PDF.";
   }
 }
 
