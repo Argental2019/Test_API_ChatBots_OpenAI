@@ -45,9 +45,13 @@ export async function extractFromPDF(buffer) {
     pdfParser.on("pdfParser_dataReady", (pdfData) => {
       try {
         if (!pdfData.FormImage || !Array.isArray(pdfData.FormImage.Pages)) {
+          console.log("📄 PDF sin estructura reconocida.");
           return resolve("Este PDF no tiene texto extraíble.");
         }
-
+        console.log(
+          "📄 Estructura PDF recibida:",
+          JSON.stringify(pdfData.FormImage.Pages, null, 2),
+        );
         // Extraer texto de cada página
         const pagesText = pdfData.FormImage.Pages.map((page) =>
           page.Texts.map((t) =>
@@ -55,13 +59,18 @@ export async function extractFromPDF(buffer) {
           ).join(" "),
         );
 
-        resolve(pagesText.join("\n\n").trim());
+        const finalText = pagesText.join("\n\n").trim();
+
+        if (!finalText) {
+          console.log("📄 Texto vacío después de decodificar.");
+          return resolve("Este PDF no tiene texto extraíble.");
+        }
+        resolve(finalText);
       } catch (err) {
         console.error("❌ Error procesando PDF:", err);
         reject("Error procesando PDF.");
       }
     });
-
     pdfParser.parseBuffer(buffer);
   });
 }
