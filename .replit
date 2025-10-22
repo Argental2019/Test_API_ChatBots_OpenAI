@@ -2,6 +2,11 @@ entrypoint = "index.js"
 modules = ["nodejs-22"]
 hidden = [".config", "package-lock.json"]
 
+run = "node index.js"
+
+[env]
+PORT = "3000"
+
 [gitHubImport]
 requiredFiles = [".replit", "replit.nix", "package.json", "package-lock.json"]
 
@@ -9,10 +14,12 @@ requiredFiles = [".replit", "replit.nix", "package.json", "package-lock.json"]
 channel = "stable-24_11"
 
 [deployment]
-run = ["node", "auth.js"]
+run = ["node", "index.js"]
 deploymentTarget = "autoscale"
 ignorePorts = false
 
 [[ports]]
 localPort = 3000
 externalPort = 80
+
+
