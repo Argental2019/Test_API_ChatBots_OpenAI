@@ -1,15 +1,46 @@
 {
   "version": 2,
+  "compress": true,
   "builds": [
     {
       "src": "index.js",
       "use": "@vercel/node"
     }
   ],
+  "functions": {
+    "index.js": {
+      "runtime": "nodejs18.x",
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  },
   "routes": [
+    {
+      "src": "^/drive/manifest$",
+      "headers": {
+        "Cache-Control": "public, max-age=60"
+      },
+      "dest": "/index.js"
+    },
+    {
+      "src": "^/stats$",
+      "headers": {
+        "Cache-Control": "no-store"
+      },
+      "dest": "/index.js"
+    },
+    {
+      "src": "^/health$",
+      "headers": {
+        "Cache-Control": "no-store"
+      },
+      "dest": "/index.js"
+    },
     {
       "src": "/(.*)",
       "dest": "/index.js"
     }
   ]
 }
+
+

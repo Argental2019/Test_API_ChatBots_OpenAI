@@ -1,9 +1,14 @@
 {
   "name": "google-drive-backend",
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "private": true,
   "type": "module",
   "main": "index.js",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
+    "dev": "node index.js",
     "start": "node index.js"
   },
   "dependencies": {
@@ -11,8 +16,10 @@
     "dotenv": "^16.3.1",
     "express": "^5.1.0",
     "googleapis": "^133.0.0",
+    "ioredis": "^5.4.1",
     "libreoffice-convert": "^1.6.1",
     "mammoth": "^1.5.2",
+    "p-limit": "^5.0.0",
     "pdf-lib": "^1.17.1",
     "pdf.js-extract": "^0.2.1",
     "pdf2json": "^3.1.6",
@@ -22,3 +29,5 @@
     "tmp-promise": "^3.0.3"
   }
 }
+
+
