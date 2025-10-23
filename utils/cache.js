@@ -1,59 +1,74 @@
-import { kv } from '@vercel/kv';
+// utils/cache.js
+import dotenv from "dotenv";
+dotenv.config();
 
-/**
- * Genera una clave única para el caché basada en fileId y etag
- */
-export function getCacheKey(fileId, etag) {
-  return `file:${fileId}:${etag}`;
+let provider = "memory";
+let client = null;
+
+// 1) Vercel KV (si hay credenciales válidas)
+try {
+  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    const kvModule = await import("@vercel/kv");
+    client = kvModule.kv; // Vercel expone un cliente ya configurado
+    provider = "vercel-kv";
+  }
+} catch { /* ignore */ }
+
+// 2) Redis clásico (si hay REDIS_URL)
+if (!client && process.env.REDIS_URL) {
+  const { default: IORedis } = await import("ioredis");
+  client = new IORedis(process.env.REDIS_URL, {
+    maxRetriesPerRequest: 2,
+    enableReadyCheck: true,
+  });
+  provider = "redis";
 }
 
-/**
- * Obtiene contenido del caché
- * @param {string} fileId - ID del archivo
- * @param {string} etag - ETag del archivo
- * @returns {Promise<string|null>} - Contenido o null si no existe
- */
-export async function getFromCache(fileId, etag) {
-  try {
-    const key = getCacheKey(fileId, etag);
-    const cached = await kv.get(key);
-    return cached;
-  } catch (error) {
-    console.error('Error obteniendo del caché:', error);
-    return null;
+// 3) Fallback en memoria
+const memory = new Map();
+
+const toSec = (ms) => Math.max(1, Math.floor(ms / 1000));
+
+export async function cacheGet(key) {
+  if (provider === "vercel-kv") {
+    return await client.get(key);
   }
+  if (provider === "redis") {
+    const v = await client.get(key);
+    return v ? JSON.parse(v) : null;
+  }
+  // memory
+  return memory.get(key) ?? null;
 }
 
-/**
- * Guarda contenido en el caché
- * @param {string} fileId - ID del archivo
- * @param {string} etag - ETag del archivo
- * @param {string} content - Contenido a guardar
- * @param {number} ttl - Tiempo de vida en segundos (default: 7 días)
- */
-export async function saveToCache(fileId, etag, content, ttl = 604800) {
-  try {
-    const key = getCacheKey(fileId, etag);
-    await kv.set(key, content, { ex: ttl });
-    return true;
-  } catch (error) {
-    console.error('Error guardando en caché:', error);
-    return false;
+export async function cacheSet(key, value, ttlMs = 1000 * 60 * 60 * 24) {
+  if (provider === "vercel-kv") {
+    // @vercel/kv admite EX (segundos)
+    await client.set(key, JSON.stringify(value), { ex: toSec(ttlMs) });
+    return;
   }
+  if (provider === "redis") {
+    await client.set(key, JSON.stringify(value), "PX", ttlMs);
+    return;
+  }
+  // memory
+  memory.set(key, value);
+  // TTL básico en memoria
+  setTimeout(() => memory.delete(key), ttlMs).unref?.();
 }
 
-/**
- * Elimina una entrada del caché
- * @param {string} fileId - ID del archivo
- * @param {string} etag - ETag del archivo
- */
-export async function deleteFromCache(fileId, etag) {
-  try {
-    const key = getCacheKey(fileId, etag);
-    await kv.del(key);
-    return true;
-  } catch (error) {
-    console.error('Error eliminando del caché:', error);
-    return false;
+export async function cacheDel(key) {
+  if (provider === "vercel-kv") {
+    await client.del(key);
+    return;
   }
+  if (provider === "redis") {
+    await client.del(key);
+    return;
+  }
+  memory.delete(key);
+}
+
+export function cacheInfo() {
+  return { provider };
 }

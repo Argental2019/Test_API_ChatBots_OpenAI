@@ -1,63 +1,23 @@
+// index.js
 import express from "express";
 import dotenv from "dotenv";
-import { google } from "googleapis";
 import { extractTextFromBuffer } from "./utils/extractText.js";
-import { getFromCache, saveToCache } from "./utils/cache.js";
-import cors from "cors";
+import { getDriveClient, listFolderWithManifest, getFileMeta, buildCacheKey } from "./utils/drive.js";
+import { cacheGet, cacheSet, cacheInfo } from "./utils/cache.js";
+import pLimit from "p-limit";
 
 dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-// OAuth2 Client setup
-const oAuth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.REDIRECT_URI,
-);
+app.use(express.json({ limit: "5mb" })); // <- necesario para /bulkRead
 
-oAuth2Client.setCredentials({
-  refresh_token: process.env.REFRESH_TOKEN,
-});
+// Drive client
+const drive = getDriveClient();
 
-const drive = google.drive({ version: "v3", auth: oAuth2Client });
+// ========= Endpoints =========
 
-app.use(cors({ origin: true })); 
-app.get("/drive/manifest", async (req, res) => {
-  const folderId = req.query.folderId;
-  if (!folderId) return res.status(400).send("Falta folderId");
-
-  try {
-    const result = await drive.files.list({
-      q: `'${folderId}' in parents and trashed = false`,
-      fields: "files(id, name, mimeType, modifiedTime, md5Checksum)",
-    });
-
-    const manifest = result.data.files.map(file => ({
-      id: file.id,
-      name: file.name,
-      mimeType: file.mimeType,
-      modifiedTime: file.modifiedTime,
-      checksum: file.md5Checksum || 'no-checksum'
-    }));
-
-    res.json({ 
-      folder: folderId,
-      fileCount: manifest.length,
-      files: manifest 
-    });
-  } catch (err) {
-    console.error("Error obteniendo manifest:", err);
-    res.status(500).json({ 
-      error: "Error obteniendo manifest",
-      details: err.message 
-    });
-  }
-});
-
-// ============================================
-// Listar archivos (endpoint original)
-// ============================================
+// A) Listar archivos simple (tu endpoint original)
 app.get("/drive/list", async (req, res) => {
   const folderId = req.query.folderId;
   if (!folderId) return res.status(400).send("Falta folderId");
@@ -66,6 +26,8 @@ app.get("/drive/list", async (req, res) => {
     const result = await drive.files.list({
       q: `'${folderId}' in parents and trashed = false`,
       fields: "files(id, name, mimeType)",
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
     });
     res.json({ files: result.data.files });
   } catch (err) {
@@ -74,172 +36,141 @@ app.get("/drive/list", async (req, res) => {
   }
 });
 
-// ============================================
-// 🆕 MEJORADO: Endpoint /drive/read con caché
-// ============================================
+// B) Manifest con checksums para evitar lecturas innecesarias
+// GET /drive/manifest?folderId=...
+// Opcional: enviar en body (POST) un manifest previo { files: [{id, tag}] } para que devolvamos {changed, unchanged}
+app.get("/drive/manifest", async (req, res) => {
+  const folderId = req.query.folderId;
+  if (!folderId) return res.status(400).send("Falta folderId");
+  try {
+    const files = await listFolderWithManifest(drive, folderId);
+    // tag = md5Checksum || modifiedTime
+    const manifest = files.map(f => ({
+      id: f.id,
+      name: f.name,
+      mimeType: f.mimeType,
+      modifiedTime: f.modifiedTime,
+      checksum: f.md5Checksum ?? null,
+      size: f.size,
+      tag: f.md5Checksum ?? (f.modifiedTime ? new Date(f.modifiedTime).getTime().toString() : null)
+    }));
+    res.json({
+      folderId,
+      count: manifest.length,
+      cache: cacheInfo(),
+      files: manifest
+    });
+  } catch (err) {
+    console.error("Error generando manifest:", err);
+    res.status(500).json({ error: "Error generando manifest", details: err.message });
+  }
+});
+
+// C) Leer 1 archivo (con caché por fileId:etag)
 app.get("/drive/read", async (req, res) => {
   const fileId = req.query.fileId;
   if (!fileId) return res.status(400).send("Falta fileId");
 
   try {
-    // Obtener metadata del archivo (incluyendo etag)
-    const { data: fileMeta } = await drive.files.get({
-      fileId,
-      fields: "name, mimeType, modifiedTime, md5Checksum",
-    });
+    // 1) Metadata para crear cacheKey
+    const meta = await getFileMeta(drive, fileId);
+    const cacheKey = buildCacheKey(meta);
 
-    const etag = fileMeta.md5Checksum || fileMeta.modifiedTime;
-
-    console.log(`📄 Procesando: ${fileMeta.name}`);
-
-    // Intentar obtener del caché
-    const cachedContent = await getFromCache(fileId, etag);
-    
-    if (cachedContent) {
-      console.log(`✅ Contenido obtenido del caché`);
-      return res.json({
-        name: fileMeta.name,
-        content: cachedContent,
-        mimeType: fileMeta.mimeType,
-        cached: true
-      });
+    // 2) Intentar caché
+    const cached = await cacheGet(cacheKey);
+    if (cached) {
+      return res.json({ ...cached, cached: true });
     }
 
-    console.log(`🔄 Descargando archivo desde Drive...`);
-
-    // Si no está en caché, descargar y procesar
+    // 3) Descargar binario
     const fileData = await drive.files.get(
       { fileId, alt: "media" },
       { responseType: "arraybuffer" },
     );
-
     const buffer = Buffer.from(fileData.data);
-    const content = await extractTextFromBuffer(buffer, fileMeta.mimeType);
 
-    // Guardar en caché
-    await saveToCache(fileId, etag, content);
-    console.log(`💾 Contenido guardado en caché`);
+    // 4) Extraer texto
+    const content = await extractTextFromBuffer(buffer, meta.mimeType);
 
-    res.json({
-      name: fileMeta.name,
-      content,
+    // 5) Guardar en caché
+    const payload = {
+      id: meta.id,
+      name: meta.name,
+      mimeType: meta.mimeType,
+      etag: cacheKey.split(":")[1],
       size: buffer.length,
-      mimeType: fileMeta.mimeType,
-      cached: false
-    });
+      content,
+    };
+    const ttl = Number(process.env.CACHE_TTL_MS || 1000 * 60 * 60 * 24); // 24h default
+    await cacheSet(cacheKey, payload, ttl);
+
+    res.json({ ...payload, cached: false });
   } catch (err) {
     console.error("Error leyendo archivo:", err);
-    res.status(500).json({
-      error: "Error leyendo archivo",
-      details: err.message,
-    });
+    res.status(500).json({ error: "Error leyendo archivo", details: err.message });
   }
 });
 
-// ============================================
-// 🆕 NUEVO: Endpoint /drive/bulkRead
-// ============================================
-app.post("/drive/bulkRead", express.json(), async (req, res) => {
-  const { fileIds, concurrency = 3 } = req.body;
-
-  if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
-    return res.status(400).json({ 
-      error: "Se requiere un array de fileIds" 
-    });
+// D) Lecturas múltiples en paralelo con límite de concurrencia
+// POST /drive/bulkRead  { "fileIds": ["id1","id2",...], "concurrency": 3 }
+app.post("/drive/bulkRead", async (req, res) => {
+  const { fileIds, concurrency = 3 } = req.body || {};
+  if (!Array.isArray(fileIds) || fileIds.length === 0) {
+    return res.status(400).json({ error: "Enviá 'fileIds' como array no vacío." });
   }
 
-  console.log(`📦 Lectura masiva de ${fileIds.length} archivos con concurrencia ${concurrency}`);
+  const limit = pLimit(Math.max(1, Math.min(8, Number(concurrency)))); // cap en 8 por seguridad
 
-  const results = [];
-  const errors = [];
+  try {
+    const tasks = fileIds.map(fileId => limit(async () => {
+      try {
+        // Toda la lógica se comparte con /drive/read:
+        const meta = await getFileMeta(drive, fileId);
+        const cacheKey = buildCacheKey(meta);
 
-  // Función auxiliar para procesar un archivo
-  async function processFile(fileId) {
-    try {
-      // Obtener metadata
-      const { data: fileMeta } = await drive.files.get({
-        fileId,
-        fields: "name, mimeType, modifiedTime, md5Checksum",
-      });
+        const cached = await cacheGet(cacheKey);
+        if (cached) return { ...cached, cached: true };
 
-      const etag = fileMeta.md5Checksum || fileMeta.modifiedTime;
-
-      // Intentar caché primero
-      let content = await getFromCache(fileId, etag);
-      let fromCache = true;
-
-      if (!content) {
-        // Descargar si no está en caché
         const fileData = await drive.files.get(
           { fileId, alt: "media" },
           { responseType: "arraybuffer" },
         );
-
         const buffer = Buffer.from(fileData.data);
-        content = await extractTextFromBuffer(buffer, fileMeta.mimeType);
+        const content = await extractTextFromBuffer(buffer, meta.mimeType);
 
-        // Guardar en caché
-        await saveToCache(fileId, etag, content);
-        fromCache = false;
+        const payload = {
+          id: meta.id,
+          name: meta.name,
+          mimeType: meta.mimeType,
+          etag: cacheKey.split(":")[1],
+          size: buffer.length,
+          content,
+        };
+        const ttl = Number(process.env.CACHE_TTL_MS || 1000 * 60 * 60 * 24);
+        await cacheSet(cacheKey, payload, ttl);
+        return { ...payload, cached: false };
+      } catch (e) {
+        return { id: fileId, error: true, message: e.message };
       }
+    }));
 
-      return {
-        fileId,
-        name: fileMeta.name,
-        content,
-        mimeType: fileMeta.mimeType,
-        cached: fromCache,
-        success: true
-      };
-    } catch (error) {
-      return {
-        fileId,
-        error: error.message,
-        success: false
-      };
-    }
-  }
-
-  // Procesar archivos con concurrencia limitada
-  for (let i = 0; i < fileIds.length; i += concurrency) {
-    const batch = fileIds.slice(i, i + concurrency);
-    const batchResults = await Promise.all(batch.map(processFile));
-    
-    batchResults.forEach(result => {
-      if (result.success) {
-        results.push(result);
-      } else {
-        errors.push(result);
-      }
+    const results = await Promise.all(tasks);
+    res.json({
+      ok: true,
+      count: results.length,
+      cache: cacheInfo(),
+      results
     });
+  } catch (err) {
+    console.error("Error en bulkRead:", err);
+    res.status(500).json({ error: "Error en bulkRead", details: err.message });
   }
-
-  console.log(`✅ Procesados: ${results.length}, ❌ Errores: ${errors.length}`);
-
-  res.json({
-    total: fileIds.length,
-    successful: results.length,
-    failed: errors.length,
-    results,
-    errors: errors.length > 0 ? errors : undefined
-  });
 });
 
-// ============================================
-// Home
-// ============================================
 app.get("/", (req, res) => {
-  res.send("✅ Google Drive API backend funcionando con caché y lectura masiva.");
+  res.send("✅ Google Drive API backend funcionando.");
 });
 
 app.listen(port, () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${port}`);
-});
-
-//PRUEBA VERCEL REDIS
-app.get("/debug/env", (req, res) => {
-  res.json({
-    redis: !!process.env.REDIS_URL,
-    url: process.env.REDIS_URL ? "✅ Detected" : "❌ Missing",
-  });
+  console.log(`Servidor corriendo en http://localhost:${port}`);
 });
