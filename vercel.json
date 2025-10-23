@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "compress": true,
+
   "builds": [
     {
       "src": "index.js",
