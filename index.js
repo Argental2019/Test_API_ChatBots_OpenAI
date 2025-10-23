@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import { google } from "googleapis";
 import { extractTextFromBuffer } from "./utils/extractText.js";
 import { getFromCache, saveToCache } from "./utils/cache.js";
+import cors from "cors";
 
 dotenv.config();
 const app = express();
@@ -21,9 +22,7 @@ oAuth2Client.setCredentials({
 
 const drive = google.drive({ version: "v3", auth: oAuth2Client });
 
-// ============================================
-// 🆕 NUEVO: Endpoint /drive/manifest
-// ============================================
+app.use(cors({ origin: true })); 
 app.get("/drive/manifest", async (req, res) => {
   const folderId = req.query.folderId;
   if (!folderId) return res.status(400).send("Falta folderId");
