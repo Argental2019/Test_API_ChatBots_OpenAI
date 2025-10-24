@@ -7,7 +7,7 @@ import pLimit from "p-limit";
 import Redis from "ioredis";
 import { google } from "googleapis";
 
-// ⤵️ tu extractor (asegúrate que exista en el repo TEST)
+// ⤵️ tu extractor
 import { extractTextFromBuffer } from "./utils/extractText.js";
 
 dotenv.config();
@@ -40,6 +40,23 @@ const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, ne
 
 const makeEtag = (payload) => crypto.createHash("md5").update(payload).digest("hex");
 
+/* Helpers de tamaño/recorte */
+const truncate = (str, n) => {
+  if (!str) return "";
+  if (str.length <= n) return str;
+  return str.slice(0, n) + " …";
+};
+const approxBytes = (obj) => {
+  try { return Buffer.byteLength(JSON.stringify(obj), "utf8"); }
+  catch { return 0; }
+};
+
+/* Topes seguros para evitar respuestas gigantes en Actions */
+const DEFAULT_MODE = "snippet";         // meta | snippet | full
+const MAX_FILES_BULK = 3;               // máx archivos por bulkRead
+const PER_FILE_LIMIT = 3000;            // chars por archivo (snippet)
+const MAX_RESPONSE_BYTES = 800_000;     // ~0.8MB payload total (seguro para Actions)
+
 /* ============ Cache (Redis opcional) ============ */
 const mem = new Map();
 let redis = null;
@@ -47,7 +64,13 @@ if (process.env.REDIS_URL) {
   redis = new Redis(process.env.REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: 2 });
   redis.on("error", (e) => console.error("Redis error:", e.message));
 }
-const cacheGet = async (k) => (redis ? (await redis.get(k)) && JSON.parse(await redis.get(k)) : mem.get(k) || null);
+const cacheGet = async (k) => {
+  if (redis) {
+    const raw = await redis.get(k);
+    return raw ? JSON.parse(raw) : null;
+  }
+  return mem.get(k) || null;
+};
 const cacheSet = async (k, v, ttl = 86400) => (redis ? redis.set(k, JSON.stringify(v), "EX", ttl) : mem.set(k, v));
 
 /* ============ Google OAuth/Drive (init perezoso) ============ */
@@ -60,7 +83,6 @@ function requireEnvs(keys) {
     throw err;
   }
 }
-
 function createOAuth2Client() {
   requireEnvs(["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "REDIRECT_URI"]);
   const oAuth2 = new google.auth.OAuth2(
@@ -68,15 +90,12 @@ function createOAuth2Client() {
     process.env.GOOGLE_CLIENT_SECRET,
     process.env.REDIRECT_URI
   );
-  // REFRESH_TOKEN es opcional para endpoints que no llaman Drive; para los que sí, lo validamos allí.
   if (process.env.REFRESH_TOKEN) {
     oAuth2.setCredentials({ refresh_token: process.env.REFRESH_TOKEN });
   }
   return oAuth2;
 }
-
 function getDrive() {
-  // Para llamadas reales a Drive, el refresh es requerido
   requireEnvs(["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "REDIRECT_URI", "REFRESH_TOKEN"]);
   const auth = createOAuth2Client();
   return google.drive({ version: "v3", auth });
@@ -160,32 +179,40 @@ app.get("/drive/manifest", withTimer("manifest", asyncHandler(async (req, res) =
   return res.status(200).json(manifest);
 })));
 
-// Leer archivo con caché
+// Leer archivo con caché + control de tamaño
+// GET /drive/read?fileId=...&mode=snippet|full&limitChars=3000
 app.get("/drive/read", withTimer("read", asyncHandler(async (req, res) => {
   const fileId = req.query.fileId;
   if (!fileId) return res.status(400).json({ error: "Falta fileId" });
 
+  const mode = (req.query.mode || DEFAULT_MODE).toLowerCase(); // snippet | full
+  const limitChars = Math.max(500, Math.min(parseInt(req.query.limitChars || `${PER_FILE_LIMIT}`, 10), 20000));
+
   const meta = await getFileMeta(fileId);
   const cacheKey = `${fileId}:${meta.etag}`;
   const hit = await cacheGet(cacheKey);
-  if (hit) return res.status(200).json(hit);
+  if (hit) {
+    const content = mode === "full" ? hit.content : truncate(hit.content, limitChars);
+    return res.status(200).json({ ...hit, content, mode, limitChars });
+  }
 
   const buffer = await getFileBinary(fileId, meta.mimeType);
-  const content = await extractTextFromBuffer(buffer, meta.mimeType);
-
+  const contentRaw = await extractTextFromBuffer(buffer, meta.mimeType);
   const payload = {
     fileId: meta.id,
     name: meta.name,
     mimeType: meta.mimeType,
     etag: meta.etag,
     size: buffer.length,
-    content
+    content: contentRaw
   };
   await cacheSet(cacheKey, payload);
-  return res.status(200).json(payload);
+
+  const content = mode === "full" ? payload.content : truncate(payload.content, limitChars);
+  return res.status(200).json({ ...payload, content, mode, limitChars });
 })));
 
-// Leer rango PDF
+// Leer rango PDF (sin cambios funcionales relevantes)
 app.get("/drive/readRange", withTimer("readRange", asyncHandler(async (req, res) => {
   const { fileId } = req.query;
   const fromPage = Number(req.query.fromPage ?? 1);
@@ -212,42 +239,94 @@ app.get("/drive/readRange", withTimer("readRange", asyncHandler(async (req, res)
   return res.status(200).json(payload);
 })));
 
-// Lectura múltiple
+// Lectura múltiple con modos y límites de tamaño
+// POST /drive/bulkRead  body: { fileIds: string[], concurrency?: number, mode?: "meta"|"snippet"|"full", limitChars?: number }
 app.post("/drive/bulkRead", withTimer("bulkRead", asyncHandler(async (req, res) => {
   const fileIds = req.body?.fileIds;
   if (!Array.isArray(fileIds) || !fileIds.length) {
     return res.status(400).json({ error: "Se requiere body { fileIds: string[] }" });
   }
 
-  const limit = pLimit(Number(process.env.MAX_CONCURRENCY || 4));
-  const results = await Promise.allSettled(
-    fileIds.map(id => limit(async () => {
-      const meta = await getFileMeta(id);
-      const cacheKey = `${id}:${meta.etag}`;
-      const hit = await cacheGet(cacheKey);
-      if (hit) return { fileId: id, ...hit };
+  const concurrency = Math.max(1, Math.min(parseInt(req.body?.concurrency ?? "4", 10), 8));
+  const mode = (req.body?.mode || DEFAULT_MODE).toLowerCase(); // meta | snippet | full
+  const limitChars = Math.max(500, Math.min(parseInt(req.body?.limitChars ?? `${PER_FILE_LIMIT}`, 10), 20000));
 
-      const buffer = await getFileBinary(id, meta.mimeType);
-      const content = await extractTextFromBuffer(buffer, meta.mimeType);
+  if (fileIds.length > MAX_FILES_BULK && mode !== "meta") {
+    return res.status(400).json({
+      error: `Demasiados archivos para una sola llamada (${fileIds.length}). Máximo ${MAX_FILES_BULK}.`,
+      hint: "Usá varias llamadas o el modo 'meta' para decidir qué leer."
+    });
+  }
 
-      const payload = {
-        fileId: meta.id,
-        name: meta.name,
-        mimeType: meta.mimeType,
-        etag: meta.etag,
-        size: buffer.length,
-        content
-      };
-      await cacheSet(cacheKey, payload);
-      return { fileId: id, ...payload };
-    }))
-  );
+  const limit = pLimit(concurrency);
+  const started = Date.now();
 
-  const body = results.map((r, i) => r.status === "fulfilled"
-    ? r.value
-    : { fileId: fileIds[i], error: r.reason?.message || "failed" });
+  const results = [];
+  for (const id of fileIds) {
+    const r = await limit(async () => {
+      try {
+        const meta = await getFileMeta(id);
+        if (mode === "meta") {
+          return {
+            fileId: id,
+            ok: true,
+            name: meta.name,
+            mimeType: meta.mimeType,
+            size: meta.size,
+            etag: meta.etag
+          };
+        }
 
-  return res.status(200).json(body);
+        const cacheKey = `${id}:${meta.etag}`;
+        const hit = await cacheGet(cacheKey);
+        let contentRaw, size;
+        if (hit) {
+          contentRaw = hit.content;
+          size = hit.size;
+        } else {
+          const buffer = await getFileBinary(id, meta.mimeType);
+          size = buffer.length;
+          contentRaw = await extractTextFromBuffer(buffer, meta.mimeType);
+          const payload = {
+            fileId: meta.id, name: meta.name, mimeType: meta.mimeType,
+            etag: meta.etag, size, content: contentRaw
+          };
+          await cacheSet(cacheKey, payload);
+        }
+
+        const content = mode === "full" ? contentRaw : truncate(contentRaw, limitChars);
+        return {
+          fileId: meta.id,
+          ok: true,
+          name: meta.name,
+          mimeType: meta.mimeType,
+          etag: meta.etag,
+          size,
+          mode,
+          limitChars,
+          content
+        };
+      } catch (e) {
+        return { fileId: id, ok: false, error: e.message || "failed" };
+      }
+    });
+
+    results.push(r);
+
+    // Control de tamaño acumulado
+    const probe = { mode, results };
+    if (approxBytes(probe) > MAX_RESPONSE_BYTES) {
+      return res.status(413).json({
+        error: "Respuesta demasiado grande. Se detuvo la lectura para evitar fallos.",
+        served: results.length,
+        limitBytes: MAX_RESPONSE_BYTES,
+        hint: "Pedí menos archivos, usá mode=meta, o disminuí limitChars."
+      });
+    }
+  }
+
+  const totalMs = Date.now() - started;
+  return res.status(200).json({ totalMs, mode, results });
 })));
 
 // Health & Stats
