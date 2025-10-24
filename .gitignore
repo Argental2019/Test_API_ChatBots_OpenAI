@@ -133,3 +133,4 @@ dist
 .breakpoints
 .vercel
 .env*.local
+jsconfig.json
