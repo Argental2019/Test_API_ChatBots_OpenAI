@@ -175,7 +175,11 @@ app.get("/drive/manifest", withTimer("manifest", asyncHandler(async (req, res) =
   if (!folderId) return res.status(400).json({ error: "Falta folderId" });
 
   const manifest = await getManifest(folderId);
-  res.setHeader("ETag", makeEtag(JSON.stringify(manifest)));
+  const etag = makeEtag(JSON.stringify({ folderId, etags: manifest.files.map(f => f.etag) }));
+  if (req.headers["if-none-match"] === etag) return res.status(304).end();
+
+  res.setHeader("ETag", etag);
+  res.setHeader("Cache-Control", "public, max-age=60");
   return res.status(200).json(manifest);
 })));
 
@@ -193,7 +197,7 @@ app.get("/drive/read", withTimer("read", asyncHandler(async (req, res) => {
   const hit = await cacheGet(cacheKey);
   if (hit) {
     const content = mode === "full" ? hit.content : truncate(hit.content, limitChars);
-    return res.status(200).json({ ...hit, content, mode, limitChars });
+    return res.status(200).json({ ...hit, content, mode, limitChars, cached: true });
   }
 
   const buffer = await getFileBinary(fileId, meta.mimeType);
@@ -209,10 +213,10 @@ app.get("/drive/read", withTimer("read", asyncHandler(async (req, res) => {
   await cacheSet(cacheKey, payload);
 
   const content = mode === "full" ? payload.content : truncate(payload.content, limitChars);
-  return res.status(200).json({ ...payload, content, mode, limitChars });
+  return res.status(200).json({ ...payload, content, mode, limitChars, cached: false });
 })));
 
-// Leer rango PDF (sin cambios funcionales relevantes)
+// Leer rango PDF
 app.get("/drive/readRange", withTimer("readRange", asyncHandler(async (req, res) => {
   const { fileId } = req.query;
   const fromPage = Number(req.query.fromPage ?? 1);
@@ -237,6 +241,65 @@ app.get("/drive/readRange", withTimer("readRange", asyncHandler(async (req, res)
     content
   };
   return res.status(200).json(payload);
+})));
+
+// NUEVO: Paquete consolidado (bundle) para 1 sola llamada desde el GPT
+// GET /drive/bundle?folderId=...&maxChars=180000
+app.get("/drive/bundle", withTimer("bundle", asyncHandler(async (req, res) => {
+  const folderId = req.query.folderId;
+  const maxChars = Math.max(20_000, Math.min(parseInt(req.query.maxChars || "180000", 10), 400_000));
+  if (!folderId) return res.status(400).json({ error: "Falta folderId" });
+
+  // 1) Manifest (ids + etags)
+  const manifest = await getManifest(folderId);
+
+  // ETag condicional: si nada cambió, devolvemos 304
+  const etag = makeEtag(JSON.stringify({ folderId, etags: manifest.files.map(f => f.etag) }));
+  if (req.headers["if-none-match"] === etag) return res.status(304).end();
+
+  // 2) Lee en paralelo usando caché
+  const limit = pLimit(Number(process.env.MAX_CONCURRENCY || 6));
+  const settled = await Promise.allSettled(
+    manifest.files.map(f => limit(async () => {
+      const cacheKey = `${f.id}:${f.etag}`;
+      const hit = await cacheGet(cacheKey);
+      if (hit) return hit;
+
+      const buffer = await getFileBinary(f.id, f.mimeType);
+      const content = await extractTextFromBuffer(buffer, f.mimeType);
+      const payload = {
+        fileId: f.id,
+        name: f.name,
+        mimeType: f.mimeType,
+        etag: f.etag,
+        size: buffer.length,
+        content
+      };
+      await cacheSet(cacheKey, payload);
+      return payload;
+    }))
+  );
+
+  const ok = settled.filter(s => s.status === "fulfilled").map(s => s.value);
+  const filesMeta = ok.map(({ fileId, name, mimeType, etag, size }) => ({ fileId, name, mimeType, etag, size }));
+
+  // 3) Unir + recortar para no exceder contexto
+  let merged = ok
+    .map(x => `# ${x.name}\n\n${(x.content || "").trim()}\n`)
+    .join("\n\n");
+
+  if (merged.length > maxChars) merged = merged.slice(0, maxChars);
+
+  // Seguridad de tamaño total
+  const bodyProbe = { folderId, files: filesMeta, merged };
+  if (approxBytes(bodyProbe) > MAX_RESPONSE_BYTES) {
+    // Si aún es muy grande, recortamos más agresivo
+    merged = merged.slice(0, Math.floor(MAX_RESPONSE_BYTES * 0.7));
+  }
+
+  res.setHeader("ETag", etag);
+  res.setHeader("Cache-Control", "public, max-age=60");
+  return res.status(200).json({ folderId, files: filesMeta, merged });
 })));
 
 // Lectura múltiple con modos y límites de tamaño
