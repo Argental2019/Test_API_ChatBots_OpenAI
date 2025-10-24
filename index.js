@@ -244,10 +244,10 @@ app.get("/drive/readRange", withTimer("readRange", asyncHandler(async (req, res)
 })));
 
 // NUEVO: Paquete consolidado (bundle) para 1 sola llamada desde el GPT
-// GET /drive/bundle?folderId=...&maxChars=180000
+// GET /drive/bundle?folderId=...&maxChars=120000
 app.get("/drive/bundle", withTimer("bundle", asyncHandler(async (req, res) => {
   const folderId = req.query.folderId;
-  const maxChars = Math.max(20_000, Math.min(parseInt(req.query.maxChars || "180000", 10), 400_000));
+  const maxChars = Math.max(20_000, Math.min(parseInt(req.query.maxChars || "120000", 10), 400_000));
   if (!folderId) return res.status(400).json({ error: "Falta folderId" });
 
   // 1) Manifest (ids + etags)
