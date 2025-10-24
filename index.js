@@ -55,7 +55,7 @@ const approxBytes = (obj) => {
 const DEFAULT_MODE = "snippet";         // meta | snippet | full
 const MAX_FILES_BULK = 3;               // máx archivos por bulkRead
 const PER_FILE_LIMIT = 3000;            // chars por archivo (snippet)
-const MAX_RESPONSE_BYTES = 800_000;     // ~0.8MB payload total (seguro para Actions)
+const MAX_RESPONSE_BYTES = 800_000;     // ~0.8MB payload total (seguro para bulk)
 
 /* ============ Cache (Redis opcional) ============ */
 const mem = new Map();
@@ -247,20 +247,37 @@ app.get("/drive/readRange", withTimer("readRange", asyncHandler(async (req, res)
 // GET /drive/bundle?folderId=...&maxChars=120000
 app.get("/drive/bundle", withTimer("bundle", asyncHandler(async (req, res) => {
   const folderId = req.query.folderId;
-  const maxChars = Math.max(20_000, Math.min(parseInt(req.query.maxChars || "120000", 10), 400_000));
+  // Default más conservador y techo controlado
+  const maxChars = Math.max(30_000, Math.min(parseInt(req.query.maxChars || "120000", 10), 180_000));
   if (!folderId) return res.status(400).json({ error: "Falta folderId" });
 
-  // 1) Manifest (ids + etags)
-  const manifest = await getManifest(folderId);
+  // Tipos compatibles
+  const SUPPORTED = new Set([
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/msword",
+    "application/vnd.google-apps.document",
+    "application/vnd.google-apps.file"
+  ]);
 
-  // ETag condicional: si nada cambió, devolvemos 304
-  const etag = makeEtag(JSON.stringify({ folderId, etags: manifest.files.map(f => f.etag) }));
+  // 1) Manifest (ids + etags) y filtrado por tipos legibles
+  const manifest = await getManifest(folderId);
+  const readable = manifest.files.filter(f => {
+    const mt = (f.mimeType || "").toLowerCase();
+    return [...SUPPORTED].some(s => mt.startsWith(s));
+  });
+
+  // ETag condicional con los legibles
+  const etag = makeEtag(JSON.stringify({
+    folderId,
+    etags: readable.map(f => `${f.id}:${f.etag}`)
+  }));
   if (req.headers["if-none-match"] === etag) return res.status(304).end();
 
   // 2) Lee en paralelo usando caché
   const limit = pLimit(Number(process.env.MAX_CONCURRENCY || 6));
   const settled = await Promise.allSettled(
-    manifest.files.map(f => limit(async () => {
+    readable.map(f => limit(async () => {
       const cacheKey = `${f.id}:${f.etag}`;
       const hit = await cacheGet(cacheKey);
       if (hit) return hit;
@@ -281,25 +298,51 @@ app.get("/drive/bundle", withTimer("bundle", asyncHandler(async (req, res) => {
   );
 
   const ok = settled.filter(s => s.status === "fulfilled").map(s => s.value);
-  const filesMeta = ok.map(({ fileId, name, mimeType, etag, size }) => ({ fileId, name, mimeType, etag, size }));
 
-  // 3) Unir + recortar para no exceder contexto
-  let merged = ok
-    .map(x => `# ${x.name}\n\n${(x.content || "").trim()}\n`)
-    .join("\n\n");
+  // Metadatos sin contenido
+  const filesMeta = ok.map(({ fileId, name, mimeType, etag, size }) => ({
+    fileId, name, mimeType, etag, size
+  }));
 
-  if (merged.length > maxChars) merged = merged.slice(0, maxChars);
+  // 3) Priorizar: PDF > DOCX/DOC > otros
+  const prioritized = ok.sort((a, b) => {
+    const prio = (mt) =>
+      /pdf/i.test(mt) ? 2 :
+      /word|officedocument.wordprocessingml/i.test(mt) ? 1 : 0;
+    return prio(b.mimeType) - prio(a.mimeType);
+  });
 
-  // Seguridad de tamaño total
-  const bodyProbe = { folderId, files: filesMeta, merged };
-  if (approxBytes(bodyProbe) > MAX_RESPONSE_BYTES) {
-    // Si aún es muy grande, recortamos más agresivo
-    merged = merged.slice(0, Math.floor(MAX_RESPONSE_BYTES * 0.7));
+  // 4) Unir incrementalmente hasta el tope
+  let merged = "";
+  let truncated = false;
+
+  for (const doc of prioritized) {
+    const header = `# ${doc.name}\n\n`;
+    const remain = maxChars - (merged.length + header.length);
+    if (remain <= 0) { truncated = true; break; }
+
+    const chunk = (doc.content || "").trim();
+    if (chunk.length <= remain) {
+      merged += header + chunk + "\n\n";
+    } else {
+      merged += header + chunk.slice(0, remain) + "\n\n";
+      truncated = true;
+      break;
+    }
+  }
+
+  // 5) Última barrera por tamaño de payload (≈ 350 KB seguros para Actions)
+  const MAX_PAYLOAD_BYTES = 350_000;
+  let probe = { folderId, files: filesMeta, merged, truncated };
+  while (Buffer.byteLength(JSON.stringify(probe), "utf8") > MAX_PAYLOAD_BYTES && merged.length > 1000) {
+    merged = merged.slice(0, Math.floor(merged.length * 0.9));
+    truncated = true;
+    probe = { folderId, files: filesMeta, merged, truncated };
   }
 
   res.setHeader("ETag", etag);
   res.setHeader("Cache-Control", "public, max-age=60");
-  return res.status(200).json({ folderId, files: filesMeta, merged });
+  return res.status(200).json({ folderId, files: filesMeta, merged, truncated });
 })));
 
 // Lectura múltiple con modos y límites de tamaño
