@@ -414,6 +414,44 @@ app.get(
     })
   )
 );
+// ===== Registro de preguntas sin respuesta documental =====
+app.post(
+  "/agent/log-miss",
+  asyncHandler(async (req, res) => {
+    const body = req.body || {};
+    if (!body.question || !body.agentId) {
+      return res.status(400).json({ ok: false, error: "Faltan campos obligatorios" });
+    }
+
+    const entry = {
+      ts: new Date().toISOString(),
+      ymd: new Date().toISOString().slice(0, 10),
+      agentId: body.agentId,
+      userId: body.userId || "anon",
+      question: body.question,
+      folderId: body.folderId || null,
+      notes: body.notes || "",
+      context: body.context || "",
+    };
+
+    if (redis) {
+      // Guardar como stream
+      await redis.xadd(
+        "agent:misses",
+        "MAXLEN",
+        "~",
+        10000, // máximo 10 mil registros
+        "*",
+        ...Object.entries(entry).flat()
+      );
+    } else {
+      console.warn("⚠️ Redis no está configurado: log-miss solo en memoria");
+      mem.set("lastLogMiss", entry);
+    }
+
+    return res.status(200).json({ ok: true, stream: "agent:misses", entry });
+  })
+);
 
 // Health & Stats
 app.get(
