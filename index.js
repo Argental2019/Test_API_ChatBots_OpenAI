@@ -452,6 +452,55 @@ app.post(
     return res.status(200).json({ ok: true, stream: "agent:misses", entry });
   })
 );
+// ===== Log de "preguntas sin respaldo documental" =====
+// POST /agent/log-miss  { question, agentId, userId, folderId, notes?, context?, conversationId? }
+app.post(
+  "/agent/log-miss",
+  withTimer(
+    "logMiss",
+    asyncHandler(async (req, res) => {
+      const { question, agentId, userId, folderId, notes, context, conversationId } = req.body || {};
+      if (!question || !agentId) {
+        return res.status(400).json({ error: "Faltan campos requeridos: question, agentId" });
+      }
+
+      const ts = new Date().toISOString();
+      const ymd = ts.slice(0, 10); // YYYY-MM-DD
+      const payload = {
+        ts,
+        ymd,
+        agentId: String(agentId),
+        userId: userId ? String(userId) : "anon",
+        folderId: folderId ? String(folderId) : "",
+        conversationId: conversationId ? String(conversationId) : "",
+        question: String(question),
+        qhash: crypto.createHash("sha1").update(String(question)).digest("hex"),
+        notes: notes ? String(notes) : "",
+        context: context ? String(context) : "",
+      };
+
+      // Guardar como Stream en Redis (o en memoria si no hay Redis)
+      if (redis) {
+        // MAXLEN ~10000 para evitar crecimiento infinito
+        await redis.xadd(
+          "agent:misses",
+          "MAXLEN",
+          "~",
+          10000,
+          "*",
+          ...Object.entries(payload).flat()
+        );
+      } else {
+        // Fallback: lista en memoria (útil en local)
+        const list = mem.get("agent:misses") || [];
+        list.push({ id: Date.now(), ...payload });
+        mem.set("agent:misses", list);
+      }
+
+      return res.status(200).json({ ok: true });
+    })
+  )
+);
 
 // Health & Stats
 app.get(
