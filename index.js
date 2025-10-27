@@ -1,5 +1,6 @@
 // @ts-nocheck
 // index.js — Backend Drive con caché + lecturas masivas (compatible Vercel)
+// + Telemetría: log de "preguntas no respondidas" vía Redis Streams
 
 // ===== Imports =====
 import express from "express";
@@ -49,6 +50,9 @@ const withTimer = (name, fn) => async (req, res, next) => {
 const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 const makeEtag = (payload) => crypto.createHash("md5").update(payload).digest("hex");
 
+// ===== Helpers varios =====
+const truncate = (str, n) => (!str ? "" : str.length <= n ? str : str.slice(0, n) + " …");
+
 // ===== Caché (Redis opcional / memoria fallback) =====
 const mem = new Map();
 let redis = null;
@@ -78,7 +82,6 @@ function requireEnvs(keys) {
     throw err;
   }
 }
-
 function createOAuth2Client() {
   requireEnvs(["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "REDIRECT_URI"]);
   const oAuth2 = new google.auth.OAuth2(
@@ -91,7 +94,6 @@ function createOAuth2Client() {
   }
   return oAuth2;
 }
-
 function getDrive() {
   requireEnvs(["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "REDIRECT_URI", "REFRESH_TOKEN"]);
   const auth = createOAuth2Client();
@@ -112,7 +114,6 @@ async function getFileMeta(fileId) {
     etag: data.md5Checksum || data.modifiedTime,
   };
 }
-
 async function getManifest(folderId) {
   const drive = getDrive();
   const q = "'" + folderId + "' in parents and trashed = false";
@@ -132,7 +133,6 @@ async function getManifest(folderId) {
     })),
   };
 }
-
 async function getFileBinary(fileId, mimeType) {
   const drive = getDrive();
   const isGoogleDoc = (mimeType || "").startsWith("application/vnd.google-apps");
@@ -147,7 +147,7 @@ async function getFileBinary(fileId, mimeType) {
   return Buffer.from(data);
 }
 
-// ===== Endpoints =====
+// ===== Endpoints Drive =====
 
 // Ping raíz
 app.get("/", (req, res) => res.status(200).send("✅ Google Drive API backend (Vercel-ready)"));
@@ -171,7 +171,7 @@ app.get(
   )
 );
 
-// Manifest (para detectar cambios)
+// Manifest
 app.get(
   "/drive/manifest",
   withTimer(
@@ -217,7 +217,7 @@ app.get(
   )
 );
 
-// Leer rango PDF (opcional)
+// Leer rango PDF
 app.get(
   "/drive/readRange",
   withTimer(
@@ -250,7 +250,7 @@ app.get(
   )
 );
 
-// Lectura múltiple con límite de concurrencia
+// Lectura múltiple
 app.post(
   "/drive/bulkRead",
   withTimer(
@@ -294,6 +294,123 @@ app.post(
       );
 
       return res.status(200).json(body);
+    })
+  )
+);
+
+// ===== Telemetría: "preguntas sin respuesta" (unanswered / misses) =====
+
+// ENV opcionales
+const MISS_STREAM_KEY = process.env.MISS_STREAM_KEY || "agent:misses";
+const MISS_MAXLEN = Number(process.env.MISS_MAXLEN || 10000);
+const MISS_COUNTER_TTL_DAYS = Number(process.env.MISS_COUNTER_TTL_DAYS || 90);
+
+// Fallback en memoria si no hay Redis
+const MISS_MEM = [];
+
+// utilidades fecha
+const nowISO = () => new Date().toISOString();
+const ymd = () => new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+async function logMiss({ question, agentId, userId, folderId, conversationId, notes, context }) {
+  const payload = {
+    ts: nowISO(),
+    ymd: ymd(),
+    agentId: agentId || "",
+    userId: userId || "",
+    folderId: folderId || "",
+    conversationId: conversationId || "",
+    question: truncate(String(question || ""), 1000),
+    notes: truncate(String(notes || ""), 500),
+    context: truncate(String(context || ""), 2000),
+    qhash: crypto.createHash("md5").update(String(question || "")).digest("hex"),
+  };
+
+  if (redis) {
+    // 1) Stream append con recorte (MAXLEN ~)
+    await redis.xadd(
+      MISS_STREAM_KEY,
+      "MAXLEN",
+      "~",
+      String(MISS_MAXLEN),
+      "*",
+      "ts",
+      payload.ts,
+      "ymd",
+      payload.ymd,
+      "agentId",
+      payload.agentId,
+      "userId",
+      payload.userId,
+      "folderId",
+      payload.folderId,
+      "conversationId",
+      payload.conversationId,
+      "question",
+      payload.question,
+      "qhash",
+      payload.qhash,
+      "notes",
+      payload.notes,
+      "context",
+      payload.context
+    );
+
+    // 2) Contadores diarios/totales
+    const dayKey = `agent:misses:count:${payload.ymd}`;
+    await redis.incr(dayKey);
+    if (MISS_COUNTER_TTL_DAYS > 0) {
+      await redis.expire(dayKey, MISS_COUNTER_TTL_DAYS * 86400);
+    }
+    await redis.incr("agent:misses:count:total");
+  } else {
+    // Fallback local
+    MISS_MEM.push(payload);
+    if (MISS_MEM.length > MISS_MAXLEN) MISS_MEM.shift();
+  }
+
+  return payload;
+}
+
+// Endpoint para registrar un miss
+// Body mínimo: { question: string, agentId?: string, userId?: string, folderId?: string, conversationId?: string, notes?: string, context?: string }
+app.post(
+  "/agent/log-miss",
+  withTimer(
+    "logMiss",
+    asyncHandler(async (req, res) => {
+      const { question, agentId, userId, folderId, conversationId, notes, context } = req.body || {};
+      if (!question) return res.status(400).json({ error: "Falta 'question' en el body." });
+
+      const saved = await logMiss({ question, agentId, userId, folderId, conversationId, notes, context });
+      return res.status(201).json({ ok: true, saved });
+    })
+  )
+);
+
+// Estadísticas simples: total y del día
+app.get(
+  "/agent/miss-stats",
+  withTimer(
+    "missStats",
+    asyncHandler(async (_req, res) => {
+      if (redis) {
+        const [total, today] = await redis.mget("agent:misses:count:total", `agent:misses:count:${ymd()}`);
+        return res.status(200).json({
+          ok: true,
+          total: Number(total || 0),
+          today: Number(today || 0),
+          stream: MISS_STREAM_KEY,
+          maxlen: MISS_MAXLEN,
+        });
+      }
+      return res.status(200).json({
+        ok: true,
+        total: MISS_MEM.length,
+        today: MISS_MEM.filter((r) => r.ymd === ymd()).length,
+        stream: "(mem)",
+        maxlen: MISS_MAXLEN,
+      });
     })
   )
 );
