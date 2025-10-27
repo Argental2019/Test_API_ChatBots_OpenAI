@@ -1,6 +1,7 @@
 // @ts-nocheck
 // index.js — Backend Drive con caché + lecturas masivas (compatible Vercel)
 // + Telemetría: log de "preguntas no respondidas" vía Redis Streams
+// + smartRead: siempre verifica actualizaciones, usa cache si no cambió y refetch si cambió
 
 // ===== Imports =====
 import express from "express";
@@ -100,25 +101,54 @@ function getDrive() {
   return google.drive({ version: "v3", auth });
 }
 
-// ===== Helpers Drive =====
+// ===== Helpers Drive (ETag robusto) =====
+function isGoogleDoc(mime) {
+  return (mime || "").startsWith("application/vnd.google-apps");
+}
+
+async function getStrongDocRevision(drive, fileId) {
+  // Última revisión para Google Docs/Sheets/Slides
+  const { data } = await drive.revisions.list({
+    fileId,
+    pageSize: 1,
+    fields: "revisions(id, modifiedTime)",
+    orderBy: "modifiedTime desc",
+  });
+  const rev = (data.revisions || [])[0];
+  return rev ? { revId: rev.id, revTime: rev.modifiedTime } : { revId: null, revTime: null };
+}
+
 async function getFileMeta(fileId) {
   const drive = getDrive();
-  const fields = "id,name,mimeType,modifiedTime,md5Checksum,size";
+  const fields = "id,name,mimeType,modifiedTime,md5Checksum,size,version";
   const { data } = await drive.files.get({ fileId, fields });
+
+  // Base: md5Checksum (archivos subidos) o modifiedTime
+  let etag = data.md5Checksum || data.modifiedTime;
+
+  // Fortalecer para Google Docs (usar revisionId)
+  if (isGoogleDoc(data.mimeType)) {
+    const { revId, revTime } = await getStrongDocRevision(drive, fileId);
+    if (revId) etag = `${revTime || data.modifiedTime}:${revId}`;
+  }
+
   return {
     id: data.id,
     name: data.name,
     mimeType: data.mimeType,
     size: data.size,
     modifiedTime: data.modifiedTime,
-    etag: data.md5Checksum || data.modifiedTime,
+    etag,
   };
 }
+
 async function getManifest(folderId) {
   const drive = getDrive();
   const q = "'" + folderId + "' in parents and trashed = false";
   const fields = "files(id,name,mimeType,modifiedTime,md5Checksum,size)";
   const { data } = await drive.files.list({ q, pageSize: 1000, fields });
+
+  // NOTA: para Google Docs, el etag final se perfecciona en getFileMeta (con revisions)
   return {
     folderId,
     generatedAt: new Date().toISOString(),
@@ -133,10 +163,10 @@ async function getManifest(folderId) {
     })),
   };
 }
+
 async function getFileBinary(fileId, mimeType) {
   const drive = getDrive();
-  const isGoogleDoc = (mimeType || "").startsWith("application/vnd.google-apps");
-  if (isGoogleDoc) {
+  if (isGoogleDoc(mimeType)) {
     const { data } = await drive.files.export(
       { fileId, mimeType: "text/plain" },
       { responseType: "arraybuffer" }
@@ -145,6 +175,50 @@ async function getFileBinary(fileId, mimeType) {
   }
   const { data } = await drive.files.get({ fileId, alt: "media" }, { responseType: "arraybuffer" });
   return Buffer.from(data);
+}
+
+// ===== Smart cache helpers (manifest + per-file) =====
+const MANIFEST_KEY = (folderId) => `manifest:${folderId}`;
+const FILE_KEY = (fileId, etag) => `file:${fileId}:${etag}`;
+
+async function getCachedManifest(folderId) {
+  return await cacheGet(MANIFEST_KEY(folderId));
+}
+async function setCachedManifest(folderId, manifest, ttlSec = 3600) {
+  await cacheSet(MANIFEST_KEY(folderId), manifest, ttlSec);
+}
+
+// Lee 1 archivo respetando cache por etag; para robustez,
+// reobtiene meta fuerte (usa revision para Google Docs).
+async function readFileSmart(file) {
+  const strongMeta = await getFileMeta(file.id); // asegura etag fuerte
+  const { id, name, mimeType, etag } = strongMeta;
+  const k = FILE_KEY(id, etag);
+
+  const hit = await cacheGet(k);
+  if (hit) {
+    return { fromCache: true, ...hit };
+  }
+
+  const buffer = await getFileBinary(id, mimeType);
+  const content = await extractTextFromBuffer(buffer, mimeType);
+  const payload = { fileId: id, name, mimeType, etag, size: buffer.length, content };
+
+  await cacheSet(k, payload);
+  return { fromCache: false, ...payload };
+}
+
+// Compara 2 manifests y determina qué archivos están nuevos/actualizados (por etag)
+function diffManifests(prev, curr) {
+  const prevMap = new Map((prev?.files || []).map(f => [f.id, f.etag]));
+  const changed = [];
+  const unchanged = [];
+  for (const f of (curr.files || [])) {
+    const prevEtag = prevMap.get(f.id);
+    if (!prevEtag || prevEtag !== f.etag) changed.push(f);
+    else unchanged.push(f);
+  }
+  return { changed, unchanged };
 }
 
 // ===== Endpoints Drive =====
@@ -186,19 +260,23 @@ app.get(
   )
 );
 
-// Leer archivo con caché
+// Leer archivo con caché (soporta ?force=true)
 app.get(
   "/drive/read",
   withTimer(
     "read",
     asyncHandler(async (req, res) => {
       const fileId = req.query.fileId;
+      const force = String(req.query.force || "false").toLowerCase() === "true";
       if (!fileId) return res.status(400).json({ error: "Falta fileId" });
 
       const meta = await getFileMeta(fileId);
       const cacheKey = fileId + ":" + meta.etag;
-      const hit = await cacheGet(cacheKey);
-      if (hit) return res.status(200).json(hit);
+
+      if (!force) {
+        const hit = await cacheGet(cacheKey);
+        if (hit) return res.status(200).json(hit);
+      }
 
       const buffer = await getFileBinary(fileId, meta.mimeType);
       const content = await extractTextFromBuffer(buffer, meta.mimeType);
@@ -250,13 +328,14 @@ app.get(
   )
 );
 
-// Lectura múltiple
+// Lectura múltiple (body: { fileIds: string[], force?: boolean })
 app.post(
   "/drive/bulkRead",
   withTimer(
     "bulkRead",
     asyncHandler(async (req, res) => {
       const fileIds = req.body && req.body.fileIds;
+      const force = !!(req.body && req.body.force);
       if (!Array.isArray(fileIds) || !fileIds.length) {
         return res.status(400).json({ error: "Se requiere body { fileIds: string[] }" });
       }
@@ -267,7 +346,7 @@ app.post(
           limit(async () => {
             const meta = await getFileMeta(id);
             const cacheKey = id + ":" + meta.etag;
-            const hit = await cacheGet(cacheKey);
+            const hit = (!force) ? await cacheGet(cacheKey) : null;
             if (hit) return { fileId: id, ...hit };
 
             const buffer = await getFileBinary(id, meta.mimeType);
@@ -298,19 +377,62 @@ app.post(
   )
 );
 
-// ===== Telemetría: "preguntas sin respuesta" (unanswered / misses) =====
+// ===== NUEVO: smartRead (siempre revisa actualizaciones; cache si no cambió; refetch si cambió) =====
+// GET /drive/smartRead?folderId=...
+app.get(
+  "/drive/smartRead",
+  withTimer(
+    "smartRead",
+    asyncHandler(async (req, res) => {
+      const folderId = req.query.folderId;
+      if (!folderId) return res.status(400).json({ error: "Falta folderId" });
 
-// ENV opcionales
+      // 1) Manifest actual
+      const currManifest = await getManifest(folderId);
+
+      // 2) Manifest previo desde caché
+      const prevManifest = await getCachedManifest(folderId);
+
+      // 3) Diff por etag del manifest
+      const { changed, unchanged } = diffManifests(prevManifest, currManifest);
+
+      // 4) Lee TODO el set actual, usando cache per-file donde corresponda
+      const limit = pLimit(Number(process.env.MAX_CONCURRENCY || 6));
+      const settled = await Promise.allSettled(
+        currManifest.files.map(f => limit(() => readFileSmart(f)))
+      );
+
+      // 5) Resultado
+      const results = settled.map(s => s.status === "fulfilled"
+        ? s.value
+        : ({ error: s.reason?.message || "failed" })
+      );
+
+      const filesMeta = currManifest.files.map(f => ({
+        fileId: f.id, name: f.name, mimeType: f.mimeType, etag: f.etag, size: f.size
+      }));
+
+      // 6) Guardar el manifest nuevo para próxima comparación
+      await setCachedManifest(folderId, currManifest);
+
+      return res.status(200).json({
+        folderId,
+        counts: { total: currManifest.files.length, changed: changed.length, unchanged: unchanged.length },
+        filesMeta,
+        results
+      });
+    })
+  )
+);
+
+// ===== Telemetría: "preguntas sin respuesta" (unanswered / misses) =====
 const MISS_STREAM_KEY = process.env.MISS_STREAM_KEY || "agent:misses";
 const MISS_MAXLEN = Number(process.env.MISS_MAXLEN || 10000);
 const MISS_COUNTER_TTL_DAYS = Number(process.env.MISS_COUNTER_TTL_DAYS || 90);
-
-// Fallback en memoria si no hay Redis
 const MISS_MEM = [];
 
-// utilidades fecha
 const nowISO = () => new Date().toISOString();
-const ymd = () => new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+const ymd = () => new Date().toISOString().slice(0, 10);
 
 async function logMiss({ question, agentId, userId, folderId, conversationId, notes, context }) {
   const payload = {
@@ -327,36 +449,24 @@ async function logMiss({ question, agentId, userId, folderId, conversationId, no
   };
 
   if (redis) {
-    // 1) Stream append con recorte (MAXLEN ~)
     await redis.xadd(
       MISS_STREAM_KEY,
       "MAXLEN",
       "~",
       String(MISS_MAXLEN),
       "*",
-      "ts",
-      payload.ts,
-      "ymd",
-      payload.ymd,
-      "agentId",
-      payload.agentId,
-      "userId",
-      payload.userId,
-      "folderId",
-      payload.folderId,
-      "conversationId",
-      payload.conversationId,
-      "question",
-      payload.question,
-      "qhash",
-      payload.qhash,
-      "notes",
-      payload.notes,
-      "context",
-      payload.context
+      "ts", payload.ts,
+      "ymd", payload.ymd,
+      "agentId", payload.agentId,
+      "userId", payload.userId,
+      "folderId", payload.folderId,
+      "conversationId", payload.conversationId,
+      "question", payload.question,
+      "qhash", payload.qhash,
+      "notes", payload.notes,
+      "context", payload.context
     );
 
-    // 2) Contadores diarios/totales
     const dayKey = `agent:misses:count:${payload.ymd}`;
     await redis.incr(dayKey);
     if (MISS_COUNTER_TTL_DAYS > 0) {
@@ -364,7 +474,6 @@ async function logMiss({ question, agentId, userId, folderId, conversationId, no
     }
     await redis.incr("agent:misses:count:total");
   } else {
-    // Fallback local
     MISS_MEM.push(payload);
     if (MISS_MEM.length > MISS_MAXLEN) MISS_MEM.shift();
   }
@@ -414,100 +523,13 @@ app.get(
     })
   )
 );
-// ===== Registro de preguntas sin respuesta documental =====
-app.post(
-  "/agent/log-miss",
-  asyncHandler(async (req, res) => {
-    const body = req.body || {};
-    if (!body.question || !body.agentId) {
-      return res.status(400).json({ ok: false, error: "Faltan campos obligatorios" });
-    }
 
-    const entry = {
-      ts: new Date().toISOString(),
-      ymd: new Date().toISOString().slice(0, 10),
-      agentId: body.agentId,
-      userId: body.userId || "anon",
-      question: body.question,
-      folderId: body.folderId || null,
-      notes: body.notes || "",
-      context: body.context || "",
-    };
-
-    if (redis) {
-      // Guardar como stream
-      await redis.xadd(
-        "agent:misses",
-        "MAXLEN",
-        "~",
-        10000, // máximo 10 mil registros
-        "*",
-        ...Object.entries(entry).flat()
-      );
-    } else {
-      console.warn("⚠️ Redis no está configurado: log-miss solo en memoria");
-      mem.set("lastLogMiss", entry);
-    }
-
-    return res.status(200).json({ ok: true, stream: "agent:misses", entry });
-  })
-);
-// ===== Log de "preguntas sin respaldo documental" =====
-// POST /agent/log-miss  { question, agentId, userId, folderId, notes?, context?, conversationId? }
-app.post(
-  "/agent/log-miss",
-  withTimer(
-    "logMiss",
-    asyncHandler(async (req, res) => {
-      const { question, agentId, userId, folderId, notes, context, conversationId } = req.body || {};
-      if (!question || !agentId) {
-        return res.status(400).json({ error: "Faltan campos requeridos: question, agentId" });
-      }
-
-      const ts = new Date().toISOString();
-      const ymd = ts.slice(0, 10); // YYYY-MM-DD
-      const payload = {
-        ts,
-        ymd,
-        agentId: String(agentId),
-        userId: userId ? String(userId) : "anon",
-        folderId: folderId ? String(folderId) : "",
-        conversationId: conversationId ? String(conversationId) : "",
-        question: String(question),
-        qhash: crypto.createHash("sha1").update(String(question)).digest("hex"),
-        notes: notes ? String(notes) : "",
-        context: context ? String(context) : "",
-      };
-
-      // Guardar como Stream en Redis (o en memoria si no hay Redis)
-      if (redis) {
-        // MAXLEN ~10000 para evitar crecimiento infinito
-        await redis.xadd(
-          "agent:misses",
-          "MAXLEN",
-          "~",
-          10000,
-          "*",
-          ...Object.entries(payload).flat()
-        );
-      } else {
-        // Fallback: lista en memoria (útil en local)
-        const list = mem.get("agent:misses") || [];
-        list.push({ id: Date.now(), ...payload });
-        mem.set("agent:misses", list);
-      }
-
-      return res.status(200).json({ ok: true });
-    })
-  )
-);
-
-// Health & Stats
+// ===== Health & Stats =====
 app.get(
   "/health",
   withTimer(
     "health",
-    asyncHandler(async (req, res) => {
+    asyncHandler(async (_req, res) => {
       try {
         const folderId =
           (process.env.ALLOWED_FOLDER_IDS && process.env.ALLOWED_FOLDER_IDS.split(",")[0]) || null;
