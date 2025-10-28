@@ -19,6 +19,13 @@ const port = process.env.PORT || 3000;
 app.use(express.json({ limit: "10mb" }));
 
 // ===== Métricas simples =====
+// TTL configurable (opcional). También podés dejarlo sin expiración si preferís.
+const CACHE_TTL_SECONDS = Number(process.env.CACHE_TTL_SECONDS || 0); // 0 = sin TTL
+
+function fileCacheKey(fileId) {
+  return `file:${fileId}`;
+}
+
 const METRICS = { counts: {}, durs: {} };
 const pct = (arr, p) =>
   arr.length ? [...arr].sort((a, b) => a - b)[Math.floor((p / 100) * (arr.length - 1))] : 0;
@@ -236,6 +243,8 @@ async function readFileSmart(file) {
   const content = await extractTextFromBuffer(buffer, mimeType);
   const payload = { fileId: id, name, mimeType, etag, size: buffer.length, content };
 
+  // PURGA versiones anteriores antes de escribir la nueva
+  await cacheDelByPrefix(FILE_PREFIX(id));
   await cacheSet(k, payload, 60 * 60 * 24 * 7);
   return { fromCache: false, ...payload };
 }
@@ -332,7 +341,17 @@ app.get(
         size: buffer.length,
         content,
       };
-      await cacheSet(cacheKey, payload);
+
+      // PURGA versiones anteriores antes de escribir la nueva
+      await cacheDelByPrefix(FILE_PREFIX(meta.id));
+
+      // TTL configurable global si se definió, si no usa default de cacheSet
+      if (CACHE_TTL_SECONDS > 0) {
+        await cacheSet(cacheKey, payload, CACHE_TTL_SECONDS);
+      } else {
+        await cacheSet(cacheKey, payload);
+      }
+
       return res.status(200).json(payload);
     })
   )
@@ -403,7 +422,15 @@ app.post(
               size: buffer.length,
               content,
             };
-            await cacheSet(cacheKey, payload);
+
+            // PURGA versiones anteriores antes de escribir la nueva
+            await cacheDelByPrefix(FILE_PREFIX(meta.id));
+
+            if (CACHE_TTL_SECONDS > 0) {
+              await cacheSet(cacheKey, payload, CACHE_TTL_SECONDS);
+            } else {
+              await cacheSet(cacheKey, payload);
+            }
             return { fileId: id, ...payload };
           })
         )
@@ -482,11 +509,12 @@ app.post(
       // 8) persistir manifest nuevo (para próxima comparación si no envían knownFiles)
       await setCachedManifest(folderId, currManifest);
 
+      // 9) respuesta
       res.status(200).json({
-        hasChanges: !!(added.length || changed.length || removed.length || nocache),
-        added: added,
+        hasChanges: Boolean(added.length || changed.length || removed.length || nocache),
+        added,
         changed: changed.map((f) => f.id),
-        removed: removed,
+        removed,
         manifestNew: {
           folderId,
           files: currManifest.files.map((f) => ({ id: f.id, tag: f.etag })),
