@@ -74,6 +74,11 @@ const cacheSet = async (k, v, ttl = 86400) => {
   return true;
 };
 
+const cacheDel = async (k) => {
+  if (redis) return redis.del(k);
+  return mem.delete(k);
+};
+
 // ===== Google OAuth/Drive =====
 function requireEnvs(keys) {
   const missing = keys.filter((k) => !process.env[k]);
@@ -108,13 +113,13 @@ function isGoogleDoc(mime) {
 
 async function getStrongDocRevision(drive, fileId) {
   // Última revisión para Google Docs/Sheets/Slides
-  const { data } = await drive.revisions.list({
-    fileId,
-    pageSize: 1,
-    fields: "revisions(id, modifiedTime)",
-    orderBy: "modifiedTime desc",
-  });
-  const rev = (data.revisions || [])[0];
+const { data } = await drive.revisions.list({
+fileId,
+fields: "revisions(id, modifiedTime)",
+pageSize: 200, // suficiente para docs normales
+});
+const revs = data.revisions || [];
+const rev = revs.length ? revs[revs.length - 1] : null; // última = más reciente
   return rev ? { revId: rev.id, revTime: rev.modifiedTime } : { revId: null, revTime: null };
 }
 
@@ -144,25 +149,41 @@ async function getFileMeta(fileId) {
 
 async function getManifest(folderId) {
   const drive = getDrive();
-  const q = "'" + folderId + "' in parents and trashed = false";
+  const q = `'${folderId}' in parents and trashed = false`;
   const fields = "files(id,name,mimeType,modifiedTime,md5Checksum,size)";
   const { data } = await drive.files.list({ q, pageSize: 1000, fields });
 
-  // NOTA: para Google Docs, el etag final se perfecciona en getFileMeta (con revisions)
+  const limit = pLimit(Number(process.env.MAX_CONCURRENCY || 6));
+  const files = await Promise.all(
+    (data.files || []).map(f => limit(async () => {
+      // base tag (para binarios subidos)
+      let etag = f.md5Checksum || (f.modifiedTime ? String(new Date(f.modifiedTime).getTime()) : null);
+
+      // fortalecer para Google Docs usando revision
+      if (isGoogleDoc(f.mimeType)) {
+        const { revId, revTime } = await getStrongDocRevision(drive, f.id);
+        if (revId) etag = `${revTime || f.modifiedTime}:${revId}`;
+      }
+
+      return {
+        id: f.id,
+        name: f.name,
+        mimeType: f.mimeType,
+        size: f.size,
+        modifiedTime: f.modifiedTime,
+        md5Checksum: f.md5Checksum || null,
+        etag
+      };
+    }))
+  );
+
   return {
     folderId,
     generatedAt: new Date().toISOString(),
-    files: (data.files || []).map((f) => ({
-      id: f.id,
-      name: f.name,
-      mimeType: f.mimeType,
-      size: f.size,
-      modifiedTime: f.modifiedTime,
-      md5Checksum: f.md5Checksum || null,
-      etag: f.md5Checksum || (f.modifiedTime ? String(new Date(f.modifiedTime).getTime()) : null),
-    })),
+    files
   };
 }
+
 
 async function getFileBinary(fileId, mimeType) {
   const drive = getDrive();
@@ -271,7 +292,7 @@ app.get(
       if (!fileId) return res.status(400).json({ error: "Falta fileId" });
 
       const meta = await getFileMeta(fileId);
-      const cacheKey = fileId + ":" + meta.etag;
+      const cacheKey = FILE_KEY(fileId, meta.etag);
 
       if (!force) {
         const hit = await cacheGet(cacheKey);
@@ -345,7 +366,7 @@ app.post(
         fileIds.map((id) =>
           limit(async () => {
             const meta = await getFileMeta(id);
-            const cacheKey = id + ":" + meta.etag;
+            const cacheKey = FILE_KEY(id, meta.etag);
             const hit = (!force) ? await cacheGet(cacheKey) : null;
             if (hit) return { fileId: id, ...hit };
 
@@ -577,14 +598,12 @@ app.post("/drive/checkChanges", async (req, res) => {
 
   try {
     // Obtener manifest actual
-    const currentFiles = await listFolderWithManifest(drive, folderId);
+    const manifest = await getManifest(folderId);
+    const currentFiles = manifest.files;
     
     // Crear mapas para comparación rápida
     const knownMap = new Map(knownFiles.map(f => [f.id, f.tag]));
-    const currentMap = new Map(currentFiles.map(f => [
-      f.id, 
-      f.md5Checksum ?? (f.modifiedTime ? new Date(f.modifiedTime).getTime().toString() : null)
-    ]));
+    const currentMap = new Map(currentFiles.map(f => [f.id, f.etag]));
 
     // Detectar cambios
     const changed = [];
@@ -651,8 +670,8 @@ app.post("/cache/invalidate", async (req, res) => {
     for (const fileId of fileIds) {
       // Obtener todas las posibles claves de caché para este archivo
       // (ya que el tag puede haber cambiado)
-      const meta = await getFileMeta(drive, fileId);
-      const cacheKey = buildCacheKey(meta);
+      const meta = await getFileMeta(fileId);
+      const cacheKey = FILE_KEY(fileId, meta.etag); 
       
       await cacheDel(cacheKey);
       invalidated.push({ id: fileId, key: cacheKey });
