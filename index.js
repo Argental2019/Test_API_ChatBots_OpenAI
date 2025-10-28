@@ -563,5 +563,112 @@ if (!process.env.VERCEL) {
     if (!process.env.REDIS_URL) console.log("ℹ️ Cache en memoria (define REDIS_URL para Redis).");
   });
 }
+// E) Verificar cambios en archivos desde un manifest previo
+// POST /drive/checkChanges
+// Body: { "folderId": "...", "knownFiles": [{ "id": "...", "tag": "..." }] }
+app.post("/drive/checkChanges", async (req, res) => {
+  const { folderId, knownFiles } = req.body || {};
+  
+  if (!folderId || !Array.isArray(knownFiles)) {
+    return res.status(400).json({ 
+      error: "Enviá 'folderId' y 'knownFiles' como array" 
+    });
+  }
 
+  try {
+    // Obtener manifest actual
+    const currentFiles = await listFolderWithManifest(drive, folderId);
+    
+    // Crear mapas para comparación rápida
+    const knownMap = new Map(knownFiles.map(f => [f.id, f.tag]));
+    const currentMap = new Map(currentFiles.map(f => [
+      f.id, 
+      f.md5Checksum ?? (f.modifiedTime ? new Date(f.modifiedTime).getTime().toString() : null)
+    ]));
+
+    // Detectar cambios
+    const changed = [];
+    const unchanged = [];
+    const deleted = [];
+    const added = [];
+
+    // Verificar archivos conocidos
+    for (const [id, oldTag] of knownMap) {
+      if (!currentMap.has(id)) {
+        deleted.push(id);
+      } else if (currentMap.get(id) !== oldTag) {
+        changed.push(id);
+      } else {
+        unchanged.push(id);
+      }
+    }
+
+    // Verificar archivos nuevos
+    for (const [id] of currentMap) {
+      if (!knownMap.has(id)) {
+        added.push(id);
+      }
+    }
+
+    const hasChanges = changed.length > 0 || deleted.length > 0 || added.length > 0;
+
+    res.json({
+      hasChanges,
+      changed,    // IDs modificados
+      added,      // IDs nuevos
+      deleted,    // IDs eliminados
+      unchanged,  // IDs sin cambios
+      summary: {
+        total: currentFiles.length,
+        changed: changed.length,
+        added: added.length,
+        deleted: deleted.length,
+        unchanged: unchanged.length
+      }
+    });
+  } catch (err) {
+    console.error("Error verificando cambios:", err);
+    res.status(500).json({ 
+      error: "Error verificando cambios", 
+      details: err.message 
+    });
+  }
+});
+
+// F) Invalidar caché de archivos específicos
+// POST /cache/invalidate
+// Body: { "fileIds": ["id1", "id2", ...] }
+app.post("/cache/invalidate", async (req, res) => {
+  const { fileIds } = req.body || {};
+  
+  if (!Array.isArray(fileIds) || fileIds.length === 0) {
+    return res.status(400).json({ error: "Enviá 'fileIds' como array no vacío" });
+  }
+
+  try {
+    const invalidated = [];
+    
+    for (const fileId of fileIds) {
+      // Obtener todas las posibles claves de caché para este archivo
+      // (ya que el tag puede haber cambiado)
+      const meta = await getFileMeta(drive, fileId);
+      const cacheKey = buildCacheKey(meta);
+      
+      await cacheDel(cacheKey);
+      invalidated.push({ id: fileId, key: cacheKey });
+    }
+
+    res.json({
+      ok: true,
+      invalidated: invalidated.length,
+      details: invalidated
+    });
+  } catch (err) {
+    console.error("Error invalidando caché:", err);
+    res.status(500).json({ 
+      error: "Error invalidando caché", 
+      details: err.message 
+    });
+  }
+});
 export default app;
