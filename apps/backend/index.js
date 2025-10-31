@@ -318,6 +318,25 @@ app.get(
     })
   )
 );
+app.get("/diag", (req, res) => {
+  res.json({
+    ok: true,
+    env: {
+      GOOGLE_CLIENT_ID: !!process.env.GOOGLE_CLIENT_ID,
+      GOOGLE_CLIENT_SECRET: !!process.env.GOOGLE_CLIENT_SECRET,
+      REDIRECT_URI: !!process.env.REDIRECT_URI,
+      REFRESH_TOKEN: !!process.env.REFRESH_TOKEN,
+      REDIS_URL: !!process.env.REDIS_URL,
+      ALLOWED_FOLDER_IDS: !!process.env.ALLOWED_FOLDER_IDS,
+    },
+    cache: { provider: redis ? "redis" : "memory" }
+  });
+});
+
+// Health light que NO toca Google Drive
+app.get("/health-lite", (req, res) => {
+  res.status(200).json({ ok: true, ts: new Date().toISOString() });
+});
 
 // Leer archivo con caché (soporta ?force=true)
 app.get(
