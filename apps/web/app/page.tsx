@@ -60,6 +60,10 @@ export default function MultiAgentChat() {
     } finally {
       setLoading(false);
     }
+
+await fetch(`${process.env.NEXT_PUBLIC_BACKEND_HEALTH ?? ""}` || "/api/noop")
+  .catch(() => {});
+
   };
 
   const sendMessage = async () => {
