@@ -134,3 +134,16 @@ dist
 .vercel
 .env*.local
 jsconfig.json
+# node
+node_modules
+npm-debug.log*
+
+# environments
+.env
+.env.local
+apps/**/.env
+apps/**/.env.local
+
+# next
+.next
+out

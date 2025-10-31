@@ -11,6 +11,13 @@ import pLimit from "p-limit";
 import Redis from "ioredis";
 import { google } from "googleapis";
 import { extractTextFromBuffer } from "./utils/extractText.js";
+import cors from "cors";
+// ...
+app.use(cors({
+  origin: (process.env.CORS_ORIGIN?.split(",") ?? ["*"]),
+  methods: ["GET","POST","OPTIONS"],
+  allowedHeaders: ["Content-Type","X-Session-Id"],
+}));
 
 dotenv.config();
 

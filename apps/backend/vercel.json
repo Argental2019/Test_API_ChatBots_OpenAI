@@ -5,9 +5,9 @@
   ],
   "routes": [
     {
-      "src": "^/drive/manifest$",
-      "headers": { "Cache-Control": "public, max-age=60" },
-      "dest": "/index.js"
+       "src": "/(.*)", 
+       "dest": "index.js",
+      "headers": { "Cache-Control": "public, max-age=60" }
     },
     {
       "src": "^/stats$",
