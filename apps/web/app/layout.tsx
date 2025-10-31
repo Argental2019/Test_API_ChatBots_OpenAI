@@ -1,15 +1,15 @@
-// apps/web/app/layout.tsx
-import type { ReactNode } from "react"; // asegura que el archivo sea un módulo y habilita el tipo
+import './global.css';
+import type { Metadata } from 'next';
 
-export const metadata = {
-  title: "Multi-Agent Chat",
-  description: "Argental Agents",
+export const metadata: Metadata = {
+  title: 'Argental — Multi‑Agente',
+  description: 'UI para operar agentes internos',
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
-      <body className="min-h-screen bg-gray-50">{children}</body>
+      <body>{children}</body>
     </html>
   );
 }

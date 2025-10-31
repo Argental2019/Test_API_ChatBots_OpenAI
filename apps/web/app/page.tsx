@@ -1,6 +1,14 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Home, Sparkles, Send, Loader2, MessageSquareText } from "lucide-react";
+import {
+  Home,
+  Sparkles,
+  Send,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  MessageSquareText,
+} from "lucide-react";
 
 type ChatMessage = { role: "user" | "assistant"; content: string; ts?: number };
 
@@ -26,9 +34,10 @@ const AGENTS = [
   },
 ];
 
-function time(ts?: number) {
+function formatTime(ts?: number) {
   if (!ts) return "";
-  return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 export default function MultiAgentChat() {
@@ -38,6 +47,7 @@ export default function MultiAgentChat() {
   const [loading, setLoading] = useState(false);
   const [contextLoaded, setContextLoaded] = useState(false);
   const [contextCache, setContextCache] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
 
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -64,9 +74,11 @@ export default function MultiAgentChat() {
   const loadContext = async () => {
     if (!selectedAgent?.driveFolders) return;
     setLoading(true);
+    setToast(null);
     try {
-      // Warmup opcional
+      // “wake up” opcional
       await fetch(`${process.env.NEXT_PUBLIC_BACKEND_HEALTH ?? ""}` || "/api/noop").catch(() => {});
+
       const r = await fetch("/api/context", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -76,8 +88,11 @@ export default function MultiAgentChat() {
       const data = await r.json();
       setContextCache(data.context || "");
       setContextLoaded(true);
+      setToast({ type: "ok", msg: "Documentación cargada correctamente." });
+      setTimeout(() => setToast(null), 2500);
     } catch (e) {
       console.error(e);
+      setToast({ type: "err", msg: "No pude cargar el contexto documental." });
       setMessages([
         { role: "assistant", content: "No pude cargar el contexto documental. Intentá nuevamente.", ts: Date.now() },
       ]);
@@ -151,7 +166,7 @@ export default function MultiAgentChat() {
     }
   };
 
-  const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -163,6 +178,7 @@ export default function MultiAgentChat() {
     setMessages([]);
     setContextLoaded(false);
     setContextCache(null);
+    setToast(null);
   };
 
   const goBack = () => {
@@ -170,79 +186,65 @@ export default function MultiAgentChat() {
     setMessages([]);
     setContextLoaded(false);
     setContextCache(null);
+    setToast(null);
   };
 
-  // =======================
-  // VISTA: SELECCIÓN
-  // =======================
+  // ---------- VISTA: LISTA DE AGENTES ----------
   if (!selectedAgent) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-6">
-          {/* Header */}
-          <header className="flex items-center justify-between py-6">
+        <header className="border-b bg-white/70 backdrop-blur">
+          <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="size-8 rounded-xl bg-gray-900" />
+              <div className="size-8 rounded-lg bg-gradient-to-tr from-gray-900 to-gray-700" />
               <span className="text-lg font-semibold tracking-tight text-gray-900">Argental · Agents</span>
             </div>
-            <span className="text-xs text-gray-500">v1</span>
-          </header>
+            <div className="text-xs text-gray-500">v1</div>
+          </div>
+        </header>
 
-          {/* Hero centrado */}
-          <main className="grid flex-1 place-items-center">
-            <div className="w-full max-w-3xl">
-              <h1 className="text-center text-5xl font-extrabold tracking-tight text-gray-900">
-                Multi-Agent <span className="text-gray-400">Chat</span>
-              </h1>
-              <p className="mt-3 text-center text-gray-600">
-                Seleccioná un agente para comenzar
-              </p>
+        <main className="mx-auto max-w-6xl px-4 py-12">
+          <div className="mb-10">
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900">Multi-Agent Chat</h1>
+            <p className="mt-2 text-gray-600">Seleccioná un agente para comenzar</p>
+          </div>
 
-              <div className="mt-10 grid gap-6 sm:grid-cols-2">
-                {AGENTS.map((a) => (
-                  <button
-                    key={a.id}
-                    onClick={() => selectAgent(a)}
-                    className="group relative overflow-hidden rounded-2xl border bg-white p-6 text-left shadow-sm transition-all hover:shadow-xl"
-                  >
-                    <div
-                      className={`pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br ${a.accent} opacity-0 transition-opacity group-hover:opacity-10`}
-                    />
-                    <div className="relative">
-                      <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium text-gray-600">
-                        <MessageSquareText className="size-3.5" />
-                        Público
-                      </div>
-                      <h3 className="mt-3 text-xl font-semibold text-gray-900">{a.name}</h3>
-                      <p className="mt-1 text-sm leading-6 text-gray-600">{a.description}</p>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {AGENTS.map((agent) => (
+              <button
+                key={agent.id}
+                onClick={() => selectAgent(agent)}
+                className="group relative overflow-hidden rounded-2xl border bg-white p-6 text-left shadow-sm transition-all hover:shadow-xl"
+              >
+                <div
+                  className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${agent.accent} opacity-0 transition-opacity group-hover:opacity-10`}
+                />
+                <div className="relative">
+                  <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium text-gray-600">
+                    <MessageSquareText className="size-3.5" />
+                    Público
+                  </div>
+                  <h3 className="mt-3 text-xl font-semibold text-gray-900">{agent.name}</h3>
+                  <p className="mt-1 text-sm leading-6 text-gray-600">{agent.description}</p>
 
-                      <div className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-700">
-                        <Sparkles className="size-4" />
-                        <span>Iniciar chat</span>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </main>
-
-          <footer className="py-8 text-center text-xs text-gray-500">
-            © {new Date().getFullYear()} Argental · Asistentes
-          </footer>
-        </div>
+                  <div className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+                    <Sparkles className="size-4" />
+                    <span>Iniciar chat</span>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
 
-  // =======================
-  // VISTA: CHAT
-  // =======================
+  // ---------- VISTA: CHAT ----------
   return (
     <div className="min-h-screen bg-white">
-      {/* Header sticky centrado */}
       <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
+        <div className="mx-auto max-w-4xl px-4 py-3 flex items-center justify-between">
           <button
             onClick={goBack}
             className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -252,7 +254,14 @@ export default function MultiAgentChat() {
           </button>
 
           <div className="flex flex-col items-center">
-            <h2 className="text-lg font-semibold text-gray-900">{selectedAgent.name}</h2>
+            <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-gray-600">
+              <span className="relative flex size-2">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+              </span>
+              Activo
+            </div>
+            <h2 className="mt-2 text-lg font-semibold text-gray-900">{selectedAgent.name}</h2>
             <p className="text-xs text-gray-500">{selectedAgent.description}</p>
           </div>
 
@@ -260,10 +269,22 @@ export default function MultiAgentChat() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-6">
+      <main className="mx-auto max-w-4xl px-4">
+        {/* Toast */}
+        {toast && (
+          <div
+            className={`mt-4 flex items-center gap-2 rounded-xl border px-4 py-3 text-sm ${
+              toast.type === "ok" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"
+            }`}
+          >
+            {toast.type === "ok" ? <CheckCircle2 className="size-4" /> : <AlertCircle className="size-4" />}
+            {toast.msg}
+          </div>
+        )}
+
         {/* FAQs */}
         {!!selectedAgent.faqs?.length && (
-          <div className="mt-6 flex flex-wrap justify-center gap-2">
+          <div className="mt-6 flex flex-wrap gap-2">
             {selectedAgent.faqs.map((faq: string, i: number) => (
               <button
                 key={i}
@@ -277,17 +298,17 @@ export default function MultiAgentChat() {
           </div>
         )}
 
-        {/* Contenedor de chat */}
+        {/* Chat */}
         <section className="mt-6 rounded-2xl border bg-white shadow-sm">
-          {/* Mensajes */}
-          <div className="max-h-[65vh] overflow-y-auto p-4 sm:p-6">
+          <div className="max-h-[64vh] overflow-y-auto p-4 sm:p-6">
             {!contextLoaded && (
               <div className="space-y-4">
-                <div className="flex items-center justify-center gap-3 text-gray-700">
+                <div className="flex items-center gap-3 text-gray-700">
                   <Loader2 className="size-5 animate-spin" />
                   <span>Cargando documentación…</span>
                 </div>
-                {/* Skeletons */}
+
+                {/* Skeleton bubbles */}
                 <div className="flex justify-start">
                   <div className="h-16 w-3/4 max-w-[520px] animate-pulse rounded-2xl bg-gray-100" />
                 </div>
@@ -306,12 +327,14 @@ export default function MultiAgentChat() {
                 <div key={i} className={`mb-3 flex ${mine ? "justify-end" : "justify-start"}`}>
                   <div
                     className={`w-fit max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-6 ${
-                      mine ? "bg-gray-900 text-white shadow-md" : "border bg-white text-gray-900 shadow-sm"
+                      mine
+                        ? "bg-gray-900 text-white shadow-md"
+                        : "border bg-white text-gray-900 shadow-sm"
                     }`}
                   >
                     <div className="whitespace-pre-wrap">{m.content}</div>
                     <div className={`mt-1 text-[11px] ${mine ? "text-gray-300" : "text-gray-500"}`}>
-                      {mine ? "Vos" : selectedAgent.name} · {time(m.ts)}
+                      {mine ? "Vos" : selectedAgent.name} · {formatTime(m.ts)}
                     </div>
                   </div>
                 </div>
@@ -320,7 +343,7 @@ export default function MultiAgentChat() {
             <div ref={endRef} />
           </div>
 
-          {/* Composer sticky */}
+          {/* Composer */}
           <div className="sticky bottom-0 border-t bg-white p-3 sm:p-4">
             <div className="flex items-end gap-3">
               <textarea
@@ -328,7 +351,7 @@ export default function MultiAgentChat() {
                 rows={1}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKey}
+                onKeyDown={handleKeyPress}
                 disabled={loading || !contextLoaded}
                 placeholder={contextLoaded ? "Escribí tu pregunta…" : "Cargando contexto…"}
                 className="max-h-[200px] w-full resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
@@ -345,7 +368,9 @@ export default function MultiAgentChat() {
           </div>
         </section>
 
-        <footer className="py-8 text-center text-xs text-gray-500">© {new Date().getFullYear()} Argental · Asistentes</footer>
+        <footer className="mx-auto max-w-4xl py-8 text-center text-xs text-gray-500">
+          © {new Date().getFullYear()} Argental · Asistentes
+        </footer>
       </main>
     </div>
   );

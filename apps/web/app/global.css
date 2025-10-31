@@ -2,5 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, :root { height: 100%; }
-body { font-feature-settings: "liga" 1, "tnum" 1; -webkit-font-smoothing: antialiased; }
+html, body, :root { 
+  height: 100%; 
+}
+
+body { 
+  font-feature-settings: "liga" 1, "tnum" 1; 
+  -webkit-font-smoothing: antialiased;
+}
