@@ -2,6 +2,5 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Altura total y texto un pelín más denso para UI */
 html, body, :root { height: 100%; }
-body { font-feature-settings: "liga" 1, "tnum" 1; }
+body { font-feature-settings: "liga" 1, "tnum" 1; -webkit-font-smoothing: antialiased; }
