@@ -1,6 +1,16 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
-import { MessageCircle, Send, Loader2, Home, Sparkles } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Home,
+  Sparkles,
+  Send,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  MessageSquareText,
+} from "lucide-react";
+
+type ChatMessage = { role: "user" | "assistant"; content: string; ts?: number };
 
 const AGENTS = [
   {
@@ -8,27 +18,39 @@ const AGENTS = [
     slug: "fe960",
     name: "Asesor Horno FE960",
     description: "Especialista en horno rotativo FE 4.0-960 de Argental",
-    color: "from-blue-500 to-cyan-500",
-    driveFolders: ["17enT9eKi8Wgr92wOhVlqHyIUFlZP1bo4", "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo"],
+    accent: "from-blue-500 to-cyan-500",
+    driveFolders: [
+      "17enT9eKi8Wgr92wOhVlqHyIUFlZP1bo4",
+      "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
+    ],
     faqs: [
       "¿Qué productos se pueden hacer?",
       "¿Cuáles son las especificaciones técnicas?",
       "¿Cómo es el procedimiento de limpieza?",
-      "¿Qué requisitos de instalación tiene?"
+      "¿Qué requisitos de instalación tiene?",
     ],
     systemPrompt:
-      "Sos el Asesor Público del Horno Rotativo FE 4.0-960 de Argental.\nTu función es asistir con información técnica verificable basada exclusivamente en la documentación oficial.\nNo uses conocimiento general ni internet. Solo respondé con información literal de los documentos."
-  }
+      "Sos el Asesor Público del Horno Rotativo FE 4.0-960 de Argental.\nTu función es asistir con información técnica verificable basada exclusivamente en la documentación oficial.\nNo uses conocimiento general ni internet. Solo respondé con información literal de los documentos.",
+  },
 ];
+
+function formatTime(ts?: number) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
 
 export default function MultiAgentChat() {
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [contextLoaded, setContextLoaded] = useState(false);
   const [contextCache, setContextCache] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
+
   const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -41,35 +63,48 @@ export default function MultiAgentChat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAgent]);
 
+  // autosize textarea
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    el.style.height = Math.min(el.scrollHeight, 200) + "px";
+  }, [input]);
+
   const loadContext = async () => {
     if (!selectedAgent?.driveFolders) return;
     setLoading(true);
+    setToast(null);
     try {
+      // “wake up” opcional
+      await fetch(`${process.env.NEXT_PUBLIC_BACKEND_HEALTH ?? ""}` || "/api/noop").catch(() => {});
+
       const r = await fetch("/api/context", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ driveFolders: selectedAgent.driveFolders })
+        body: JSON.stringify({ driveFolders: selectedAgent.driveFolders }),
       });
       if (!r.ok) throw new Error(await r.text());
       const data = await r.json();
       setContextCache(data.context || "");
       setContextLoaded(true);
+      setToast({ type: "ok", msg: "Documentación cargada correctamente." });
+      setTimeout(() => setToast(null), 2500);
     } catch (e) {
       console.error(e);
-      setMessages([{ role: "assistant", content: "No pude cargar el contexto documental. Intentá nuevamente." }]);
+      setToast({ type: "err", msg: "No pude cargar el contexto documental." });
+      setMessages([
+        { role: "assistant", content: "No pude cargar el contexto documental. Intentá nuevamente.", ts: Date.now() },
+      ]);
     } finally {
       setLoading(false);
     }
-
-await fetch(`${process.env.NEXT_PUBLIC_BACKEND_HEALTH ?? ""}` || "/api/noop")
-  .catch(() => {});
-
   };
 
   const sendMessage = async () => {
     if (!input.trim() || loading || !contextLoaded) return;
 
-    const userMessage = { role: "user", content: input };
+    const userMessage: ChatMessage = { role: "user", content: input.trim(), ts: Date.now() };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setLoading(true);
@@ -81,15 +116,15 @@ await fetch(`${process.env.NEXT_PUBLIC_BACKEND_HEALTH ?? ""}` || "/api/noop")
         body: JSON.stringify({
           messages: [...messages, userMessage],
           systemPrompt: selectedAgent.systemPrompt,
-          context: contextCache
-        })
+          context: contextCache,
+        }),
       });
 
       if (!response.ok || !response.body) throw new Error("Error en la respuesta");
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let assistantMessage = { role: "assistant", content: "" };
+      let assistantMessage: ChatMessage = { role: "assistant", content: "", ts: Date.now() };
       setMessages((prev) => [...prev, assistantMessage]);
 
       while (true) {
@@ -119,14 +154,19 @@ await fetch(`${process.env.NEXT_PUBLIC_BACKEND_HEALTH ?? ""}` || "/api/noop")
       console.error(error);
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Error generando respuesta. Verificá la configuración del servidor." }
+        {
+          role: "assistant",
+          content: "Error generando respuesta. Verificá la configuración del servidor.",
+          ts: Date.now(),
+        },
       ]);
     } finally {
       setLoading(false);
+      inputRef.current?.focus();
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -138,6 +178,7 @@ await fetch(`${process.env.NEXT_PUBLIC_BACKEND_HEALTH ?? ""}` || "/api/noop")
     setMessages([]);
     setContextLoaded(false);
     setContextCache(null);
+    setToast(null);
   };
 
   const goBack = () => {
@@ -145,141 +186,192 @@ await fetch(`${process.env.NEXT_PUBLIC_BACKEND_HEALTH ?? ""}` || "/api/noop")
     setMessages([]);
     setContextLoaded(false);
     setContextCache(null);
+    setToast(null);
   };
 
+  // ---------- VISTA: LISTA DE AGENTES ----------
   if (!selectedAgent) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="container mx-auto px-4 py-12 max-w-6xl">
-          <div className="text-center mb-12">
-            <h1 className="text-5xl font-bold text-gray-900 mb-4">Multi-Agent Chat</h1>
-            <p className="text-gray-600 text-lg">Seleccioná un agente para comenzar</p>
+        <header className="border-b bg-white/70 backdrop-blur">
+          <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="size-8 rounded-lg bg-gradient-to-tr from-gray-900 to-gray-700" />
+              <span className="text-lg font-semibold tracking-tight text-gray-900">Argental · Agents</span>
+            </div>
+            <div className="text-xs text-gray-500">v1</div>
+          </div>
+        </header>
+
+        <main className="mx-auto max-w-6xl px-4 py-12">
+          <div className="mb-10">
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900">Multi-Agent Chat</h1>
+            <p className="mt-2 text-gray-600">Seleccioná un agente para comenzar</p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {AGENTS.map((agent) => (
               <button
                 key={agent.id}
                 onClick={() => selectAgent(agent)}
-                className="group relative bg-white rounded-2xl p-6 border-2 border-gray-200 hover:border-blue-500 transition-all hover:shadow-xl"
+                className="group relative overflow-hidden rounded-2xl border bg-white p-6 text-left shadow-sm transition-all hover:shadow-xl"
               >
-                <div className={`absolute inset-0 bg-gradient-to-br ${agent.color} opacity-0 group-hover:opacity-10 rounded-2xl transition-opacity`} />
+                <div
+                  className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${agent.accent} opacity-0 transition-opacity group-hover:opacity-10`}
+                />
                 <div className="relative">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{agent.name}</h3>
-                  <p className="text-gray-600 text-sm">{agent.description}</p>
-                </div>
-                <div className="mt-4 flex items-center justify-center text-gray-500 group-hover:text-blue-600 transition-colors">
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  <span className="text-sm">Iniciar chat</span>
+                  <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium text-gray-600">
+                    <MessageSquareText className="size-3.5" />
+                    Público
+                  </div>
+                  <h3 className="mt-3 text-xl font-semibold text-gray-900">{agent.name}</h3>
+                  <p className="mt-1 text-sm leading-6 text-gray-600">{agent.description}</p>
+
+                  <div className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+                    <Sparkles className="size-4" />
+                    <span>Iniciar chat</span>
+                  </div>
                 </div>
               </button>
             ))}
           </div>
-        </div>
+        </main>
       </div>
     );
   }
 
+  // ---------- VISTA: CHAT ----------
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="container mx-auto px-4 py-4 max-w-4xl">
-          <div className="flex items-center justify-between">
-            <button onClick={goBack} className="flex items-center text-gray-700 hover:text-gray-900 transition-colors">
-              <Home className="w-5 h-5 mr-2" />
-              <span>Volver</span>
-            </button>
-            <div className="text-center flex-1">
-              <h2 className="text-2xl font-bold text-gray-900">{selectedAgent.name}</h2>
-              <p className="text-gray-600 text-sm">{selectedAgent.description}</p>
+    <div className="min-h-screen bg-white">
+      <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
+        <div className="mx-auto max-w-4xl px-4 py-3 flex items-center justify-between">
+          <button
+            onClick={goBack}
+            className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <Home className="size-4" />
+            Volver
+          </button>
+
+          <div className="flex flex-col items-center">
+            <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-gray-600">
+              <span className="relative flex size-2">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+              </span>
+              Activo
             </div>
-            <div className="w-24" />
+            <h2 className="mt-2 text-lg font-semibold text-gray-900">{selectedAgent.name}</h2>
+            <p className="text-xs text-gray-500">{selectedAgent.description}</p>
           </div>
-        </div>
-      </div>
 
-      {selectedAgent.faqs && (
-        <div className="bg-white border-b border-gray-200">
-          <div className="container mx-auto px-4 py-3 max-w-4xl">
-            <div className="flex flex-wrap gap-2">
-              {selectedAgent.faqs.map((faq: string, i: number) => (
-                <button
-                  key={i}
-                  onClick={() => setInput(faq)}
-                  disabled={loading || !contextLoaded}
-                  className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-gray-300"
-                >
-                  {faq}
-                </button>
-              ))}
-            </div>
+          <div className="w-[84px]" />
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-4xl px-4">
+        {/* Toast */}
+        {toast && (
+          <div
+            className={`mt-4 flex items-center gap-2 rounded-xl border px-4 py-3 text-sm ${
+              toast.type === "ok" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"
+            }`}
+          >
+            {toast.type === "ok" ? <CheckCircle2 className="size-4" /> : <AlertCircle className="size-4" />}
+            {toast.msg}
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="flex-1 overflow-y-auto bg-gray-50">
-        <div className="container mx-auto px-4 py-6 max-w-4xl space-y-4">
-          {!contextLoaded && (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
-                <p className="text-gray-700 text-lg">Cargando documentación...</p>
-              </div>
-            </div>
-          )}
-
-          {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div
-                className={`max-w-3xl rounded-2xl px-6 py-4 ${
-                  msg.role === "user"
-                    ? "bg-blue-500 text-white shadow-md"
-                    : "bg-white text-gray-900 shadow-md border border-gray-200"
-                }`}
+        {/* FAQs */}
+        {!!selectedAgent.faqs?.length && (
+          <div className="mt-6 flex flex-wrap gap-2">
+            {selectedAgent.faqs.map((faq: string, i: number) => (
+              <button
+                key={i}
+                onClick={() => setInput(faq)}
+                disabled={loading || !contextLoaded}
+                className="rounded-full border bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <div className={`text-xs mb-2 uppercase font-semibold ${msg.role === "user" ? "text-blue-100" : "text-gray-500"}`}>
-                  {msg.role === "user" ? "Vos" : selectedAgent.name}
-                </div>
-                <div className="whitespace-pre-wrap">{msg.content}</div>
-              </div>
-            </div>
-          ))}
-          <div ref={endRef} />
-        </div>
-      </div>
-
-      <div className="bg-white border-t border-gray-200 shadow-lg">
-        <div className="container mx-auto px-4 py-4 max-w-4xl">
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyPress}
-              disabled={loading || !contextLoaded}
-              placeholder={contextLoaded ? "Escribí tu pregunta..." : "Cargando contexto..."}
-              className="flex-1 px-6 py-4 bg-white border-2 border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-50"
-            />
-            <button
-              onClick={sendMessage}
-              disabled={loading || !contextLoaded || !input.trim()}
-              className="px-8 py-4 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Enviando...</span>
-                </>
-              ) : (
-                <>
-                  <Send className="w-5 h-5" />
-                  <span>Enviar</span>
-                </>
-              )}
-            </button>
+                {faq}
+              </button>
+            ))}
           </div>
-        </div>
-      </div>
+        )}
+
+        {/* Chat */}
+        <section className="mt-6 rounded-2xl border bg-white shadow-sm">
+          <div className="max-h-[64vh] overflow-y-auto p-4 sm:p-6">
+            {!contextLoaded && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 text-gray-700">
+                  <Loader2 className="size-5 animate-spin" />
+                  <span>Cargando documentación…</span>
+                </div>
+
+                {/* Skeleton bubbles */}
+                <div className="flex justify-start">
+                  <div className="h-16 w-3/4 max-w-[520px] animate-pulse rounded-2xl bg-gray-100" />
+                </div>
+                <div className="flex justify-end">
+                  <div className="h-12 w-2/3 max-w-[420px] animate-pulse rounded-2xl bg-gray-100" />
+                </div>
+                <div className="flex justify-start">
+                  <div className="h-24 w-4/5 max-w-[560px] animate-pulse rounded-2xl bg-gray-100" />
+                </div>
+              </div>
+            )}
+
+            {messages.map((m, i) => {
+              const mine = m.role === "user";
+              return (
+                <div key={i} className={`mb-3 flex ${mine ? "justify-end" : "justify-start"}`}>
+                  <div
+                    className={`w-fit max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-6 ${
+                      mine
+                        ? "bg-gray-900 text-white shadow-md"
+                        : "border bg-white text-gray-900 shadow-sm"
+                    }`}
+                  >
+                    <div className="whitespace-pre-wrap">{m.content}</div>
+                    <div className={`mt-1 text-[11px] ${mine ? "text-gray-300" : "text-gray-500"}`}>
+                      {mine ? "Vos" : selectedAgent.name} · {formatTime(m.ts)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            <div ref={endRef} />
+          </div>
+
+          {/* Composer */}
+          <div className="sticky bottom-0 border-t bg-white p-3 sm:p-4">
+            <div className="flex items-end gap-3">
+              <textarea
+                ref={inputRef}
+                rows={1}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyPress}
+                disabled={loading || !contextLoaded}
+                placeholder={contextLoaded ? "Escribí tu pregunta…" : "Cargando contexto…"}
+                className="max-h-[200px] w-full resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
+              />
+              <button
+                onClick={sendMessage}
+                disabled={loading || !contextLoaded || !input.trim()}
+                className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {loading ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                {loading ? "Enviando" : "Enviar"}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <footer className="mx-auto max-w-4xl py-8 text-center text-xs text-gray-500">
+          © {new Date().getFullYear()} Argental · Asistentes
+        </footer>
+      </main>
     </div>
   );
 }
