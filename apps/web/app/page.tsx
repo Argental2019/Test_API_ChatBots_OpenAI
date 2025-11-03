@@ -10,129 +10,10 @@ import {
   MessageSquareText,
 } from "lucide-react";
 
+// 👇 nuevo: importá los agentes desde el registry central
+import { AGENTS } from "@/lib/agents";
+
 type ChatMessage = { role: "user" | "assistant"; content: string; ts?: number };
-
-const AGENTS = [
-  {
-    id: "fe960-public",
-    slug: "fe960",
-    name: "Asesor Horno FE960",
-    description: "Especialista en horno rotativo FE 4.0-960 de Argental",
-    accent: "from-blue-500 to-cyan-500",
-    driveFolders: [
-      "1f7SzAdHSLXWRh4KouIEC_f4yoztpqzUs", //la del TEST publica
-      "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
-    ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer y con qué nivel de producción?",
-      "¿Es un equipo seguro?",
-      "¿La cocción es pareja y eficiente?",
-    ],
-    systemPrompt: `
-# 🧠 Instrucciones del Agente: Asesor Público Horno rotativo FE 4.0-960
-
-### 🎯 Rol del agente
-Sos **Asesor Público Horno Rotativo FE 4.0-960**, un agente especializado **exclusivamente** en el horno rotativo FE 4.0-960 de panadería industrial fabricado por **Argental**.
-Tu única función es asistir a usuarios externos brindando **respuestas claras, técnicas y verificables**, basadas **solo** en la documentación oficial de Argental almacenada en Google Drive.
-🔒 **No usás conocimiento general, memoria previa ni internet.** Solo respondés con información literal, comprobable y actualizada desde los documentos cargados por la API.
-
----
-
-## ⚙️ Flujo operativo del agente
-⚙️ Configuración (estricta, en cada pregunta)
-
-Antes de redactar cualquier respuesta, EJECUTÁ este pre-check si o si:
-
-1) Llamá a POST /drive/checkChanges con el manifest actual que tengas en memoria.
-   - Si no tenés manifest en memoria, pasá un objeto vacío: {}.
-
-2) Si la respuesta trae hasChanges = true:
-   a) Llamá a POST /cache/invalidate con el arreglo "changed" + "removed" (IDs).
-   b) Llamá a POST /drive/bulkRead con "changed" + "added" (IDs).
-   c) Reemplazá tu manifest en memoria por el manifest devuelto en checkChanges.manifestNew.
-   d) Reemplazá tu snapshot local de textos por el JSON devuelto en bulkRead.
-
-3) Si hasChanges = false:
-   - No re-leas; usá tu snapshot local.
-
-4) Recién ahora, respondé usando EXCLUSIVAMENTE lo que tengas en tu snapshot local.
-
-Notas importantes:
-- Incluí siempre un header X-Session-Id único por chat/sesión.
-- Si el usuario envía ?nocache=true en la URL del backend, asumí que todo debe re-leerse (forzá invalidateAll + bulkReadAll).
-- Nunca uses conocimiento general ni internet.
-
-## 🧾 Registro de preguntas sin respaldo
-Si no existe evidencia documental para responder:
-
-POST /agent/log-miss
-{
-  "question": "<pregunta del usuario>",
-  "agentId": "fe960-public",
-  "userId": "anon",
-  "folderId": "<folder autorizado>",
-  "notes": "sin evidencia en documentación",
-  "context": "tema resumido (p. ej. instalación, mantenimiento, capacidad)"
-}
-
-Esto asegura trazabilidad de consultas no cubiertas por la documentación.
-
----
-
-## 📂 Fuentes de información
-Usá **solo** los archivos ubicados en las carpetas:
-* "Info pública"
-* "Info pública general"
-
-Si alguno no se puede leer o está incompleto, continuá con los demás sin mencionarlo.
-
-### 📘 Glosario técnico
-El documento “Glosario de términos.docx” (en "Info pública general") define los términos válidos.
-Si un término no aparece allí, pedí al usuario una breve aclaración antes de responder.
-
----
-
-## 🔍 Protocolo de lectura y consistencia
-* **Lectura completa:** leé todos los archivos del folder sin filtrar por relevancia.
-* **Actualización automática:** verificá los etag del manifest antes de cada sesión.
-* **Prioridad:** si hay duplicados, usá la versión más reciente.
-* **Integración:** si hay diferencias entre documentos, integrá la información coherentemente sin mencionarlo.
-
----
-
-## 🚫 Restricciones absolutas
-* No usar internet ni fuentes externas.
-* No inferir ni inventar información.
-* No mostrar nombres de archivos, IDs o rutas.
-* No copiar textualmente párrafos largos.
-* No conservar contexto de conversaciones previas.
----
-## 🗣️ Estilo de respuesta
-* Profesional, técnico y directo.
-* No incluyas advertencias, disculpas ni comentarios de sistema.
-* Redactá respuestas completas, claras y verificables.
-
-✅ Ejemplo de estilo:
-> El horno rotativo Argental FE 4.0-960 permite la cocción de productos de panadería, bollería y pastelería.
-> Su capacidad máxima es de hasta 300 kg por carga, según el tipo de bandeja.
-> Opera entre 110 °C y 300 °C con control térmico por etapas y sistema de vaporización por cascada.
----
-## 🧩 Resumen operativo (checklist rápido)
-✅ Verificá cambios con /drive/checkChanges  
-✅ Si cambió algo → invalidá, recargá y actualizá manifest  
-✅ Leé todo el folder con /drive/smartRead si es necesario  
-✅ Respondé solo con información literal y consolidada  
-✅ Registrá misses en /agent/log-miss
----
-## Modo sin evidencia (obligatorio)
-Si **no existe evidencia literal** en los documentos para responder la pregunta, devolvé **una única línea** con este formato y **nada más**:
-
-@@MISS{"agentId":"fe960-public","userId":"anon","folderId":"Info pública","notes":"sin evidencia en documentación","context":"<tema resumido>","question":"<pregunta del usuario>"}
-
-    `,
-  },
-];
 
 function formatTime(ts?: number) {
   if (!ts) return "";
@@ -140,7 +21,7 @@ function formatTime(ts?: number) {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-// Enviar un MISS al backend (fire-and-forget)
+// (opcional) si usás @@MISS en el prompt, lo podés reportar acá
 async function reportMiss(miss: any) {
   try {
     const r = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/agent/log-miss`, {
@@ -166,9 +47,6 @@ export default function MultiAgentChat() {
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Para evitar enviar el mismo MISS varias veces si el modelo lo repite
-  const missReportedRef = useRef<Set<string>>(new Set());
-
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -177,7 +55,8 @@ export default function MultiAgentChat() {
     if (selectedAgent && !contextLoaded) {
       loadContext();
     }
-  }, [selectedAgent, contextLoaded]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAgent]);
 
   // autosize textarea
   useEffect(() => {
@@ -192,7 +71,9 @@ export default function MultiAgentChat() {
     setLoading(true);
     setToast(null);
     try {
+      // “wake up” opcional
       await fetch(`${process.env.NEXT_PUBLIC_BACKEND_HEALTH ?? ""}` || "/api/noop").catch(() => {});
+
       const r = await fetch("/api/context", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -239,15 +120,14 @@ export default function MultiAgentChat() {
 
       if (!response.ok || !response.body) throw new Error("Error en la respuesta");
 
-      // === Streaming SSE robusto + detección de @@MISS ===
+      // Streaming SSE robusto (UTF-8)
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
 
       let assistantMessage: ChatMessage = { role: "assistant", content: "", ts: Date.now() };
       setMessages((prev) => [...prev, assistantMessage]);
 
-      let buf = ""; // buffer de líneas SSE
-
+      let buf = "";
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
@@ -266,44 +146,29 @@ export default function MultiAgentChat() {
           try {
             const parsed = JSON.parse(data);
             const delta = parsed.choices?.[0]?.delta?.content;
-            if (!delta) continue;
+            if (delta) {
+              assistantMessage.content += delta;
+              setMessages((prev) => {
+                const nm = [...prev];
+                nm[nm.length - 1] = { ...assistantMessage };
+                return nm;
+              });
 
-            // 1) acumular para mostrar
-            assistantMessage.content += delta;
-
-            // 2) detectar @@MISS{...} en el contenido acumulado (puede venir por partes)
-            const missRegex = /^@@MISS\s*(\{.*\})\s*$/gm;
-            let m: RegExpExecArray | null;
-            while ((m = missRegex.exec(assistantMessage.content)) !== null) {
-              try {
-                const missObj = JSON.parse(m[1]);
-                if (!missObj.agentId) missObj.agentId = "fe960-public";
-                if (!missObj.userId) missObj.userId = "anon";
-                const key = JSON.stringify(missObj);
-                if (!missReportedRef.current.has(key)) {
-                  missReportedRef.current.add(key);
-                  // fire-and-forget (no await para no frenar el stream)
-                  reportMiss(missObj);
-                }
-              } catch (e) {
-                console.error("MISS parse error", e);
+              // Detectar @@MISS y loguear (opcional)
+              const maybeMiss = assistantMessage.content.trim();
+              if (maybeMiss.startsWith("@@MISS{") && maybeMiss.endsWith("}")) {
+                try {
+                  const json = JSON.parse(maybeMiss.replace(/^@@MISS/, ""));
+                  reportMiss(json);
+                } catch {}
               }
             }
-
-            // 3) refrescar UI
-            setMessages((prev) => {
-              const nm = [...prev];
-              nm[nm.length - 1] = { ...assistantMessage };
-              return nm;
-            });
           } catch {
-            // línea no JSON, ignorar
+            // líneas no JSON -> ignorar
           }
         }
       }
-
-      decoder.decode(); // flush final
-      // === /Streaming ===
+      decoder.decode();
     } catch (error) {
       console.error(error);
       setMessages((prev) => [
@@ -333,7 +198,6 @@ export default function MultiAgentChat() {
     setContextLoaded(false);
     setContextCache(null);
     setToast(null);
-    missReportedRef.current.clear();
   };
 
   const goBack = () => {
@@ -342,7 +206,6 @@ export default function MultiAgentChat() {
     setContextLoaded(false);
     setContextCache(null);
     setToast(null);
-    missReportedRef.current.clear();
   };
 
   // ---------- VISTA: LISTA DE AGENTES ----------
@@ -430,7 +293,9 @@ export default function MultiAgentChat() {
         {toast && (
           <div
             className={`mt-4 flex items-center gap-2 rounded-xl border px-4 py-3 text-sm ${
-              toast.type === "ok" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"
+              toast.type === "ok"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-rose-200 bg-rose-50 text-rose-700"
             }`}
           >
             {toast.type === "ok" ? <CheckCircle2 className="size-4" /> : <AlertCircle className="size-4" />}
@@ -461,7 +326,7 @@ export default function MultiAgentChat() {
               <div className="space-y-4">
                 <div className="flex items-center gap-3 text-gray-700">
                   <Loader2 className="size-5 animate-spin" />
-                  <span>Cargando documentación…</span>
+                  <span>Verificando cambios…</span>
                 </div>
 
                 {/* Skeleton bubbles */}
