@@ -24,10 +24,10 @@ const AGENTS = [
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
     faqs: [
-      "¿Qué productos se pueden hacer?",
-      "¿Cuáles son las especificaciones técnicas?",
-      "¿Cómo es el procedimiento de limpieza?",
-      "¿Qué requisitos de instalación tiene?",
+      "¿Por qué debería comprar este equipo?",
+      "¿Qué productos puede hacer y con qué nivel de producción?",
+      "¿Es un equipo seguro?",
+      "¿La cocción es pareja y eficiente?",
     ],
     systemPrompt:
        `
@@ -475,6 +475,7 @@ export default function MultiAgentChat() {
 
         <footer className="mx-auto max-w-4xl py-8 text-center text-xs text-gray-500">
           © {new Date().getFullYear()} Argental · Asistentes
+        
         </footer>
       </main>
     </div>
