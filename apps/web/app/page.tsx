@@ -29,8 +29,7 @@ const AGENTS = [
       "¿Es un equipo seguro?",
       "¿La cocción es pareja y eficiente?",
     ],
-    systemPrompt:
-       `
+    systemPrompt: `
 # 🧠 Instrucciones del Agente: Asesor Público Horno rotativo FE 4.0-960
 
 ### 🎯 Rol del agente
@@ -161,8 +160,7 @@ export default function MultiAgentChat() {
     if (selectedAgent && !contextLoaded) {
       loadContext();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAgent]);
+  }, [selectedAgent, contextLoaded]);
 
   // autosize textarea
   useEffect(() => {
@@ -177,7 +175,6 @@ export default function MultiAgentChat() {
     setLoading(true);
     setToast(null);
     try {
-      // “wake up” opcional
       await fetch(`${process.env.NEXT_PUBLIC_BACKEND_HEALTH ?? ""}` || "/api/noop").catch(() => {});
 
       const r = await fetch("/api/context", {
@@ -213,7 +210,10 @@ export default function MultiAgentChat() {
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "text/event-stream",
+        },
         body: JSON.stringify({
           messages: [...messages, userMessage],
           systemPrompt: selectedAgent.systemPrompt,
@@ -223,20 +223,32 @@ export default function MultiAgentChat() {
 
       if (!response.ok || !response.body) throw new Error("Error en la respuesta");
 
+      // === FIX: decodificación streaming UTF-8 y parseo SSE seguro ===
       const reader = response.body.getReader();
-      const decoder = new TextDecoder();
+      const decoder = new TextDecoder("utf-8");
+
       let assistantMessage: ChatMessage = { role: "assistant", content: "", ts: Date.now() };
       setMessages((prev) => [...prev, assistantMessage]);
+
+      let buf = ""; // buffer de líneas SSE
 
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n").filter((l) => l.trim().startsWith("data: "));
-        for (const line of lines) {
-          const data = line.replace("data: ", "");
+        // decodificar en modo streaming para no cortar caracteres multibyte
+        buf += decoder.decode(value, { stream: true });
+
+        // procesar por líneas
+        let idx: number;
+        while ((idx = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, idx);
+          buf = buf.slice(idx + 1);
+
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
           if (data === "[DONE]") continue;
+
           try {
             const parsed = JSON.parse(data);
             const delta = parsed.choices?.[0]?.delta?.content;
@@ -248,9 +260,15 @@ export default function MultiAgentChat() {
                 return nm;
               });
             }
-          } catch {}
+          } catch {
+            // líneas no JSON -> ignorar
+          }
         }
       }
+
+      // flush final del decoder (por si quedó un caracter a medias)
+      decoder.decode();
+      // === /FIX ===
     } catch (error) {
       console.error(error);
       setMessages((prev) => [
@@ -371,7 +389,6 @@ export default function MultiAgentChat() {
       </header>
 
       <main className="mx-auto max-w-4xl px-4">
-        {/* Toast */}
         {toast && (
           <div
             className={`mt-4 flex items-center gap-2 rounded-xl border px-4 py-3 text-sm ${
@@ -383,7 +400,6 @@ export default function MultiAgentChat() {
           </div>
         )}
 
-        {/* FAQs */}
         {!!selectedAgent.faqs?.length && (
           <div className="mt-6 flex flex-wrap gap-2">
             {selectedAgent.faqs.map((faq: string, i: number) => (
@@ -399,7 +415,6 @@ export default function MultiAgentChat() {
           </div>
         )}
 
-        {/* Chat */}
         <section className="mt-6 rounded-2xl border bg-white shadow-sm">
           <div className="max-h-[64vh] overflow-y-auto p-4 sm:p-6">
             {!contextLoaded && (
@@ -408,8 +423,6 @@ export default function MultiAgentChat() {
                   <Loader2 className="size-5 animate-spin" />
                   <span>Cargando documentación…</span>
                 </div>
-
-                {/* Skeleton bubbles */}
                 <div className="flex justify-start">
                   <div className="h-16 w-3/4 max-w-[520px] animate-pulse rounded-2xl bg-gray-100" />
                 </div>
@@ -428,9 +441,7 @@ export default function MultiAgentChat() {
                 <div key={i} className={`mb-3 flex ${mine ? "justify-end" : "justify-start"}`}>
                   <div
                     className={`w-fit max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-6 ${
-                      mine
-                        ? "bg-gray-900 text-white shadow-md"
-                        : "border bg-white text-gray-900 shadow-sm"
+                      mine ? "bg-gray-900 text-white shadow-md" : "border bg-white text-gray-900 shadow-sm"
                     }`}
                   >
                     <div className="whitespace-pre-wrap">{m.content}</div>
@@ -444,7 +455,6 @@ export default function MultiAgentChat() {
             <div ref={endRef} />
           </div>
 
-          {/* Composer */}
           <div className="sticky bottom-0 border-t bg-white p-3 sm:p-4">
             <div className="flex items-end gap-3">
               <textarea
@@ -460,7 +470,7 @@ export default function MultiAgentChat() {
               <button
                 onClick={sendMessage}
                 disabled={loading || !contextLoaded || !input.trim()}
-                className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bgblack disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {loading ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
                 {loading ? "Enviando" : "Enviar"}
@@ -471,7 +481,6 @@ export default function MultiAgentChat() {
 
         <footer className="mx-auto max-w-4xl py-8 text-center text-xs text-gray-500">
           © {new Date().getFullYear()} Argental · Asistentes
-        
         </footer>
       </main>
     </div>
