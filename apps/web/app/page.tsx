@@ -9,6 +9,7 @@ import {
   AlertCircle,
   MessageSquareText,
 } from "lucide-react";
+import Image from "next/image"; // 👈 NUEVO
 
 // 👇 nuevo: importá los agentes desde el registry central
 import { AGENTS } from "@/lib/agents";
@@ -29,7 +30,7 @@ async function reportMiss(miss: any) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(miss),
     });
-    if (!r.ok) console.error("log-miss failed", await r.text().catch(() => ""));
+    if (!r.ok) console.error("log-miss failed", await r.text().catch(() => "")); 
   } catch (e) {
     console.error("log-miss error", (e as any)?.message || e);
   }
@@ -215,7 +216,10 @@ export default function MultiAgentChat() {
         <header className="border-b bg-white/70 backdrop-blur">
           <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="size-8 rounded-lg bg-gradient-to-tr from-gray-900 to-gray-700" />
+              {/* 👇 REEMPLAZO: logo encima de degradé */}
+              <div className="relative size-8 rounded-lg bg-gradient-to-tr from-gray-900 to-gray-700 overflow-hidden">
+                <Image src="/LOGO.png" alt="Logo" fill sizes="32px" className="object-contain" priority />
+              </div>
               <span className="text-lg font-semibold tracking-tight text-gray-900">Argental · Agents</span>
             </div>
             <div className="text-xs text-gray-500">v1</div>
@@ -373,7 +377,7 @@ export default function MultiAgentChat() {
                 onKeyDown={handleKeyPress}
                 disabled={loading || !contextLoaded}
                 placeholder={contextLoaded ? "Escribí tu pregunta…" : "Cargando contexto…"}
-                className="max-h-[200px] w-full resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
+                className="max-h=[200px] w-full resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
               />
               <button
                 onClick={sendMessage}
