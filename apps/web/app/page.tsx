@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Home,
   Sparkles,
@@ -130,7 +130,7 @@ Si **no existe evidencia literal** en los documentos para responder la pregunta,
 
 @@MISS{"agentId":"fe960-public","userId":"anon","folderId":"Info pública","notes":"sin evidencia en documentación","context":"<tema resumido>","question":"<pregunta del usuario>"}
 
-    `
+    `,
   },
 ];
 
@@ -138,6 +138,20 @@ function formatTime(ts?: number) {
   if (!ts) return "";
   const d = new Date(ts);
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+// Enviar un MISS al backend (fire-and-forget)
+async function reportMiss(miss: any) {
+  try {
+    const r = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/agent/log-miss`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(miss),
+    });
+    if (!r.ok) console.error("log-miss failed", await r.text().catch(() => ""));
+  } catch (e) {
+    console.error("log-miss error", (e as any)?.message || e);
+  }
 }
 
 export default function MultiAgentChat() {
@@ -151,6 +165,9 @@ export default function MultiAgentChat() {
 
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Para evitar enviar el mismo MISS varias veces si el modelo lo repite
+  const missReportedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -176,7 +193,6 @@ export default function MultiAgentChat() {
     setToast(null);
     try {
       await fetch(`${process.env.NEXT_PUBLIC_BACKEND_HEALTH ?? ""}` || "/api/noop").catch(() => {});
-
       const r = await fetch("/api/context", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -212,7 +228,7 @@ export default function MultiAgentChat() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "text/event-stream",
+          Accept: "text/event-stream",
         },
         body: JSON.stringify({
           messages: [...messages, userMessage],
@@ -223,7 +239,7 @@ export default function MultiAgentChat() {
 
       if (!response.ok || !response.body) throw new Error("Error en la respuesta");
 
-      // === FIX: decodificación streaming UTF-8 y parseo SSE seguro ===
+      // === Streaming SSE robusto + detección de @@MISS ===
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
 
@@ -236,10 +252,8 @@ export default function MultiAgentChat() {
         const { value, done } = await reader.read();
         if (done) break;
 
-        // decodificar en modo streaming para no cortar caracteres multibyte
         buf += decoder.decode(value, { stream: true });
 
-        // procesar por líneas
         let idx: number;
         while ((idx = buf.indexOf("\n")) >= 0) {
           const line = buf.slice(0, idx);
@@ -252,23 +266,44 @@ export default function MultiAgentChat() {
           try {
             const parsed = JSON.parse(data);
             const delta = parsed.choices?.[0]?.delta?.content;
-            if (delta) {
-              assistantMessage.content += delta;
-              setMessages((prev) => {
-                const nm = [...prev];
-                nm[nm.length - 1] = { ...assistantMessage };
-                return nm;
-              });
+            if (!delta) continue;
+
+            // 1) acumular para mostrar
+            assistantMessage.content += delta;
+
+            // 2) detectar @@MISS{...} en el contenido acumulado (puede venir por partes)
+            const missRegex = /^@@MISS\s*(\{.*\})\s*$/gm;
+            let m: RegExpExecArray | null;
+            while ((m = missRegex.exec(assistantMessage.content)) !== null) {
+              try {
+                const missObj = JSON.parse(m[1]);
+                if (!missObj.agentId) missObj.agentId = "fe960-public";
+                if (!missObj.userId) missObj.userId = "anon";
+                const key = JSON.stringify(missObj);
+                if (!missReportedRef.current.has(key)) {
+                  missReportedRef.current.add(key);
+                  // fire-and-forget (no await para no frenar el stream)
+                  reportMiss(missObj);
+                }
+              } catch (e) {
+                console.error("MISS parse error", e);
+              }
             }
+
+            // 3) refrescar UI
+            setMessages((prev) => {
+              const nm = [...prev];
+              nm[nm.length - 1] = { ...assistantMessage };
+              return nm;
+            });
           } catch {
-            // líneas no JSON -> ignorar
+            // línea no JSON, ignorar
           }
         }
       }
 
-      // flush final del decoder (por si quedó un caracter a medias)
-      decoder.decode();
-      // === /FIX ===
+      decoder.decode(); // flush final
+      // === /Streaming ===
     } catch (error) {
       console.error(error);
       setMessages((prev) => [
@@ -298,6 +333,7 @@ export default function MultiAgentChat() {
     setContextLoaded(false);
     setContextCache(null);
     setToast(null);
+    missReportedRef.current.clear();
   };
 
   const goBack = () => {
@@ -306,6 +342,7 @@ export default function MultiAgentChat() {
     setContextLoaded(false);
     setContextCache(null);
     setToast(null);
+    missReportedRef.current.clear();
   };
 
   // ---------- VISTA: LISTA DE AGENTES ----------
@@ -389,6 +426,7 @@ export default function MultiAgentChat() {
       </header>
 
       <main className="mx-auto max-w-4xl px-4">
+        {/* Toast */}
         {toast && (
           <div
             className={`mt-4 flex items-center gap-2 rounded-xl border px-4 py-3 text-sm ${
@@ -400,6 +438,7 @@ export default function MultiAgentChat() {
           </div>
         )}
 
+        {/* FAQs */}
         {!!selectedAgent.faqs?.length && (
           <div className="mt-6 flex flex-wrap gap-2">
             {selectedAgent.faqs.map((faq: string, i: number) => (
@@ -415,6 +454,7 @@ export default function MultiAgentChat() {
           </div>
         )}
 
+        {/* Chat */}
         <section className="mt-6 rounded-2xl border bg-white shadow-sm">
           <div className="max-h-[64vh] overflow-y-auto p-4 sm:p-6">
             {!contextLoaded && (
@@ -423,6 +463,8 @@ export default function MultiAgentChat() {
                   <Loader2 className="size-5 animate-spin" />
                   <span>Cargando documentación…</span>
                 </div>
+
+                {/* Skeleton bubbles */}
                 <div className="flex justify-start">
                   <div className="h-16 w-3/4 max-w-[520px] animate-pulse rounded-2xl bg-gray-100" />
                 </div>
@@ -455,6 +497,7 @@ export default function MultiAgentChat() {
             <div ref={endRef} />
           </div>
 
+          {/* Composer */}
           <div className="sticky bottom-0 border-t bg-white p-3 sm:p-4">
             <div className="flex items-end gap-3">
               <textarea
@@ -470,7 +513,7 @@ export default function MultiAgentChat() {
               <button
                 onClick={sendMessage}
                 disabled={loading || !contextLoaded || !input.trim()}
-                className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bgblack disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {loading ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
                 {loading ? "Enviando" : "Enviar"}
