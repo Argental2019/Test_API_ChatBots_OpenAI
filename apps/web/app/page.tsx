@@ -20,7 +20,7 @@ const AGENTS = [
     description: "Especialista en horno rotativo FE 4.0-960 de Argental",
     accent: "from-blue-500 to-cyan-500",
     driveFolders: [
-      "17enT9eKi8Wgr92wOhVlqHyIUFlZP1bo4",
+      "1f7SzAdHSLXWRh4KouIEC_f4yoztpqzUs", //la del TEST publica
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
     faqs: [
