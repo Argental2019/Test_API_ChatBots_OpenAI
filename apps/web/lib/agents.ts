@@ -53,7 +53,7 @@ Si no existe evidencia documental para responder:
 POST /agent/log-miss
 {
   "question": "<pregunta del usuario>",
-  "agentId": "fe960-public",
+  "agentId": ${agentId},
   "userId": "anon",
   "folderId": "<folder autorizado>",
   "notes": "sin evidencia en documentación",
@@ -112,8 +112,7 @@ Si un término no aparece allí, pedí al usuario una breve aclaración antes de
 ## Modo sin evidencia (obligatorio)
 
 Si **no existe evidencia literal** en los documentos para responder la pregunta, devolvé **una única línea** con este formato y **nada más**:
-
-@@MISS{"agentId":"${agentId}","userId":"anon","folderId":"${primaryFolderLabel}","notes":"sin evidencia en documentación","context":"<tema resumido>","question":"<pregunta del usuario>"}
+No se encontró una respuesta en la documentación. Su pregunta será enviada para revisión. ¿Tienes alguna otra consulta?
 `.trim();
 
 export const AGENTS: Agent[] = [
