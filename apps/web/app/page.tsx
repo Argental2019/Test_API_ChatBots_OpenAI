@@ -259,7 +259,7 @@ export default function MultiAgentChat() {
               <div className="relative size-8 rounded-lg bg-gradient-to-tr from-gray-900 to-gray-700 overflow-hidden">
                 <Image src="/LOGO.png" alt="Logo" fill sizes="32px" className="object-contain" priority />
               </div>
-              <span className="text-lg font-semibold tracking-tight text-gray-900">Argental · Agents</span>
+              <span className="text-lg font-semibold tracking-tight text-gray-900">Argental · Agentes IA</span>
             </div>
             <div className="text-xs text-gray-500">v1</div>
           </div>
@@ -267,7 +267,7 @@ export default function MultiAgentChat() {
 
         <main className="mx-auto max-w-6xl px-4 py-12">
           <div className="mb-10">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900">Multi-Agent Chat</h1>
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900">Chat Multi-Agente IA</h1>
             <p className="mt-2 text-gray-600">Seleccioná un agente para comenzar</p>
           </div>
 
