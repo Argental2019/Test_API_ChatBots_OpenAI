@@ -152,7 +152,8 @@ Tu objetivo es que la respuesta sea **tan completa y detallada como la documenta
 ---
 ## 🧱 Formato de salida (obligatorio y consistente)
 **Organizá la respuesta en secciones numeradas (1., 2., 3., etc.)** para hacerlo más visual y fácil de leer.
-Siempre devolvé la respuesta en **Markdown** con este layout —no lo omitas ni lo alteres—:
+**Siempre** devolvé la respuesta en **Markdown** y **SIEMPRE con secciones numeradas** con el patrón exacto:
+
 
 1) **Encabezado inicial (1–2 líneas):**
    - Una oración introductoria que enmarque la respuesta.

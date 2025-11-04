@@ -93,12 +93,16 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
     }
   };
 
-  const sendMessage = async () => {
-    if (!input.trim() || loading || !contextLoaded) return;
+  // AHORA ACEPTA TEXTO OPCIONAL (para enviar FAQs directo)
+  const sendMessage = async (text?: string) => {
+    const content = (text ?? input).trim();
+    if (!content || loading || !contextLoaded) return;
 
-    const userMessage: ChatMessage = { role: "user", content: input.trim(), ts: Date.now() };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
+    const userMessage: ChatMessage = { role: "user", content, ts: Date.now() };
+    const history = [...messages, userMessage];
+
+    setMessages(history);
+    setInput(""); // limpiamos el textarea si venía escribiendo
     setLoading(true);
 
     try {
@@ -109,7 +113,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
           Accept: "text/event-stream",
         },
         body: JSON.stringify({
-          messages: [...messages, userMessage],
+          messages: history,
           systemPrompt: agent.systemPrompt,
           context: contextCache,
         }),
@@ -229,7 +233,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
             {agent.faqs.map((faq: string, i: number) => (
               <button
                 key={i}
-                onClick={() => setInput(faq)}
+                onClick={() => sendMessage(faq)} // ← ahora envía directo
                 disabled={loading || !contextLoaded}
                 className="rounded-full border bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -271,9 +275,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
                       mine ? "bg-gray-900 text-white shadow-md" : "border bg-white text-gray-900 shadow-sm"
                     }`}
                   >
-                    <Markdown className={mine ? "" : ""}>
-          {m.content}
-        </Markdown>
+                    <Markdown className={mine ? "" : ""}>{m.content}</Markdown>
                     <div className={`mt-1 text-[11px] ${mine ? "text-gray-300" : "text-gray-500"}`}>
                       {mine ? "Vos" : agent.name} · {formatTime(m.ts)}
                     </div>
@@ -298,7 +300,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
                 className="max-h-[200px] w-full resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
               />
               <button
-                onClick={sendMessage}
+                onClick={() => sendMessage()}
                 disabled={loading || !contextLoaded || !input.trim()}
                 className="inline-flex items-center gap-2 rounded-2xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
               >
