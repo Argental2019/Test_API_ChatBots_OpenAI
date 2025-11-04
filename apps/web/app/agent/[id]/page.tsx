@@ -1,6 +1,7 @@
 "use client";
-import Link from "next/link";
+
 import React, { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   Home,
   Sparkles,
@@ -8,12 +9,9 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
-  MessageSquareText,
 } from "lucide-react";
-import Image from "next/image"; // 👈 NUEVO
 
-// 👇 nuevo: importá los agentes desde el registry central
-import { AGENTS } from "@/lib/agents";
+import { AGENTS, getAgentById } from "@/lib/agents";
 
 type ChatMessage = { role: "user" | "assistant"; content: string; ts?: number };
 
@@ -23,22 +21,8 @@ function formatTime(ts?: number) {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-// (opcional) si usás @@MISS en el prompt, lo podés reportar acá
-async function reportMiss(miss: any) {
-  try {
-    const r = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/agent/log-miss`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(miss),
-    });
-    if (!r.ok) console.error("log-miss failed", await r.text().catch(() => "")); 
-  } catch (e) {
-    console.error("log-miss error", (e as any)?.message || e);
-  }
-}
-
-export default function MultiAgentChat() {
-  const [selectedAgent, setSelectedAgent] = useState<any>(null);
+export default function AgentChatPage({ params }: { params: { id: string } }) {
+  const agent = getAgentById(params.id);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -54,11 +38,11 @@ export default function MultiAgentChat() {
   }, [messages]);
 
   useEffect(() => {
-    if (selectedAgent && !contextLoaded) {
+    if (agent && !contextLoaded) {
       loadContext();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAgent]);
+  }, [agent]);
 
   // autosize textarea
   useEffect(() => {
@@ -68,18 +52,29 @@ export default function MultiAgentChat() {
     el.style.height = Math.min(el.scrollHeight, 200) + "px";
   }, [input]);
 
+  if (!agent) {
+    return (
+      <div className="mx-auto max-w-4xl p-6">
+        <p className="text-sm text-gray-600">Agente no encontrado.</p>
+        <Link href="/" className="mt-3 inline-flex items-center gap-2 text-sm text-gray-700 underline">
+          <Home className="size-4" /> Volver al inicio
+        </Link>
+      </div>
+    );
+  }
+
   const loadContext = async () => {
-    if (!selectedAgent?.driveFolders) return;
+    if (!agent?.driveFolders) return;
     setLoading(true);
     setToast(null);
     try {
-      // “wake up” opcional
+      // “wake up” opcional (si usás health en el backend)
       await fetch(`${process.env.NEXT_PUBLIC_BACKEND_HEALTH ?? ""}` || "/api/noop").catch(() => {});
 
       const r = await fetch("/api/context", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ driveFolders: selectedAgent.driveFolders }),
+        body: JSON.stringify({ driveFolders: agent.driveFolders }),
       });
       if (!r.ok) throw new Error(await r.text());
       const data = await r.json();
@@ -115,7 +110,7 @@ export default function MultiAgentChat() {
         },
         body: JSON.stringify({
           messages: [...messages, userMessage],
-          systemPrompt: selectedAgent.systemPrompt,
+          systemPrompt: agent.systemPrompt,
           context: contextCache,
         }),
       });
@@ -155,15 +150,6 @@ export default function MultiAgentChat() {
                 nm[nm.length - 1] = { ...assistantMessage };
                 return nm;
               });
-
-              // Detectar @@MISS y loguear (opcional)
-              const maybeMiss = assistantMessage.content.trim();
-              if (maybeMiss.startsWith("@@MISS{") && maybeMiss.endsWith("}")) {
-                try {
-                  const json = JSON.parse(maybeMiss.replace(/^@@MISS/, ""));
-                  reportMiss(json);
-                } catch {}
-              }
             }
           } catch {
             // líneas no JSON -> ignorar
@@ -194,88 +180,17 @@ export default function MultiAgentChat() {
     }
   };
 
-  const selectAgent = (agent: any) => {
-    setSelectedAgent(agent);
-    setMessages([]);
-    setContextLoaded(false);
-    setContextCache(null);
-    setToast(null);
-  };
-
-  const goBack = () => {
-    setSelectedAgent(null);
-    setMessages([]);
-    setContextLoaded(false);
-    setContextCache(null);
-    setToast(null);
-  };
-
-  // ---------- VISTA: LISTA DE AGENTES ----------
-  if (!selectedAgent) {
-    return (
-      <div className="min-h-screen bg-white">
-        <header className="border-b bg-white/70 backdrop-blur">
-          <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {/* 👇 REEMPLAZO: logo encima de degradé */}
-              <div className="relative size-8 rounded-lg bg-gradient-to-tr from-gray-900 to-gray-700 overflow-hidden">
-                <Image src="/LOGO.png" alt="Logo" fill sizes="32px" className="object-contain" priority />
-              </div>
-              <span className="text-lg font-semibold tracking-tight text-gray-900">Argental · Agents</span>
-            </div>
-            <div className="text-xs text-gray-500">v1</div>
-          </div>
-        </header>
-
-        <main className="mx-auto max-w-6xl px-4 py-12">
-          <div className="mb-10">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900">Multi-Agent Chat</h1>
-            <p className="mt-2 text-gray-600">Seleccioná un agente para comenzar</p>
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {AGENTS.map((agent) => (
-              <Link
-                key={agent.id}
-                href={`/agent/${agent.id}`}   // 👈 CAMBIO: ahora va a la ruta por agente
-                className="group relative overflow-hidden rounded-2xl border bg-white p-6 text-left shadow-sm transition-all hover:shadow-xl"
-              >
-                <div
-                  className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${agent.accent} opacity-0 transition-opacity group-hover:opacity-10`}
-                />
-                <div className="relative">
-                  <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium text-gray-600">
-                    <MessageSquareText className="size-3.5" />
-                    Público
-                  </div>
-                  <h3 className="mt-3 text-xl font-semibold text-gray-900">{agent.name}</h3>
-                  <p className="mt-1 text-sm leading-6 text-gray-600">{agent.description}</p>
-
-                  <div className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <Sparkles className="size-4" />
-                    <span>Iniciar chat</span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  // ---------- VISTA: CHAT ----------
   return (
     <div className="min-h-screen bg-white">
       <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
         <div className="mx-auto max-w-4xl px-4 py-3 flex items-center justify-between">
-          <button
-            onClick={goBack}
+          <Link
+            href="/"
             className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             <Home className="size-4" />
             Volver
-          </button>
+          </Link>
 
           <div className="flex flex-col items-center">
             <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-gray-600">
@@ -285,8 +200,8 @@ export default function MultiAgentChat() {
               </span>
               Activo
             </div>
-            <h2 className="mt-2 text-lg font-semibold text-gray-900">{selectedAgent.name}</h2>
-            <p className="text-xs text-gray-500">{selectedAgent.description}</p>
+            <h2 className="mt-2 text-lg font-semibold text-gray-900">{agent.name}</h2>
+            <p className="text-xs text-gray-500">{agent.description}</p>
           </div>
 
           <div className="w-[84px]" />
@@ -309,9 +224,9 @@ export default function MultiAgentChat() {
         )}
 
         {/* FAQs */}
-        {!!selectedAgent.faqs?.length && (
+        {!!agent.faqs?.length && (
           <div className="mt-6 flex flex-wrap gap-2">
-            {selectedAgent.faqs.map((faq: string, i: number) => (
+            {agent.faqs.map((faq: string, i: number) => (
               <button
                 key={i}
                 onClick={() => setInput(faq)}
@@ -358,7 +273,7 @@ export default function MultiAgentChat() {
                   >
                     <div className="whitespace-pre-wrap">{m.content}</div>
                     <div className={`mt-1 text-[11px] ${mine ? "text-gray-300" : "text-gray-500"}`}>
-                      {mine ? "Vos" : selectedAgent.name} · {formatTime(m.ts)}
+                      {mine ? "Vos" : agent.name} · {formatTime(m.ts)}
                     </div>
                   </div>
                 </div>
@@ -378,7 +293,7 @@ export default function MultiAgentChat() {
                 onKeyDown={handleKeyPress}
                 disabled={loading || !contextLoaded}
                 placeholder={contextLoaded ? "Escribí tu pregunta…" : "Cargando contexto…"}
-                className="max-h=[200px] w-full resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
+                className="max-h-[200px] w-full resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
               />
               <button
                 onClick={sendMessage}

@@ -1,8 +1,11 @@
 // apps/web/lib/agents.ts
+export type ChatMessage = { role: "user" | "assistant"; content: string; ts?: number };
+
 export type Agent = {
-  id: string;         // único, ej: "fe960-public"
-  slug: string;       // para URLs si querés
+  id: string;         // único, ej: "fe960-public"   
   name: string;
+  family:string;
+  subfamily:string;
   description: string;
   accent: string;     // gradiente UI
   driveFolders: string[]; // IDs exactos de Drive
@@ -107,9 +110,10 @@ Si realmente no existe información literal o indirectamente comprobable:
 
 export const AGENTS: Agent[] = [
   {
-    id: "fe960-public",
-    slug: "fe960",
+    id: "fe960",
     name: "Horno rotativo FE 4.0-960",
+    family:"Horno",
+    subfamily:"Rotativo",
     description: "Especialista en horno rotativo FE 4.0-960 de Argental",
     accent: "from-blue-500 to-cyan-500",
     driveFolders: [
@@ -125,10 +129,11 @@ export const AGENTS: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "fe960-public", agentName: "Horno rotativo FE 4.0-960", primaryFolderLabel: "Info pública" }),
   },
  {
-    id: "M-6130/17CORTE",
-    slug: "M600",
-    name: "AMBRO - Laminadora M-600 con estación de corte",
-    description: "Especialista en AMBRO - Laminadora M-600 con estación de corte de Argental",
+    id: "MBE-80U-S",
+    name: "Amasadora MBE-80U-S",
+    family:"Amasadora",
+    subfamily:"80",
+    description: "Especialista en Amasadora MBE-80U-S de Argental",
     accent: "from-blue-500 to-cyan-500",
     driveFolders: [
       "1uYV31JD00lKkX41lwujlsUu1h5QRqgnY",
@@ -140,6 +145,29 @@ export const AGENTS: Agent[] = [
       "¿Cuál es la capacidad de producción?",
       "¿Mantenimiento requerido?",
     ],
-    systemPrompt: BASE_PROMPT({ agentId: "M-6130/17CORTE", agentName: "AMBRO - Laminadora M-600 con estación de corte", primaryFolderLabel: "Info pública" }),
+    systemPrompt: BASE_PROMPT({ agentId: "MBE-80U-S", agentName: "Amasadora MBE-80U-S", primaryFolderLabel: "Info pública" }),
+  },
+   {
+    id: "GALILEO",
+    name: "Sistema GALILEO SGAUIG PF y PM",
+    family:"Galileo",
+    subfamily:"Línea",
+    description: "Especialista en Sistema GALILEO SGAUIG PF y PM de Argental",
+    accent: "from-blue-500 to-cyan-500",
+    driveFolders: [
+      "1WBKqrI_dmveS6u-viV2TWTmU3gCBrCkk",
+      "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
+    ],
+    faqs: [
+      "¿Por qué debería comprar este equipo?",
+      "¿Qué productos puede hacer?",
+      "¿Cómo es la calidad respecto al pan sobado?",
+      "¿Mantenimiento requerido?",
+    ],
+    systemPrompt: BASE_PROMPT({ agentId: "GALILEO", agentName: "Sistema GALILEO SGAUIG PF y PM", primaryFolderLabel: "Info pública" }),
   },
 ];
+
+export function getAgentById(id: string) {
+  return AGENTS.find(a => a.id === id);
+}

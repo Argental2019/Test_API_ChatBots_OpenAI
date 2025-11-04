@@ -1,6 +1,5 @@
 import './global.css';
 import type { Metadata } from 'next';
-
 export const metadata: Metadata = {
   title: 'Argental — Multi‑Agente',
   description: 'UI para operar agentes internos',
