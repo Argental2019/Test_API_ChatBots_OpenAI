@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import Markdown from "@/components/markdown";
+
 import React, { useEffect, useRef, useState } from "react";
 import {
   Home,
@@ -356,7 +358,9 @@ export default function MultiAgentChat() {
                       mine ? "bg-gray-900 text-white shadow-md" : "border bg-white text-gray-900 shadow-sm"
                     }`}
                   >
-                    <div className="whitespace-pre-wrap">{m.content}</div>
+                    <Markdown className={mine ? "" : ""}>
+          {m.content}
+        </Markdown>
                     <div className={`mt-1 text-[11px] ${mine ? "text-gray-300" : "text-gray-500"}`}>
                       {mine ? "Vos" : selectedAgent.name} · {formatTime(m.ts)}
                     </div>

@@ -136,7 +136,7 @@ export const AGENTS: Agent[] = [
     description: "Especialista en Amasadora MBE-80U-S de Argental",
     accent: "from-blue-500 to-cyan-500",
     driveFolders: [
-      "1uYV31JD00lKkX41lwujlsUu1h5QRqgnY",
+      "1-4pagM_vzAW2QXJzlV19ktsQs8wBHd4U",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
     faqs: [
