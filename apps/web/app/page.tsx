@@ -1,8 +1,8 @@
-"use client";
-import Link from "next/link";
+"use client" ;
+import Link from "next/link"; 
 import Markdown from "@/components/markdown";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useMemo, useEffect, useRef, useState } from "react";
 import {
   Home,
   Sparkles,
@@ -24,6 +24,13 @@ function formatTime(ts?: number) {
   const d = new Date(ts);
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
+
+// util de búsqueda: ignora tildes y mayúsculas
+const norm = (s: string) =>
+  (s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
 
 // (opcional) si usás @@MISS en el prompt, lo podés reportar acá
 async function reportMiss(miss: any) {
@@ -47,6 +54,35 @@ export default function MultiAgentChat() {
   const [contextLoaded, setContextLoaded] = useState(false);
   const [contextCache, setContextCache] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
+
+  // 👇 estado de filtros (solo afectan la vista de lista)
+  const [familyFilter, setFamilyFilter] = useState<string>("");
+  const [subfamilyFilter, setSubfamilyFilter] = useState<string>("");
+  const [nameFilter, setNameFilter] = useState<string>("");
+
+  // opciones únicas para selects
+  const families = useMemo(
+    () => Array.from(new Set(AGENTS.map(a => a.family))).sort(),
+    []
+  );
+  const subfamilies = useMemo(() => {
+    const subset = familyFilter ? AGENTS.filter(a => a.family === familyFilter) : AGENTS;
+    return Array.from(new Set(subset.map(a => a.subfamily))).sort();
+  }, [familyFilter]);
+
+  // lista filtrada para la grilla
+  const filteredAgents = useMemo(() => {
+    const nf = norm(nameFilter);
+    return AGENTS.filter(a => {
+      const okFamily = familyFilter ? a.family === familyFilter : true;
+      const okSubfamily = subfamilyFilter ? a.subfamily === subfamilyFilter : true;
+      const okName = nf ? norm(a.name).includes(nf) : true;
+      return okFamily && okSubfamily && okName;
+    });
+  }, [familyFilter, subfamilyFilter, nameFilter]);
+
+  // resetear subfamilia cuando cambia familia
+  useEffect(() => setSubfamilyFilter(""), [familyFilter]);
 
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -235,8 +271,53 @@ export default function MultiAgentChat() {
             <p className="mt-2 text-gray-600">Seleccioná un agente para comenzar</p>
           </div>
 
+          {/* 🔎 Barra de filtros */}
+          <div className="mb-6 grid gap-3 sm:grid-cols-3">
+            {/* Familia */}
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Familia</label>
+              <select
+                value={familyFilter}
+                onChange={(e) => setFamilyFilter(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+              >
+                <option value="">Todas</option>
+                {families.map((f) => (
+                  <option key={f} value={f}>{f}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Subfamilia (dependiente) */}
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Subfamilia</label>
+              <select
+                value={subfamilyFilter}
+                onChange={(e) => setSubfamilyFilter(e.target.value)}
+                disabled={!subfamilies.length}
+                className="w-full rounded-lg border px-3 py-2 text-sm disabled:bg-gray-50"
+              >
+                <option value="">Todas</option>
+                {subfamilies.map((sf) => (
+                  <option key={sf} value={sf}>{sf}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Nombre */}
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Nombre del agente</label>
+              <input
+                value={nameFilter}
+                onChange={(e) => setNameFilter(e.target.value)}
+                placeholder="Buscar por nombre…"
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {AGENTS.map((agent) => (
+            {(filteredAgents.length ? filteredAgents : AGENTS).map((agent) => (
               <Link
                 key={agent.id}
                 href={`/agent/${agent.id}`}   // 👈 CAMBIO: ahora va a la ruta por agente
@@ -253,6 +334,12 @@ export default function MultiAgentChat() {
                   <h3 className="mt-3 text-xl font-semibold text-gray-900">{agent.name}</h3>
                   <p className="mt-1 text-sm leading-6 text-gray-600">{agent.description}</p>
 
+                  {/* chips de familia/subfamilia */}
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-full border px-2 py-0.5 text-gray-600">{agent.family}</span>
+                    <span className="rounded-full border px-2 py-0.5 text-gray-600">{agent.subfamily}</span>
+                  </div>
+
                   <div className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-700">
                     <Sparkles className="size-4" />
                     <span>Iniciar chat</span>
@@ -261,6 +348,12 @@ export default function MultiAgentChat() {
               </Link>
             ))}
           </div>
+
+          {filteredAgents.length === 0 && (
+            <div className="mt-6 rounded-xl border bg-gray-50 p-6 text-sm text-gray-600">
+              No se encontraron agentes con esos filtros.
+            </div>
+          )}
         </main>
       </div>
     );
