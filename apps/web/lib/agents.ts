@@ -1780,25 +1780,7 @@ export const AGENTS: Agent[] = [
     ],
     systemPrompt: BASE_PROMPT({ agentId: "M-6130-17CORTE", agentName: "AMBRO - Laminadora M-600 con estación de corte ", primaryFolderLabel: "Info pública" }),
   },
-  {
-    id: "DOSIF-RELLENO-X5",
-    name: "AMBRO - DOSIFICADOR MULTIPLE X5",
-    family:"Dosificador de rellenos",
-    subfamily:"A definir",
-    description: "Especialista en AMBRO - DOSIFICADOR MULTIPLE X5 de Argental",
-    accent: "from-blue-500 to-cyan-500",
-    driveFolders: [
-      "1gvE0zCYeGkpR0Xvy0gVd8z5i7SJnB4g4",
-      "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
-    ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
-    systemPrompt: BASE_PROMPT({ agentId: "DOSIF-RELLENO-X5", agentName: "AMBRO - DOSIFICADOR MULTIPLE X5 ", primaryFolderLabel: "Info pública" }),
-  },
+  
 
 ]; 
 
