@@ -1636,7 +1636,7 @@ export const AGENTS: Agent[] = [
     description: "Especialista en REBANADORA RPNM PANIER de Argental",
     accent: "from-blue-500 to-cyan-500",
     driveFolders: [
-      "1LACXu3aVC9B50wuU86DjzfnXvVmchqhU",
+      "13xJQYsx9VesiIKNMEy96CMgPGQoZ1B0T",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
     faqs: [
@@ -1731,7 +1731,7 @@ export const AGENTS: Agent[] = [
     description: "Especialista en Batidora Argental MIX-60 de Argental",
     accent: "from-blue-500 to-cyan-500",
     driveFolders: [
-      "1JzJVyed17y-WbB3NJ8z5i34AjiAD1xad",
+      "1DLoeMiW3MBpSlCG7fDpXTu7xuFgyQU60",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
     faqs: [
