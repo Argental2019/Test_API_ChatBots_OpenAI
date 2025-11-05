@@ -263,7 +263,6 @@ entonces:
 
 4. **Solo usá el modo “sin evidencia”** cuando **no exista absolutamente ningún dato técnico ni proceso relacionado**.
 
-
 Estructura obligatoria de salida:
 - **Resumen** (1–2 líneas): qué calidad logra el equipo para el estilo consultado.
 - **Atributos documentados** (secciones con título en **negrita**):  
