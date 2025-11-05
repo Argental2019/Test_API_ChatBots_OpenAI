@@ -1610,7 +1610,7 @@ export const AGENTS: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "INSIGNIA", agentName: "ARGENTAL - INSIGNIA", primaryFolderLabel: "Info pública" }),
   },
    {
-    id: "AMBRO PRESS",
+    id: "AMBRO-PRESS",
     name: "AMBRO - Prensagrasa AmbroPress",
     family:"Prensagrasa",
     subfamily:"A definir",
@@ -1626,7 +1626,7 @@ export const AGENTS: Agent[] = [
       "¿Cuál es la capacidad de producción?",
       "¿Mantenimiento requerido?",
     ],
-    systemPrompt: BASE_PROMPT({ agentId: "AMBRO PRESS", agentName: "AMBRO - Prensagrasa AmbroPress", primaryFolderLabel: "Info pública" }),
+    systemPrompt: BASE_PROMPT({ agentId: "AMBRO-PRESS", agentName: "AMBRO - Prensagrasa AmbroPress", primaryFolderLabel: "Info pública" }),
   },
    {
     id: "RPNM-RPN",
