@@ -1781,7 +1781,7 @@ export const AGENTS: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "M-6130-17CORTE", agentName: "AMBRO - Laminadora M-600 con estación de corte ", primaryFolderLabel: "Info pública" }),
   },
   {
-    id: "DOSIF-RELLENO",
+    id: "DOSIF-RELLENO-X5",
     name: "AMBRO - DOSIFICADOR MULTIPLE X5",
     family:"Dosificador de rellenos",
     subfamily:"A definir",
@@ -1797,7 +1797,7 @@ export const AGENTS: Agent[] = [
       "¿Cuál es la capacidad de producción?",
       "¿Mantenimiento requerido?",
     ],
-    systemPrompt: BASE_PROMPT({ agentId: "DOSIF-RELLENO", agentName: "AMBRO - DOSIFICADOR MULTIPLE X5 ", primaryFolderLabel: "Info pública" }),
+    systemPrompt: BASE_PROMPT({ agentId: "DOSIF-RELLENO-X5", agentName: "AMBRO - DOSIFICADOR MULTIPLE X5 ", primaryFolderLabel: "Info pública" }),
   },
 
 ]; 
