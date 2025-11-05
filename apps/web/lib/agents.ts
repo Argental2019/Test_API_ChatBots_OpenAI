@@ -261,7 +261,7 @@ export const AGENTS: Agent[] = [
   {
     id: "fe960",
     name: "Horno rotativo FE 4.0-960",
-    family:"Horno",
+    family:"Hornos",
     subfamily:"Rotativo",
     description: "Especialista en horno rotativo FE 4.0-960 de Argental",
     accent: "from-blue-500 to-cyan-500",
@@ -280,7 +280,7 @@ export const AGENTS: Agent[] = [
  {
     id: "MBE-80U-S",
     name: "Amasadora MBE-80U-S",
-    family:"Amasadora",
+    family:"Amasadoras",
     subfamily:"80",
     description: "Especialista en Amasadora MBE-80U-S de Argental",
     accent: "from-blue-500 to-cyan-500",
@@ -762,7 +762,7 @@ export const AGENTS: Agent[] = [
    {
     id: "DBS",
     name: "DIVISORA-BOLLERA SEMI. PANIER DBS30-100-30 T380/50",
-    family:"Divisora",
+    family:"Divisoras",
     subfamily:"A definir",
     description: "Especialista en DIVISORA-BOLLERA SEMI. PANIER DBS30-100-30 T380/50 de Argental",
     accent: "from-blue-500 to-cyan-500",
