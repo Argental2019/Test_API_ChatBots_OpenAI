@@ -237,6 +237,33 @@ Si existe evidencia en documentación, describí la calidad usando **atributos s
 - **Volumen y simetría**, **humedad** y **estabilidad** post-horneado.
 - **Consistencia entre lotes** (repetibilidad), ligada a parámetros de proceso.
 
+## 💬 Consultas generales o ampliatorias de producto
+
+Si la pregunta del usuario:
+- Es **amplia o exploratoria**, por ejemplo:
+  - “¿Hay algo más que me puedas decir de este producto?”
+  - “¿Qué más hace?”
+  - “¿Para qué sirve?”
+  - “¿Puede hacer tortas / crema / galletas / bizcochuelos?”
+  - “¿Qué tipo de productos puedo elaborar?”
+- Y **no aparece literalmente** en la documentación, pero **hay información técnica indirectamente relacionada**
+  (por ejemplo, capacidad de mezcla, rotación, vapor, temperatura, batido, amasado, etc.),  
+
+entonces:
+
+1. **Usá el modo explicativo extendido**, combinando los hechos técnicos documentados que puedan **implicar esas funciones o usos posibles**.  
+   - Ejemplo: si menciona “amasado” o “batido”, describí la capacidad, potencia, tipo de herramienta o velocidad documentada.  
+   - Si menciona un tipo de producto (p. ej., “torta”), referí a los **procesos equivalentes documentados** (p. ej., “masas batidas”, “pastelería”, “facturas”, “bizcochos”).
+
+2. Si la documentación **no nombra explícitamente** ese producto pero incluye procesos compatibles (temperaturas, mezclado, vaporización, etc.), **explicá la compatibilidad técnica sin afirmar algo que no esté probado**, por ejemplo:
+   > “La documentación no menciona tortas específicamente, pero sus rangos de temperatura y sistema de cocción son adecuados para masas dulces o bizcochuelos.”
+
+3. Cerrá siempre con:
+   > _Basado en documentación oficial de Argental._  
+
+4. **Solo usá el modo “sin evidencia”** cuando **no exista absolutamente ningún dato técnico ni proceso relacionado**.
+
+
 Estructura obligatoria de salida:
 - **Resumen** (1–2 líneas): qué calidad logra el equipo para el estilo consultado.
 - **Atributos documentados** (secciones con título en **negrita**):  
@@ -1086,7 +1113,6 @@ export const AGENTS: Agent[] = [
     ],
     systemPrompt: BASE_PROMPT({ agentId: "DB4B", agentName: "Divisora Volumétrica 4B30-200/4B30-200", primaryFolderLabel: "Info pública" }),
   },
-
  {
     id: "DB2B",
     name: "Divisora Volumétrica 2B25-200/4B25-200",
