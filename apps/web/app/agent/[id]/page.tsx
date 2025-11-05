@@ -186,31 +186,51 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="min-h-screen bg-white">
-      <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
-        <div className="mx-auto max-w-4xl px-4 py-3 flex items-center justify-between">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <Home className="size-4" />
-            Volver
-          </Link>
+     <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
+  {/* contenedor RELATIVE y altura fija */}
+  <div className="relative mx-auto max-w-4xl px-4 h-24 flex items-center">
+    {/* Izquierda: botón volver (absolute) */}
+    <Link
+      href="/"
+      className="absolute left-4 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+    >
+      <Home className="size-4" />
+      Volver
+    </Link>
 
-          <div className="flex flex-col items-center">
-            <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-gray-600">
-              <span className="relative flex size-2">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
-              </span>
-              Activo
-            </div>
-            <h2 className="mt-2 text-lg font-semibold text-gray-900">{agent.name}</h2>
-            <p className="text-xs text-gray-500">{agent.description}</p>
-          </div>
+    {/* Centro: SIEMPRE centrado */}
+    <div className="mx-auto text-center pointer-events-none">
+      <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-gray-600">
+        <span className="relative flex size-2">
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+          <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+        </span>
+        Activo
+      </div>
+      <h2 className="mt-1 text-base font-semibold text-gray-900 leading-tight">{agent.name}</h2>
+      <p className="text-[11px] text-gray-500">{agent.description}</p>
+    </div>
 
-          <div className="w-[84px]" />
-        </div>
-      </header>
+    {/* Derecha: LOGO absoluto (no empuja nada) */}
+    <Link
+      href="/"
+      className="absolute right-4 hidden sm:block"
+      aria-label="Ir al inicio"
+    >
+      {/* definir width/height evita “saltos” de layout */}
+      <img
+        src="/logo-ai.jpg"
+        alt="Argental"
+        width="180"
+        height="48"
+        className="h-[80px] w-auto object-contain"
+        loading="eager"
+      />
+      {/* Si usás next/image, igual: width={110} height={32} className="h-8 w-auto" */}
+    </Link>
+  </div>
+</header>
+
 
       <main className="mx-auto max-w-4xl px-4">
         {/* Toast */}
