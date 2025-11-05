@@ -273,9 +273,9 @@ export default function MultiAgentChat() {
 
           {/* 🔎 Barra de filtros */}
           <div className="mb-6 grid gap-3 sm:grid-cols-3">
-            {/* Familia */}
+            {/* Categoria */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Familia</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Categoria</label>
               <select
                 value={familyFilter}
                 onChange={(e) => setFamilyFilter(e.target.value)}
@@ -288,9 +288,9 @@ export default function MultiAgentChat() {
               </select>
             </div>
 
-            {/* Subfamilia (dependiente) */}
+            {/* Sub-Categoria (dependiente) */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Subfamilia</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Subcategoria</label>
               <select
                 value={subfamilyFilter}
                 onChange={(e) => setSubfamilyFilter(e.target.value)}
