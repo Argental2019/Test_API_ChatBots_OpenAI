@@ -281,6 +281,14 @@ respondé **únicamente** con esta línea (sin agregar explicaciones ni formato 
 A continuación, ejecutá el procedimiento de **🧾 Registro de preguntas sin respaldo**,  
 registrando la consulta en '/agent/log-miss' con los datos correspondientes.
 
+## 🔁 Preguntas repetidas o equivalentes
+Si el usuario repite una pregunta o una variación mínima de una anterior (por ejemplo, “¿Qué productos puede hacer?” repetido),
+- **No** respondas con “No se encontró una respuesta...”.
+- Reutilizá la misma información técnica y estructura de respuesta anterior.
+- Si ya habías dado una respuesta detallada, podés resumirla diciendo:
+  > “Te lo recuerdo: el ${agentName} permite elaborar productos como panes artesanales, facturas, pizzas, tortas y bizcochuelos, según la documentación oficial de Argental.”
+
+
 `.trim();
 
 export const AGENTS: Agent[] = [
