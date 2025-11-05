@@ -451,9 +451,16 @@ export default function MultiAgentChat() {
                       mine ? "bg-gray-900 text-white shadow-md" : "border bg-white text-gray-900 shadow-sm"
                     }`}
                   >
-                    <Markdown className={mine ? "" : ""}>
-          {m.content}
-        </Markdown>
+                    <Markdown
+                      className={
+                          mine
+                          ? "whitespace-pre-wrap leading-relaxed"
+                          : "prose prose-sm sm:prose-base max-w-none whitespace-pre-wrap leading-relaxed [&_p]:mb-3 [&_ul]:my-3 [&_ol]:my-3 [&_li]:my-1 [&_strong]:block [&_strong]:mt-4 [&_strong]:mb-1"
+                      }
+                    >
+                      {m.content}
+                    </Markdown>
+
                     <div className={`mt-1 text-[11px] ${mine ? "text-gray-300" : "text-gray-500"}`}>
                       {mine ? "Vos" : selectedAgent.name} · {formatTime(m.ts)}
                     </div>
