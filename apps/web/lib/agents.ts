@@ -855,7 +855,7 @@ export const AGENTS: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "MBE-40T", agentName: "Amasadora MBE-40T", primaryFolderLabel: "Info pública" }),
   },
   {
-    id: "SGAU MODULAR",
+    id: "SGAU-MODULAR",
     name: "Grupo Automático Universal SGAUI",
     family:"Trinchadoras",
     subfamily:"A definir",
@@ -871,7 +871,7 @@ export const AGENTS: Agent[] = [
       "¿Cuál es la capacidad de producción?",
       "¿Mantenimiento requerido?",
     ],
-    systemPrompt: BASE_PROMPT({ agentId: "SGAU MODULAR", agentName: "Grupo Automático Universal SGAUI", primaryFolderLabel: "Info pública" }),
+    systemPrompt: BASE_PROMPT({ agentId: "SGAU-MODULAR", agentName: "Grupo Automático Universal SGAUI", primaryFolderLabel: "Info pública" }),
   },
   {
     id: "HORECA",
