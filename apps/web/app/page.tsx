@@ -1,6 +1,7 @@
 "use client" ;
 import Link from "next/link"; 
 import Markdown from "@/components/markdown";
+import FooterPolicy from "@/components/FooterPolicy";
 
 import React, { useMemo, useEffect, useRef, useState } from "react";
 import {
@@ -354,6 +355,20 @@ export default function MultiAgentChat() {
               No se encontraron agentes con esos filtros.
             </div>
           )}
+          <footer className="mx-auto max-w-6xl pb-10 pt-6 text-center text-xs text-gray-500 space-y-2">
+  <p>© {new Date().getFullYear()} Argental · Asistentes</p>
+  <p className="text-[11px] leading-relaxed">
+    El uso de los Agentes Argental implica la aceptación de la siguiente{" "}
+    <a
+      href="/politicas-de-uso-Argental"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-blue-600 hover:underline"
+    >
+      Política de Uso y Limitación de Responsabilidad de los Agentes Argental
+    </a>.
+  </p>
+</footer>
         </main>
       </div>
     );
@@ -388,7 +403,8 @@ export default function MultiAgentChat() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-4">
+      <main className="mx-auto max-w-4xl px-4 pb-24">
+
         {/* Toast */}
         {toast && (
           <div
@@ -496,10 +512,11 @@ export default function MultiAgentChat() {
           </div>
         </section>
 
-        <footer className="mx-auto max-w-4xl py-8 text-center text-xs text-gray-500">
-          © {new Date().getFullYear()} Argental · Asistentes
-        </footer>
+      
+
+
       </main>
+    
     </div>
   );
 }

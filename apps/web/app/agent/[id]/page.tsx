@@ -331,9 +331,20 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
           </div>
         </section>
 
-        <footer className="mx-auto max-w-4xl py-8 text-center text-xs text-gray-500">
-          © {new Date().getFullYear()} Argental · Asistentes
-        </footer>
+        <footer className="mx-auto max-w-4xl py-6 mt-6 border-t text-center text-xs text-gray-500 space-y-2">
+       <p>© {new Date().getFullYear()} Argental · Asistentes</p>
+        <p className="text-[11px] leading-relaxed">
+       El uso de los Agentes Argental implica la aceptación de la siguiente{" "}
+         <a
+            href="/politicas-de-uso-Argental"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline"
+          >
+            Política de Uso y Limitación de Responsabilidad de los Agentes Argental
+          </a>.
+        </p>
+      </footer>
       </main>
     </div>
   );

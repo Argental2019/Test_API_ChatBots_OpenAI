@@ -343,7 +343,7 @@ export const AGENTS: Agent[] = [
     ],
     faqs: [
       "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
+      "¿Qué productos puede hacer y con qué nivel de producción?",
       "¿Cómo es la calidad respecto al pan sobado?",
       "¿Mantenimiento requerido?",
     ],
@@ -476,8 +476,8 @@ export const AGENTS: Agent[] = [
     ],
     faqs: [
       "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
+      "¿Qué productos puede hacer y con qué nivel de producción?",
+      "¿Cómo es la calidad respecto al pan sobado?",
       "¿Mantenimiento requerido?",
     ],
     systemPrompt: BASE_PROMPT({ agentId: "GALILEO-ARTESAN", agentName: "Sistema GALILEO ARTESANO", primaryFolderLabel: "Info pública" }),
