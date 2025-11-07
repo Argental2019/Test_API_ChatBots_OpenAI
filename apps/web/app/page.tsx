@@ -254,17 +254,27 @@ export default function MultiAgentChat() {
     return (
       <div className="min-h-screen bg-white">
         <header className="border-b bg-white/70 backdrop-blur">
-          <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {/* 👇 REEMPLAZO: logo encima de degradé */}
-              <div className="relative size-8 rounded-lg bg-gradient-to-tr from-gray-900 to-gray-700 overflow-hidden">
-                <Image src="/LOGO.png" alt="Logo" fill sizes="32px" className="object-contain" priority />
-              </div>
-              <span className="text-lg font-semibold tracking-tight text-gray-900">Argental · Agentes IA</span>
-            </div>
-            <div className="text-xs text-gray-500">v1</div>
-          </div>
-        </header>
+  <div className="mx-auto max-w-6xl px-4 py-5 flex items-center justify-between">
+    {/* IZQUIERDA: logo + título */}
+    <div className="flex items-center gap-4">
+      <Image
+        src="/logo-ai.jpg"
+        alt="Argental Avanza"
+        width={220}
+        height={70}
+        className="h-16 w-auto object-contain" 
+        priority
+      />
+      <span className="text-xl font-semibold tracking-tight text-gray-900">
+        Argental · Agentes IA
+      </span>
+    </div>
+
+    {/* DERECHA: versión (opcional) */}
+    <div className="text-sm text-gray-500">v1</div>
+  </div>
+</header>
+
 
         <main className="mx-auto max-w-6xl px-4 py-12">
           <div className="mb-10">
@@ -512,7 +522,7 @@ export default function MultiAgentChat() {
           </div>
         </section>
 
-      
+
 
 
       </main>

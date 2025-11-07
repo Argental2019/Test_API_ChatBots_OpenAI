@@ -210,24 +210,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
       <h2 className="mt-1 text-base font-semibold text-gray-900 leading-tight">{agent.name}</h2>
       <p className="text-[11px] text-gray-500">{agent.description}</p>
     </div>
-
-    {/* Derecha: LOGO absoluto (no empuja nada) */}
-    <Link
-      href="/"
-      className="absolute right-4 hidden sm:block"
-      aria-label="Ir al inicio"
-    >
-      {/* definir width/height evita “saltos” de layout */}
-      <img
-        src="/logo-ai.jpg"
-        alt="Argental"
-        width="180"
-        height="48"
-        className="h-[80px] w-auto object-contain"
-        loading="eager"
-      />
-      {/* Si usás next/image, igual: width={110} height={32} className="h-8 w-auto" */}
-    </Link>
+    {/* (Logo eliminado) */}
   </div>
 </header>
 
