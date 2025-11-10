@@ -255,23 +255,38 @@ export default function MultiAgentChat() {
       <div className="min-h-screen bg-white">
         <header className="border-b bg-white/70 backdrop-blur">
   <div className="mx-auto max-w-6xl px-4 py-5 flex items-center justify-between">
-    {/* IZQUIERDA: logo + título */}
-    <div className="flex items-center gap-4">
-      <Image
-        src="/logo-ai.jpg"
-        alt="Argental Avanza"
-        width={220}
-        height={70}
-        className="h-16 w-auto object-contain" 
-        priority
-      />
-      <span className="text-xl font-semibold tracking-tight text-gray-900">
-        Argental · Agentes IA
-      </span>
-    </div>
+{/* IZQUIERDA: logo + título en 1° fila, políticas debajo con poco espacio */}
+<div className="flex items-center flex-wrap gap-x-4 gap-y-0 not-prose">
+  <Image
+    src="/logo-ai.jpg"
+    alt="Argental Avanza"
+    width={260}
+    height={84}
+    className="h-20 md:h-24 w-auto object-contain shrink-0"
+    priority
+  />
 
-    {/* DERECHA: versión (opcional) */}
-    <div className="text-sm text-gray-500">v1</div>
+  <span className="text-2xl md:text-3xl font-semibold leading-tight tracking-tight text-gray-900 whitespace-nowrap shrink-0">
+    Argental · Agentes IA
+  </span>
+
+  {/* 2ª fila: sin margen extra */}
+  <p className="basis-full text-[11px] leading-snug text-gray-600 mt-0.5 mb-0">
+    El uso de los Agentes Argental implica la aceptación de la siguiente{" "}
+    <a
+      href="/politicas-de-uso-Argental"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-blue-600 hover:underline"
+    >
+      Política de Uso y Limitación de Responsabilidad de los Agentes Argental
+    </a>.
+  </p>
+</div>
+
+
+
+ 
   </div>
 </header>
 
