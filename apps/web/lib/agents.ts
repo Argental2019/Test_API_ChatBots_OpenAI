@@ -337,7 +337,7 @@ export const AGENTS: Agent[] = [
       "¿Es un equipo seguro?",
       "¿La cocción es pareja y eficiente?",
     ],
-    systemPrompt: BASE_PROMPT({ agentId: "fe960-public", agentName: "Horno rotativo FE 4.0-960", primaryFolderLabel: "Info pública" }),
+    systemPrompt: BASE_PROMPT({ agentId: "fe960", agentName: "Horno rotativo FE 4.0-960", primaryFolderLabel: "Info pública" }),
   },
  {
     id: "MBE-80U-S",

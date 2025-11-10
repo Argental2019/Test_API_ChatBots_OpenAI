@@ -278,7 +278,23 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
                       mine ? "bg-gray-900 text-white shadow-md" : "border bg-white text-gray-900 shadow-sm"
                     }`}
                   >
-                    <Markdown className={mine ? "" : ""}>{m.content}</Markdown>
+                    <Markdown
+  className={
+    mine
+      ? "whitespace-pre-wrap leading-relaxed" // ← solo para el usuario
+      : [
+          "prose prose-sm sm:prose-base max-w-none leading-relaxed",
+          // párrafos normales más compactos
+          "[&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5",
+          // TÍTULOS en negrita: párrafos que SOLO contienen un <strong>
+          "[&_p:has(>strong:only-child)]:mt-4",
+          "[&_p:has(>strong:only-child)]:mb-1",
+        ].join(" ")
+  }
+>
+  {m.content}
+</Markdown>
+
                     <div className={`mt-1 text-[11px] ${mine ? "text-gray-300" : "text-gray-500"}`}>
                       {mine ? "Vos" : agent.name} · {formatTime(m.ts)}
                     </div>

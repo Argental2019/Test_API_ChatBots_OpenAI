@@ -255,23 +255,24 @@ export default function MultiAgentChat() {
       <div className="min-h-screen bg-white">
         <header className="border-b bg-white/70 backdrop-blur">
   <div className="mx-auto max-w-6xl px-4 py-5 flex items-center justify-between">
-{/* IZQUIERDA: logo + título en 1° fila, políticas debajo con poco espacio */}
-<div className="flex items-center flex-wrap gap-x-4 gap-y-0 not-prose">
+    {/* IZQUIERDA: logo + título */}
+{/* IZQUIERDA: logo + título en una fila, párrafo debajo */}
+<div className="flex items-center gap-4 flex-wrap">
   <Image
     src="/logo-ai.jpg"
     alt="Argental Avanza"
     width={260}
     height={84}
-    className="h-20 md:h-24 w-auto object-contain shrink-0"
+    className="h-20 md:h-24 w-auto object-contain shrink-0" // ← evita que el logo se achique
     priority
   />
 
-  <span className="text-2xl md:text-3xl font-semibold leading-tight tracking-tight text-gray-900 whitespace-nowrap shrink-0">
+  <span className="text-xl md:text-2xl font-semibold tracking-tight text-gray-900 whitespace-nowrap shrink-0">
     Argental · Agentes IA
   </span>
 
-  {/* 2ª fila: sin margen extra */}
-  <p className="basis-full text-[11px] leading-snug text-gray-600 mt-0.5 mb-0">
+  {/* forzamos nueva línea y tamaño menor */}
+  <p className="basis-full text-[11px] leading-relaxed text-gray-600 mt-1">
     El uso de los Agentes Argental implica la aceptación de la siguiente{" "}
     <a
       href="/politicas-de-uso-Argental"
@@ -283,7 +284,6 @@ export default function MultiAgentChat() {
     </a>.
   </p>
 </div>
-
 
 
  
