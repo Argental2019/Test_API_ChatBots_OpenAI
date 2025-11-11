@@ -52,7 +52,6 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agent]);
 
-  // autosize textarea
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
@@ -127,16 +126,50 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
 
       if (!response.ok || !response.body) throw new Error("Error en la respuesta");
 
-      /* ================= STREAMING SIMPLE + LOG DE @@MISS (sin ocultar) ================ */
+      /* ===== STREAMING + DETECTOR ROBUSTO DE @@MISS (sin ocultar) ===== */
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
 
-      // Mensaje visible para el usuario
       let assistantMessage: ChatMessage = { role: "assistant", content: "", ts: Date.now() };
       setMessages((prev) => [...prev, assistantMessage]);
 
       let buf = "";
-      let missSent = false; // evita duplicados si la primera línea llega en varios chunks
+      let missSent = false;
+      // buffer para la PRIMERA línea (puede venir en varios chunks)
+      let firstLineBuf = "";
+
+      const tryDetectMiss = () => {
+        if (missSent) return;
+        // Tomamos la primera línea *si existe*, si no, usamos lo que haya
+        const nl = assistantMessage.content.indexOf("\n");
+        const firstLine =
+          nl >= 0 ? assistantMessage.content.slice(0, nl) : assistantMessage.content.slice(0, 500);
+        // Permitir espacios antes del tag
+        const line = firstLine.trimStart();
+        if (!line.includes("@@MISS")) return;
+
+        // Extraer el JSON que sigue a @@MISS (hasta cerrar la 1ra llave)
+        const idx = line.indexOf("@@MISS") + "@@MISS".length;
+        let jsonRaw = line.slice(idx).trim();
+
+        // Si todavía no hay '}', acumulamos más (primera línea puede estar incompleta)
+        if (!jsonRaw.endsWith("}")) return;
+
+        try {
+          const miss = JSON.parse(jsonRaw);
+          reportMiss({
+            agentId: agent.id,
+            query: miss.query,
+            reason: miss.reason || "desconocido",
+            need: miss.need || "revisar_fuente",
+            ts: Date.now(),
+            uiVersion: process.env.NEXT_PUBLIC_APP_VERSION || "dev",
+          });
+          missSent = true;
+        } catch (e) {
+          console.warn("MISS parse error (tryDetectMiss)", e);
+        }
+      };
 
       while (true) {
         const { value, done } = await reader.read();
@@ -158,7 +191,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
             const delta: string | undefined = parsed.choices?.[0]?.delta?.content;
             if (!delta) continue;
 
-            // 1) Mostrar al usuario tal cual (no filtramos nada)
+            // Mostrar tal cual al usuario
             assistantMessage.content += delta;
             setMessages((prev) => {
               const nm = [...prev];
@@ -166,31 +199,44 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
               return nm;
             });
 
-            // 2) Si la primera línea empieza con @@MISS, registrarlo (sin ocultarlo)
-            if (!missSent && assistantMessage.content.startsWith("@@MISS")) {
-              const firstLine = assistantMessage.content.split("\n", 1)[0].trim();
-              try {
-                const miss = JSON.parse(firstLine.replace("@@MISS", "").trim());
-                reportMiss({
-                  agentId: agent.id,
-                  query: miss.query,
-                  reason: miss.reason || "desconocido",
-                  need: miss.need || "revisar_fuente",
-                  ts: Date.now(),
-                  uiVersion: process.env.NEXT_PUBLIC_APP_VERSION || "dev",
-                });
-                missSent = true;
-              } catch (e) {
-                console.warn("MISS parse error", e);
+            // Alimentamos buffer de primera línea hasta encontrar \n
+            if (!missSent) {
+              firstLineBuf += delta;
+              const nl = firstLineBuf.indexOf("\n");
+              if (nl !== -1 || firstLineBuf.length > 500) {
+                // ya hay una "primera línea" razonable → intentar detectar
+                tryDetectMiss();
+              } else if (firstLineBuf.endsWith("}")) {
+                // si cerró llave, también intentamos por si la 1ra línea no trae \n
+                tryDetectMiss();
               }
             }
           } catch {
-            // líneas no JSON -> ignorar
+            // ignorar líneas no JSON
           }
         }
       }
       decoder.decode();
-      /* ================================================================================ */
+
+      // flush final: por si nunca vino \n pero cerró la llave
+      if (!missSent && firstLineBuf && firstLineBuf.trimStart().startsWith("@@MISS") && firstLineBuf.endsWith("}")) {
+        const line = firstLineBuf.trimStart();
+        const raw = line.slice(line.indexOf("@@MISS") + 6).trim();
+        try {
+          const miss = JSON.parse(raw);
+          reportMiss({
+            agentId: agent.id,
+            query: miss.query,
+            reason: miss.reason || "desconocido",
+            need: miss.need || "revisar_fuente",
+            ts: Date.now(),
+            uiVersion: process.env.NEXT_PUBLIC_APP_VERSION || "dev",
+          });
+        } catch (e) {
+          console.warn("MISS parse error (flush)", e);
+        }
+      }
+      /* ================================================================ */
     } catch (error) {
       console.error(error);
       setMessages((prev) => [
