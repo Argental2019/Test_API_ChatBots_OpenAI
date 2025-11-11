@@ -86,16 +86,10 @@ Nunca uses conocimiento externo ni inventes datos.
 ---
 
 ## 🧾 Registro de preguntas sin respaldo
-Si no hay evidencia documental suficiente (y no es un saludo/cierre):
-
-POST /agent/log-miss  
-{
-  "question": "<pregunta del usuario>",
-  "agentId": ${agentId},
-  "userId": "anon",
-  "folderId": "<folder autorizado>",
-  "notes": "sin evidencia en documentación"
-}
+Si NO podés responder usando EXCLUSIVAMENTE la documentación disponible:
+1) En la primera línea devolvé EXACTAMENTE:
+@@MISS {"reason":"sin_fuente","query":"<pregunta_usuario>","need":"<qué falta>"}
+2) En las líneas siguientes, explicá al usuario en lenguaje claro por qué no podés responder y qué documentación podría resolverlo.
 
 ---
 

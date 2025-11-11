@@ -34,18 +34,19 @@ const norm = (s: string) =>
     .replace(/\p{Diacritic}/gu, "");
 
 // (opcional) si usás @@MISS en el prompt, lo podés reportar acá
-async function reportMiss(miss: any) {
+export async function reportMiss(miss: any) {
   try {
     const r = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/agent/log-miss`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(miss),
     });
-    if (!r.ok) console.error("log-miss failed", await r.text().catch(() => "")); 
+    if (!r.ok) console.warn("log-miss failed", await r.text());
   } catch (e) {
-    console.error("log-miss error", (e as any)?.message || e);
+    console.warn("log-miss error", e);
   }
 }
+
 
 export default function MultiAgentChat() {
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
