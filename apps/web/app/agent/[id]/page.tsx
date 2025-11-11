@@ -4,14 +4,12 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Home,
-  Sparkles,
   Send,
   Loader2,
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
-
-import { AGENTS, getAgentById } from "@/lib/agents";
+import { getAgentById } from "@/lib/agents";
 
 type ChatMessage = { role: "user" | "assistant"; content: string; ts?: number };
 
@@ -20,6 +18,24 @@ function formatTime(ts?: number) {
   const d = new Date(ts);
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
+
+/* ===== helper para registrar misses (no exportar) ===== */
+async function reportMiss(miss: any) {
+   console.log("MISS detectado →", miss); // <- agregar
+  try {
+    const base = (process.env.NEXT_PUBLIC_BACKEND_URL || "").replace(/\/$/, "");
+    const url = base ? `${base}/api/agent/log-miss` : "/api/agent/log-miss";
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(miss),
+    });
+    if (!r.ok) console.warn("log-miss failed", await r.text());
+  } catch (e) {
+    console.warn("log-miss error", e);
+  }
+}
+/* ====================================================== */
 
 export default function AgentChatPage({ params }: { params: { id: string } }) {
   const agent = getAgentById(params.id);
@@ -38,9 +54,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
   }, [messages]);
 
   useEffect(() => {
-    if (agent && !contextLoaded) {
-      loadContext();
-    }
+    if (agent && !contextLoaded) loadContext();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agent]);
 
@@ -68,9 +82,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
     setLoading(true);
     setToast(null);
     try {
-      // “wake up” opcional (si usás health en el backend)
       await fetch(`${process.env.NEXT_PUBLIC_BACKEND_HEALTH ?? ""}` || "/api/noop").catch(() => {});
-
       const r = await fetch("/api/context", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -93,7 +105,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
     }
   };
 
-  // AHORA ACEPTA TEXTO OPCIONAL (para enviar FAQs directo)
+  // Enviar mensaje (acepta texto para FAQs)
   const sendMessage = async (text?: string) => {
     const content = (text ?? input).trim();
     if (!content || loading || !contextLoaded) return;
@@ -102,7 +114,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
     const history = [...messages, userMessage];
 
     setMessages(history);
-    setInput(""); // limpiamos el textarea si venía escribiendo
+    setInput("");
     setLoading(true);
 
     try {
@@ -121,12 +133,17 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
 
       if (!response.ok || !response.body) throw new Error("Error en la respuesta");
 
-      // Streaming SSE robusto (UTF-8)
+      /* ================== STREAMING CON FILTRO @@MISS ================== */
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
 
+      // Mensaje visible para el usuario
       let assistantMessage: ChatMessage = { role: "assistant", content: "", ts: Date.now() };
       setMessages((prev) => [...prev, assistantMessage]);
+
+      let firstLineChecked = false;
+      let firstLineBuffer = ""; // acumula hasta encontrar el primer \n
+      let displayBuffer = "";   // lo que sí ve el usuario
 
       let buf = "";
       while (true) {
@@ -146,21 +163,90 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
 
           try {
             const parsed = JSON.parse(data);
-            const delta = parsed.choices?.[0]?.delta?.content;
-            if (delta) {
-              assistantMessage.content += delta;
-              setMessages((prev) => {
-                const nm = [...prev];
-                nm[nm.length - 1] = { ...assistantMessage };
-                return nm;
-              });
+            const delta: string | undefined = parsed.choices?.[0]?.delta?.content;
+            if (!delta) continue;
+
+            // Primera línea: detectar y ocultar @@MISS {...}
+            if (!firstLineChecked) {
+              firstLineBuffer += delta;
+
+              const nl = firstLineBuffer.indexOf("\n");
+              if (nl === -1) {
+                // Aún no cerró la primera línea; no mostramos nada por ahora
+              } else {
+                const firstLine = firstLineBuffer.slice(0, nl).trim().replace(/\r$/, "");
+                const rest = firstLineBuffer.slice(nl + 1); // resto del mismo chunk
+                firstLineChecked = true;
+
+                if (firstLine.startsWith("@@MISS")) {
+                  // Intentar parsear y registrar el miss (sin await)
+                  try {
+                    const missRaw = firstLine.replace("@@MISS", "").trim();
+                    const miss = JSON.parse(missRaw);
+                    reportMiss({
+                      agentId: agent.id,
+                      query: miss.query,
+                      reason: miss.reason || "desconocido",
+                      need: miss.need || "revisar_fuente",
+                      ts: Date.now(),
+                      uiVersion: process.env.NEXT_PUBLIC_APP_VERSION || "dev",
+                    });
+                  } catch (e) {
+                    console.warn("MISS parse error", e);
+                  }
+                  // NO mostramos la primera línea; sí mostramos el resto
+                  displayBuffer += rest;
+                } else {
+                  // No es MISS: mostramos también la primera línea
+                  displayBuffer += firstLine + "\n" + rest;
+                }
+              }
+            } else {
+              // Primera línea ya resuelta
+              displayBuffer += delta;
             }
+
+            // Refrescar el mensaje visible
+            assistantMessage.content = displayBuffer;
+            setMessages((prev) => {
+              const nm = [...prev];
+              nm[nm.length - 1] = { ...assistantMessage };
+              return nm;
+            });
           } catch {
             // líneas no JSON -> ignorar
           }
         }
       }
       decoder.decode();
+
+      // Flush final si nunca llegó un \n y todo quedó en firstLineBuffer
+      if (!firstLineChecked && firstLineBuffer) {
+        const maybeFirst = firstLineBuffer.trim().replace(/\r$/, "");
+        if (maybeFirst.startsWith("@@MISS")) {
+          try {
+            const miss = JSON.parse(maybeFirst.replace("@@MISS", "").trim());
+            reportMiss({
+              agentId: agent.id,
+              query: miss.query,
+              reason: miss.reason || "desconocido",
+              need: miss.need || "revisar_fuente",
+              ts: Date.now(),
+              uiVersion: process.env.NEXT_PUBLIC_APP_VERSION || "dev",
+            });
+          } catch {}
+          // No mostramos la línea @@MISS; si no hubo más contenido, queda vacío
+        } else {
+          displayBuffer += firstLineBuffer;
+          assistantMessage.content = displayBuffer;
+          setMessages((prev) => {
+            const nm = [...prev];
+            nm[nm.length - 1] = { ...assistantMessage };
+            return nm;
+          });
+        }
+      }
+      /* ================================================================ */
     } catch (error) {
       console.error(error);
       setMessages((prev) => [
@@ -186,37 +272,31 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="min-h-screen bg-white">
-     <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
-  {/* contenedor RELATIVE y altura fija */}
-  <div className="relative mx-auto max-w-4xl px-4 h-24 flex items-center">
-    {/* Izquierda: botón volver (absolute) */}
-    <Link
-      href="/"
-      className="absolute left-4 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-    >
-      <Home className="size-4" />
-      Volver
-    </Link>
+      <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
+        <div className="relative mx-auto max-w-4xl px-4 h-24 flex items-center">
+          <Link
+            href="/"
+            className="absolute left-4 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <Home className="size-4" />
+            Volver
+          </Link>
 
-    {/* Centro: SIEMPRE centrado */}
-    <div className="mx-auto text-center pointer-events-none">
-      <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-gray-600">
-        <span className="relative flex size-2">
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
-        </span>
-        Activo
-      </div>
-      <h2 className="mt-1 text-base font-semibold text-gray-900 leading-tight">{agent.name}</h2>
-      <p className="text-[11px] text-gray-500">{agent.description}</p>
-    </div>
-    {/* (Logo eliminado) */}
-  </div>
-</header>
-
+        <div className="mx-auto text-center pointer-events-none">
+            <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-gray-600">
+              <span className="relative flex size-2">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+              </span>
+              Activo
+            </div>
+            <h2 className="mt-1 text-base font-semibold text-gray-900 leading-tight">{agent.name}</h2>
+            <p className="text-[11px] text-gray-500">{agent.description}</p>
+          </div>
+        </div>
+      </header>
 
       <main className="mx-auto max-w-4xl px-4">
-        {/* Toast */}
         {toast && (
           <div
             className={`mt-4 flex items-center gap-2 rounded-xl border px-4 py-3 text-sm ${
@@ -230,13 +310,12 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
           </div>
         )}
 
-        {/* FAQs */}
         {!!agent.faqs?.length && (
           <div className="mt-6 flex flex-wrap gap-2">
             {agent.faqs.map((faq: string, i: number) => (
               <button
                 key={i}
-                onClick={() => sendMessage(faq)} // ← ahora envía directo
+                onClick={() => sendMessage(faq)}
                 disabled={loading || !contextLoaded}
                 className="rounded-full border bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -246,7 +325,6 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
           </div>
         )}
 
-        {/* Chat */}
         <section className="mt-6 rounded-2xl border bg-white shadow-sm">
           <div className="max-h-[64vh] overflow-y-auto p-4 sm:p-6">
             {!contextLoaded && (
@@ -255,8 +333,6 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
                   <Loader2 className="size-5 animate-spin" />
                   <span>Verificando cambios…</span>
                 </div>
-
-                {/* Skeleton bubbles */}
                 <div className="flex justify-start">
                   <div className="h-16 w-3/4 max-w-[520px] animate-pulse rounded-2xl bg-gray-100" />
                 </div>
@@ -278,26 +354,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
                       mine ? "bg-gray-900 text-white shadow-md" : "border bg-white text-gray-900 shadow-sm"
                     }`}
                   >
-                    <Markdown
-  className={
-    mine
-      ? "whitespace-pre-wrap leading-relaxed"
-      : [
-          "prose prose-sm sm:prose-base max-w-none leading-relaxed",
-          // párrafos/listas compactos
-          "[&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5",
-          // TÍTULOS en negrita: cuando el párrafo tiene SOLO un <strong>,
-          // hacemos que ese <strong> sea block y le damos el margen ahí.
-          "[&_p>strong:only-child]:block",
-          "[&_p>strong:only-child]:mt-4",
-          "[&_p>strong:only-child]:mb-1",
-        ].join(" ")
-  }
->
-  {m.content}
-</Markdown>
-
-
+                    <Markdown className={mine ? "" : ""}>{m.content}</Markdown>
                     <div className={`mt-1 text-[11px] ${mine ? "text-gray-300" : "text-gray-500"}`}>
                       {mine ? "Vos" : agent.name} · {formatTime(m.ts)}
                     </div>
@@ -308,7 +365,6 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
             <div ref={endRef} />
           </div>
 
-          {/* Composer */}
           <div className="sticky bottom-0 border-t bg-white p-3 sm:p-4">
             <div className="flex items-end gap-3">
               <textarea
@@ -334,19 +390,19 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
         </section>
 
         <footer className="mx-auto max-w-4xl py-6 mt-6 border-t text-center text-xs text-gray-500 space-y-2">
-       <p>© {new Date().getFullYear()} Argental · Asistentes</p>
-        <p className="text-[11px] leading-relaxed">
-       El uso de los Agentes Argental implica la aceptación de la siguiente{" "}
-         <a
-            href="/politicas-de-uso-Argental"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:underline"
-          >
-            Política de Uso y Limitación de Responsabilidad de los Agentes Argental
-          </a>.
-        </p>
-      </footer>
+          <p>© {new Date().getFullYear()} Argental · Asistentes</p>
+          <p className="text-[11px] leading-relaxed">
+            El uso de los Agentes Argental implica la aceptación de la siguiente{" "}
+            <a
+              href="/politicas-de-uso-Argental"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              Política de Uso y Limitación de Responsabilidad de los Agentes Argental
+            </a>.
+          </p>
+        </footer>
       </main>
     </div>
   );
