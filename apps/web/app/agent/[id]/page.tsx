@@ -2,13 +2,7 @@
 import Markdown from "@/components/markdown";
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import {
-  Home,
-  Send,
-  Loader2,
-  CheckCircle2,
-  AlertCircle,
-} from "lucide-react";
+import { Home, Send, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { getAgentById } from "@/lib/agents";
 
 type ChatMessage = { role: "user" | "assistant"; content: string; ts?: number };
@@ -21,7 +15,7 @@ function formatTime(ts?: number) {
 
 /* ===== helper para registrar misses (no exportar) ===== */
 async function reportMiss(miss: any) {
-   console.log("MISS detectado →", miss); // <- agregar
+  console.log("MISS detectado →", miss);
   try {
     const base = (process.env.NEXT_PUBLIC_BACKEND_URL || "").replace(/\/$/, "");
     const url = base ? `${base}/api/agent/log-miss` : "/api/agent/log-miss";
@@ -133,7 +127,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
 
       if (!response.ok || !response.body) throw new Error("Error en la respuesta");
 
-      /* ================== STREAMING CON FILTRO @@MISS ================== */
+      /* ================= STREAMING SIMPLE + LOG DE @@MISS (sin ocultar) ================ */
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
 
@@ -141,11 +135,9 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
       let assistantMessage: ChatMessage = { role: "assistant", content: "", ts: Date.now() };
       setMessages((prev) => [...prev, assistantMessage]);
 
-      let firstLineChecked = false;
-      let firstLineBuffer = ""; // acumula hasta encontrar el primer \n
-      let displayBuffer = "";   // lo que sí ve el usuario
-
       let buf = "";
+      let missSent = false; // evita duplicados si la primera línea llega en varios chunks
+
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
@@ -166,87 +158,39 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
             const delta: string | undefined = parsed.choices?.[0]?.delta?.content;
             if (!delta) continue;
 
-            // Primera línea: detectar y ocultar @@MISS {...}
-            if (!firstLineChecked) {
-              firstLineBuffer += delta;
-
-              const nl = firstLineBuffer.indexOf("\n");
-              if (nl === -1) {
-                // Aún no cerró la primera línea; no mostramos nada por ahora
-              } else {
-                const firstLine = firstLineBuffer.slice(0, nl).trim().replace(/\r$/, "");
-                const rest = firstLineBuffer.slice(nl + 1); // resto del mismo chunk
-                firstLineChecked = true;
-
-                if (firstLine.startsWith("@@MISS")) {
-                  // Intentar parsear y registrar el miss (sin await)
-                  try {
-                    const missRaw = firstLine.replace("@@MISS", "").trim();
-                    const miss = JSON.parse(missRaw);
-                    reportMiss({
-                      agentId: agent.id,
-                      query: miss.query,
-                      reason: miss.reason || "desconocido",
-                      need: miss.need || "revisar_fuente",
-                      ts: Date.now(),
-                      uiVersion: process.env.NEXT_PUBLIC_APP_VERSION || "dev",
-                    });
-                  } catch (e) {
-                    console.warn("MISS parse error", e);
-                  }
-                  // NO mostramos la primera línea; sí mostramos el resto
-                  displayBuffer += rest;
-                } else {
-                  // No es MISS: mostramos también la primera línea
-                  displayBuffer += firstLine + "\n" + rest;
-                }
-              }
-            } else {
-              // Primera línea ya resuelta
-              displayBuffer += delta;
-            }
-
-            // Refrescar el mensaje visible
-            assistantMessage.content = displayBuffer;
+            // 1) Mostrar al usuario tal cual (no filtramos nada)
+            assistantMessage.content += delta;
             setMessages((prev) => {
               const nm = [...prev];
               nm[nm.length - 1] = { ...assistantMessage };
               return nm;
             });
+
+            // 2) Si la primera línea empieza con @@MISS, registrarlo (sin ocultarlo)
+            if (!missSent && assistantMessage.content.startsWith("@@MISS")) {
+              const firstLine = assistantMessage.content.split("\n", 1)[0].trim();
+              try {
+                const miss = JSON.parse(firstLine.replace("@@MISS", "").trim());
+                reportMiss({
+                  agentId: agent.id,
+                  query: miss.query,
+                  reason: miss.reason || "desconocido",
+                  need: miss.need || "revisar_fuente",
+                  ts: Date.now(),
+                  uiVersion: process.env.NEXT_PUBLIC_APP_VERSION || "dev",
+                });
+                missSent = true;
+              } catch (e) {
+                console.warn("MISS parse error", e);
+              }
+            }
           } catch {
             // líneas no JSON -> ignorar
           }
         }
       }
       decoder.decode();
-
-      // Flush final si nunca llegó un \n y todo quedó en firstLineBuffer
-      if (!firstLineChecked && firstLineBuffer) {
-        const maybeFirst = firstLineBuffer.trim().replace(/\r$/, "");
-        if (maybeFirst.startsWith("@@MISS")) {
-          try {
-            const miss = JSON.parse(maybeFirst.replace("@@MISS", "").trim());
-            reportMiss({
-              agentId: agent.id,
-              query: miss.query,
-              reason: miss.reason || "desconocido",
-              need: miss.need || "revisar_fuente",
-              ts: Date.now(),
-              uiVersion: process.env.NEXT_PUBLIC_APP_VERSION || "dev",
-            });
-          } catch {}
-          // No mostramos la línea @@MISS; si no hubo más contenido, queda vacío
-        } else {
-          displayBuffer += firstLineBuffer;
-          assistantMessage.content = displayBuffer;
-          setMessages((prev) => {
-            const nm = [...prev];
-            nm[nm.length - 1] = { ...assistantMessage };
-            return nm;
-          });
-        }
-      }
-      /* ================================================================ */
+      /* ================================================================================ */
     } catch (error) {
       console.error(error);
       setMessages((prev) => [
@@ -282,7 +226,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
             Volver
           </Link>
 
-        <div className="mx-auto text-center pointer-events-none">
+          <div className="mx-auto text-center pointer-events-none">
             <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-gray-600">
               <span className="relative flex size-2">
                 <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
