@@ -14,11 +14,13 @@ function formatTime(ts?: number) {
 }
 
 /* ===== helper para registrar misses (no exportar) ===== */
+/* ===== helper para registrar misses (same-origin, sin CORS) ===== */
 async function reportMiss(miss: any) {
   console.log("MISS detectado →", miss);
   try {
-    const base = (process.env.NEXT_PUBLIC_BACKEND_URL || "").replace(/\/$/, "");
-    const url = base ? `${base}/api/agent/log-miss` : "/api/agent/log-miss";
+    // Forzamos same-origin para evitar CORS:
+    const url = "/api/agent/log-miss";
+
     const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -29,6 +31,7 @@ async function reportMiss(miss: any) {
     console.warn("log-miss error", e);
   }
 }
+
 /* ====================================================== */
 
 export default function AgentChatPage({ params }: { params: { id: string } }) {
