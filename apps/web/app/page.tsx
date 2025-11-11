@@ -34,9 +34,11 @@ const norm = (s: string) =>
     .replace(/\p{Diacritic}/gu, "");
 
 // (opcional) si usás @@MISS en el prompt, lo podés reportar acá
-export async function reportMiss(miss: any) {
+async function reportMiss(miss: any) {
+  const base = (process.env.NEXT_PUBLIC_BACKEND_URL || "").replace(/\/$/, "");
+  const url = base ? `${base}/api/agent/log-miss` : "/api/agent/log-miss";
   try {
-    const r = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/agent/log-miss`, {
+    const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(miss),
