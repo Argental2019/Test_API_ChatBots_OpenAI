@@ -13,14 +13,11 @@ function formatTime(ts?: number) {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-/* ===== helper para registrar misses (no exportar) ===== */
 /* ===== helper para registrar misses (same-origin, sin CORS) ===== */
 async function reportMiss(miss: any) {
   console.log("MISS detectado →", miss);
   try {
-    // Forzamos same-origin para evitar CORS:
     const url = "/api/agent/log-miss";
-
     const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -32,9 +29,54 @@ async function reportMiss(miss: any) {
   }
 }
 
+/* ===== Admin builder: inyecta bloque de depuración o restricción pública ===== */
+function buildSystemPrompt(agent: any, adminMode: boolean) {
+  let base = String(agent.systemPrompt || "");
+
+  if (adminMode) {
+    base += `
+
+---
+## 🔐 ADMIN MODE (activo)
+Estás conversando con un administrador autorizado.
+Al final de **cada** respuesta, añadí un bloque EXACTAMENTE con el título:
+**🔧 Depuración y origen de datos (solo admin)**
+- Carpetas consultadas: incluir nombre y/o ID si está disponible.
+- Archivos fuente utilizados: nombre y/o ID y, si aplica, páginas (ej.: pág. 2–5).
+- Snapshot/índice interno: clave/etiqueta si está disponible; si no, "no disponible".
+Si algún metadato no está en el contexto, indicá: "no disponible".
+
+Además, EMITÍ una línea oculta en cualquier parte del texto con el siguiente formato para que el cliente pueda parsearla:
+@@META {"files":[{"name":"<nombre_opcional>","id":"<id_opcional>","pages":"<páginas_opcionales>"}]}
+(No repitas esa línea en el bloque visible.)
+`;
+  } else {
+    base += `
+
+---
+## 🔒 MODO PÚBLICO
+Prohibido mencionar nombres de archivos, IDs de Drive, rutas internas o detalles de infraestructura.
+`;
+  }
+
+  // Reglas MISS (se mantienen igual)
+  base += `
+
+---
+## 🧾 Registro de preguntas sin respaldo
+Si NO podés responder usando EXCLUSIVAMENTE la documentación disponible:
+1) En la primera línea devolvé EXACTAMENTE:
+@@MISS {"reason":"sin_fuente","query":"<pregunta_usuario>","need":"<qué falta>"}
+2) En las líneas siguientes, explicá al usuario por qué no podés responder y qué documentos resolverían la falta.
+`;
+
+  return base;
+}
+
 /* ====================================================== */
 
 export default function AgentChatPage({ params }: { params: { id: string } }) {
+  const [isAdmin, setIsAdmin] = useState(false);
   const agent = getAgentById(params.id);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -101,10 +143,44 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
     }
   };
 
+  // Parsea @@META {...} para extraer archivos
+  function extractFilesFromMeta(text: string): Array<{ name?: string; id?: string; pages?: string }> {
+    const rx = /@@META\s*(\{[\s\S]*?\})/;
+    const m = text.match(rx);
+    if (!m) return [];
+    try {
+      const json = JSON.parse(m[1]);
+      if (!json?.files) return [];
+      if (Array.isArray(json.files)) {
+        return json.files
+          .filter(Boolean)
+          .map((f: any) => ({ name: f?.name, id: f?.id, pages: f?.pages }));
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  }
+
   // Enviar mensaje (acepta texto para FAQs)
   const sendMessage = async (text?: string) => {
     const content = (text ?? input).trim();
     if (!content || loading || !contextLoaded) return;
+
+    // Intercepta token admin (persistente por sesión de chat)
+    if (content === "##DEBUGARGENTAL##") {
+      setIsAdmin(true);
+      setInput("");
+      setToast({ type: "ok", msg: "🔧 Admin Mode activado para este chat." });
+      setTimeout(() => setToast(null), 2000);
+      // Mensaje de confirmación local (no llamamos al backend ni logueamos el token)
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content, ts: Date.now() },
+        { role: "assistant", content: "🔧 Depuración activada. A partir de ahora puedo incluir metadatos en las respuestas.", ts: Date.now() },
+      ]);
+      return;
+    }
 
     const userMessage: ChatMessage = { role: "user", content, ts: Date.now() };
     const history = [...messages, userMessage];
@@ -114,6 +190,8 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
     setLoading(true);
 
     try {
+      const systemPrompt = buildSystemPrompt(agent, isAdmin);
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
@@ -122,8 +200,9 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
         },
         body: JSON.stringify({
           messages: history,
-          systemPrompt: agent.systemPrompt,
+          systemPrompt,
           context: contextCache,
+          adminMode: isAdmin, // opcional por si el backend lo usa
         }),
       });
 
@@ -138,24 +217,18 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
 
       let buf = "";
       let missSent = false;
-      // buffer para la PRIMERA línea (puede venir en varios chunks)
       let firstLineBuf = "";
 
       const tryDetectMiss = () => {
         if (missSent) return;
-        // Tomamos la primera línea *si existe*, si no, usamos lo que haya
         const nl = assistantMessage.content.indexOf("\n");
         const firstLine =
           nl >= 0 ? assistantMessage.content.slice(0, nl) : assistantMessage.content.slice(0, 500);
-        // Permitir espacios antes del tag
         const line = firstLine.trimStart();
-        if (!line.includes("@@MISS")) return;
+        if (!line.startsWith("@@MISS")) return;
 
-        // Extraer el JSON que sigue a @@MISS (hasta cerrar la 1ra llave)
         const idx = line.indexOf("@@MISS") + "@@MISS".length;
         let jsonRaw = line.slice(idx).trim();
-
-        // Si todavía no hay '}', acumulamos más (primera línea puede estar incompleta)
         if (!jsonRaw.endsWith("}")) return;
 
         try {
@@ -194,7 +267,6 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
             const delta: string | undefined = parsed.choices?.[0]?.delta?.content;
             if (!delta) continue;
 
-            // Mostrar tal cual al usuario
             assistantMessage.content += delta;
             setMessages((prev) => {
               const nm = [...prev];
@@ -202,15 +274,12 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
               return nm;
             });
 
-            // Alimentamos buffer de primera línea hasta encontrar \n
             if (!missSent) {
               firstLineBuf += delta;
               const nl = firstLineBuf.indexOf("\n");
               if (nl !== -1 || firstLineBuf.length > 500) {
-                // ya hay una "primera línea" razonable → intentar detectar
                 tryDetectMiss();
               } else if (firstLineBuf.endsWith("}")) {
-                // si cerró llave, también intentamos por si la 1ra línea no trae \n
                 tryDetectMiss();
               }
             }
@@ -221,10 +290,14 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
       }
       decoder.decode();
 
-      // flush final: por si nunca vino \n pero cerró la llave
-      if (!missSent && firstLineBuf && firstLineBuf.trimStart().startsWith("@@MISS") && firstLineBuf.endsWith("}")) {
-        const line = firstLineBuf.trimStart();
-        const raw = line.slice(line.indexOf("@@MISS") + 6).trim();
+      // Flush final de @@MISS si vino sin salto de línea
+      if (
+        !missSent &&
+        firstLineBuf &&
+        firstLineBuf.trimStart().startsWith("@@MISS") &&
+        firstLineBuf.endsWith("}")
+      ) {
+        const raw = firstLineBuf.trimStart().slice(firstLineBuf.indexOf("@@MISS") + 6).trim();
         try {
           const miss = JSON.parse(raw);
           reportMiss({
@@ -239,7 +312,51 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
           console.warn("MISS parse error (flush)", e);
         }
       }
-      /* ================================================================ */
+
+      /* ==== BLOQUE ADMIN SIN DUPLICAR + ARCHIVOS DESDE @@META ==== */
+      if (isAdmin) {
+        const alreadyHasBlock = /Depuración y origen de datos \(solo admin\)/i.test(
+          assistantMessage.content
+        );
+
+        // intenta extraer lista de archivos desde @@META {...}
+        const files = extractFilesFromMeta(assistantMessage.content);
+        const filesLine =
+          files.length > 0
+            ? files
+                .map((f) => {
+                  const name = f?.name ? `${f.name}` : "";
+                  const id = f?.id ? `${f.id}` : "";
+                  const pages = f?.pages ? ` (pág.: ${f.pages})` : "";
+                  const main = [name, id].filter(Boolean).join(" · ");
+                  return main ? `${main}${pages}` : "";
+                })
+                .filter(Boolean)
+                .join("; ")
+            : "";
+
+        // solo si NO vino el bloque visible, agregamos uno de fallback
+        if (!alreadyHasBlock) {
+          const folders =
+            Array.isArray(agent?.driveFolders) && agent.driveFolders.length
+              ? agent.driveFolders.join(", ")
+              : agent?.id ?? "no disponible";
+
+          const adminFooter =
+            `\n\n🔧 Depuración y origen de datos (solo admin)\n` +
+            `Carpetas consultadas: ${folders}\n` +
+            `Archivos fuente utilizados: ${filesLine || "no disponible"}\n` +
+            `Snapshot/índice interno: no disponible`;
+
+          assistantMessage.content += adminFooter;
+          setMessages((prev) => {
+            const nm = [...prev];
+            nm[nm.length - 1] = { ...assistantMessage };
+            return nm;
+          });
+        }
+      }
+      /* ============================================================ */
     } catch (error) {
       console.error(error);
       setMessages((prev) => [
@@ -281,7 +398,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
                 <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
               </span>
-              Activo
+              Activo {isAdmin && <span className="ml-2 rounded-full bg-gray-900 px-2 py-0.5 text-white">Admin</span>}
             </div>
             <h2 className="mt-1 text-base font-semibold text-gray-900 leading-tight">{agent.name}</h2>
             <p className="text-[11px] text-gray-500">{agent.description}</p>

@@ -2,22 +2,25 @@
 export type ChatMessage = { role: "user" | "assistant"; content: string; ts?: number };
 
 export type Agent = {
-  id: string;         // único, ej: "fe960-public"   
+  id: string;         // único, ej: "fe960"
   name: string;
-  family:string;
-  subfamily:string;
+  family: string;
+  subfamily: string;
   description: string;
-  accent: string;     // gradiente UI
-  driveFolders: string[]; // IDs exactos de Drive
+  accent: string;           // gradiente UI
+  driveFolders: string[];   // IDs exactos de Drive
   faqs: string[];
-  systemPrompt: string;   // se genera desde plantilla
+  systemPrompt: string;
+       // se genera desde plantilla
 };
 
+// ===================== BASE PROMPT =====================
 const BASE_PROMPT = ({
   agentId,
   agentName,
   primaryFolderLabel = "Info pública",
-}: { agentId: string; agentName: string, primaryFolderLabel?: string }) => `
+  adminMode = false,
+}: { agentId: string; agentName: string, primaryFolderLabel?: string; adminMode?: boolean }) => `
 # 🧠 Instrucciones del Agente: ${agentId}
 ### 🎯 Rol del agente
 Sos **Asesor Público ${agentId}**, un agente especializado **exclusivamente** en ${agentName} de panadería 
@@ -73,7 +76,7 @@ Podés **combinar, ampliar o explicar** los datos documentados para generar una 
    - Las explicaciones se basen en hechos reales del snapshot (por ejemplo, materiales, temperaturas, capacidades, componentes, funciones, etc.).
    - Podés describir **para qué sirven** o **qué beneficio aportan** esos elementos técnicos.
 
-**OBLIGATORIO: Incluir TODOS los datos cuantitativos:**
+**OBLIGATORIO: Incluir TODOS los datos cuantitativos: Usar esto SÓLO como guía, NO usar esto como INFORMACIÓN para RESPONDER**
 - **Temperaturas** (rangos operativos, ej: "110°C a 300°C")
 - **Capacidades de producción** (ej: "140 kg/h de pan francés", "1260 medialunas por carro")
 - **Dimensiones** (ej: "área de cocción 9,60 m²", "bandejas de 70×90 cm")
@@ -116,12 +119,15 @@ Si el término consultado (p. ej., “pan sobado”) **no aparece** en la docume
 - Cerrar con: _"Basado en documentación oficial de Argental."_
 ---
 
-**Formato de respuesta válida:(NO tomar como respuesta literal. SOLO TENER EN CUENTA EL FORMATO)**
-> 2. Alta capacidad de producción  
-> Área de cocción de 9,60 m², la más grande entre los hornos fabricados por Argental. Compatible con carros de hasta 15 bandejas de 70×90 cm. Ejemplos documentados:  
-> - Hasta 140 kg/h de pan francés.  
-> - Hasta 1260 medialunas por carro (30 bandejas × 42 unidades de 40 g).
+---
+**Ejemplo ilustrativo de formato (solo referencial, NO informativo):**
+> Este ejemplo se incluye únicamente para mostrar el estilo de numeración y estructura.  
+> **No debe ser reproducido, citado ni interpretado como parte del contenido técnico o factual.**
 
+> **2. Alta capacidad de producción**  
+> (Ejemplo ficticio de formato, sin relación con ningún producto real)
+
+FIN DEL EJEMPLO — NO USAR NI CITAR.
 ---
 ## 🚫 Restricciones absolutas
 ---  
@@ -216,17 +222,25 @@ Cuando la consulta pida seguridad, razones de compra, capacidades o mantenimient
 Objetivo: que el lector no necesite otra repregunta para comprender alcance, límites, y condiciones de uso. Que la respuesta sea lo más completa posible en base a la documentación.
 
 ---
-### ✅ Checklist de extracción (si hay evidencia en docs)
-- **Temperatura:** rangos (ej.: 110–300 °C)
-- **Consumo y potencia:** (ej.: 0,056 Nm³/kg; 80.000 kcal/h)
-- **Capacidad/área:** (ej.: 9,60 m²; 15 bandejas 70×90 cm o 60×80 cm)
-- **Ejemplos productivos:** (ej.: 140 kg/h pan francés; 1260 medialunas por carro)
-- **Variantes:** (gas, gasoil, eléctrico, biomasa; enganche aéreo/plataforma; panel auxiliar)
-- **Seguridad:** (sensor puerta, paro emergencia, bloqueo vaporización, extractor, triple vidrio)
-- **Distribución de aire / vapor:** (3 salidas laterales, ranuras regulables, vaporización por cascada)
-- **Normativa/mercados:** (CE/EE. UU./Canadá) si figura en docs
-- **Mantenimiento:** rutinas/periodicidad; limpieza (evitar agua a presión, etc.)
-> Si un ítem no aparece en el snapshot, **omitilo** sin inventar.
+### ✅ Checklist de extracción (SOLO REFERENCIAL – NO USAR COMO CONTENIDO)
+El siguiente listado es **una guía de control interna** para verificar qué tipos de datos técnicos 
+deben buscarse en la documentación.  
+**No contiene información real ni valores aplicables a ningún producto específico.**  
+El asistente debe usarlo únicamente como recordatorio de las categorías posibles, 
+**no como fuente ni ejemplo literal.**
+
+📘 **Plantilla de campos a revisar (ejemplos genéricos):**
+  Temperatura: rangos de operación (p. ej.: “entre X °C y Y °C”)
+  Consumo y potencia: valores o unidades documentadas
+  Capacidad o área: medidas útiles, número de bandejas o superficie
+  Ejemplos productivos: cantidades o producciones indicadas en la documentación
+  Variantes: tipos de energía, configuraciones, accesorios
+  Seguridad: dispositivos o protecciones específicas
+  Distribución de aire / vapor: sistemas de circulación o vaporización
+  Normativa/mercados: certificaciones o destinos comerciales
+  Mantenimiento: rutinas, periodicidad o precauciones documentadas
+
+⚠️ Si un ítem no aparece en la documentación, **omitilo sin inventar** y no uses los valores de ejemplo de este bloque.
 
 ---
 ### 📌 Datos mínimos obligatorios (si existen en la documentación)
@@ -310,21 +324,180 @@ Si el usuario repite una pregunta o una variación mínima de una anterior (por 
 - Si ya habías dado una respuesta detallada, podés resumirla diciendo:
   > “Te lo recuerdo: el ${agentName} permite elaborar productos como panes artesanales, facturas, pizzas, tortas y bizcochuelos, según la documentación oficial de Argental.”
 
+---
+
+## ADMIN MODE
+- Si el usuario envía el texto exacto "##DEBUGARGENTAL##", activá **ADMIN MODE**.
+- Una vez activado, mantenelo **activo hasta el fin de la conversación**, sin necesidad de volver a ingresar la contraseña.
+- En ADMIN MODE podés incluir al final de tus respuestas el bloque:
+  🔧 Depuración y origen de datos (solo admin)
+  con información sobre carpetas y archivos fuente.
 
 `.trim();
 
-export const AGENTS: Agent[] = [
+// ===================== 1) PEGÁ ACÁ TU CSV =====================
+// Importante: la primera fila debe contener estos encabezados exactos:
+// COD_LISPRE,Categoría,SubCategoría,Nombre Comercial del Producto,Preg1,Preg2,Preg3,Preg4
+const RAW_CSV = `
+COD_LISPRE,Categoría,SubCategoría,Nombre Comercial del Producto,Preg1,Preg2,Preg3,Preg4
+FE960,Hornos,Horno Rotativo 70x90,FE4.0 960,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?
+GALILEO,Sistema Automatico,Sistema de Panificación,Glileo Pan Frances / Pan de Molde,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Cómo es la calidad respecto al pan sobado?,¿Mantenimiento requerido?
+MBE-80U-S,Maquina,Amasadora Rapida Espiral,MBE-80S,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+MBE-200U-S,Maquina,Amasadora Rapida Espiral,MBE-200S,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+PA340,Hornos,Horno Rotativo 45x70,Panier III 45x70,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?
+C4000-19,Maquina,Medialunera / Croissants,C-4000,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+M-6130-17,Maquina,Laminadora,Refinadora M-600,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿Mantenimiento requerido?
+TORNADO-PL,Maquina,Mesa de Corte,Tonado Plus E,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+BLIND-LI-FULL,Maquina,Sobadora Pesada,Blindi full,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+GALILEO-ARTESAN,Sistemas Automatico,Sistema de Panificación,Galileo Artesano,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Cómo es la calidad respecto al pan sobado?,¿Mantenimiento requerido?
+COMPRESSLINE,Maquina Semi Industria,Mesa de Corte ,Compressline,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+LINEA-CIABATTA,Maquina Semi Industria,Mesa de Corte ,Ciabattera,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+FOGLIA,Maquina,Laminadora Automatica,Foglia,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿Mantenimiento requerido?
+TORNADO-PL-II,Maquina,Mesa de Corte y Estibado,Tornado Plus E II,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Es un equipo seguro?,¿Mantenimiento requerido?
+GT-38,Maquina,Trinchadora,GT38-I,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+FE-III-315-ROTATIVO,Hornos,Horno Rotativo 10 45x70 / 40x60,FE III 315,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿La cocción es pareja y eficiente?,¿Es un equipo seguro?
+FE-III-315-PISO,Hornos,A definir,,¿Por qué debería comprar este equipo?,Que productos puede hacer?,Cual es la capacidad de produccion?,Mantenimiento requerido?
+FE-III-315-CAMARA,Cámaras de fermentacíón,A definir,,¿Por qué debería comprar este equipo?,Que productos puede hacer?,Cual es la capacidad de produccion?,Mantenimiento requerido?
+360-BE,Maquina,Sobadora Semi Automatica,SA 360 BE,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿Mantenimiento requerido?
+CORBOLI,Maquina,Cortadora y Bollera,Corboli,,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+MBE-160HA,Maquina,Amasadora Rapida Espiral,MBE-160HA,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+DB,Maquina,Divisora Volumetrica,DB 1000,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+FE4-0-472,Hornos,Horno Rotativo 45x70,FE4.0 472,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?
+FE-BIO-960-y-472,Hornos,Horno Rotativo 45x70 BIO,FE4.0 472 BIO,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿La cocción es pareja y eficiente?,¿Mantenimiento requerido?
+ARM-4000,Maquina,Formadora de Medialunas / Croissants,Cabezal Armador 4000,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+RAPIFREDDO-T5,Maquina,Ultracongelador 2/3/4/5 Carros 70x90,Rapifreddo T2 / T3 / T4 / T5,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+GTC-MODULAR,Maquina,Trinchadora,GTC-I,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+GTCG,Trinchadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+H2C,Hornos,Horno de Piso,H2C,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+DBS,Maquina,Divisora Bollera Panier,DBS 30-100-30,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+CFA,Camara Fermentacion,Camara de Fermentacion 2/4/6 Carros 70x90,CFA 2 / 4 / 6 carros 70x90,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+EU2C-MODULAR,Maquina,Cortadora y Armadora,EU2C-I,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+ELEVA,Maquina,Elevador de Bateas ,ELEVA T160H,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+MBE-40T,Maquina,Amasadora Rapida Espiral,MBE-40T,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+SGAU-MODULAR,Maquina,Trinchadora Estibadora ,SGAUI 7090 / 6080,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+SGGPM,Trinchadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+SGAUG,Trinchadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+SP-MODULAR,Trinchadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+HORECA,Horno,Horno Rapido,Horeca BL,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+NATO,Horno,Horno Convector,NATO,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+MINICONV,Horno,Horno Convector,MINICONV,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+DOS-AR,Dosificador de agua,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+PA390,Hornos,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y cuál es el nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?
+RAPIFREDDO-15,Ultracongeladores,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+HCI-500,Enfriador,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+DBSA,Divisoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+A-60,Batidoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+CFC-40b,Cámaras de fermentacíón,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+DB4B,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+DB2B,Divisoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+BPNS-20L,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+GP-70I-MOD,Grissinera,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+RAPIFREDDO-30,Ultracongeladores,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+BRISEELINE,Depositadora,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+GT-MINI,Trinchadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+GT-PANIER,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+BPNS-40L,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+DOSIF-RELLENO,Dosificador de rellenos,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+A-160,Batidoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+MINI-LINEA-COORD,Líneas Modulares,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+MINI-LINEA-RETRAC,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+C12000,Equipos para croissants,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+ARTESAN,Divisoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+CHOPRA-III,Depositadora,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+LINEA-PIZZAS,Líneas Modulares,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+LINEA-EMPANADAS,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+M-66,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+LPN-520S,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+LIDO,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+SPNI-500,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+BC1200I,Bolleras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+ARD6I-MOD,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+FDPM,Formador de pizza,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+DB1200,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+TRANSP-BARRAS,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+INSIGNIA,Sistemas de panificación,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+AMBRO-PRESS,Prensagrasa,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+RPNM-RPN,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+FMI-10-12,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+BPNV-300,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+MP-1I,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+DPN-2232,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+MIX-60,Batidoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+BHC,Bolleras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+M-6130-17CORTE,Laminadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+DOSIF-RELLENO-X5,Dosificador de rellenos,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+`.trim();
+
+// ===================== 2) PARSER CSV SIMPLE =====================
+type CsvRow = {
+  COD_LISPRE: string;
+  Categoría?: string;
+  SubCategoría?: string;
+  "Nombre Comercial del Producto"?: string;
+  Preg1?: string;
+  Preg2?: string;
+  Preg3?: string;
+  Preg4?: string;
+};
+
+function parseCSV(text: string): CsvRow[] {
+  const lines = text.split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const header = splitCsvLine(lines[0]);
+  const rows: CsvRow[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const cols = splitCsvLine(line);
+    const row: any = {};
+    header.forEach((h, idx) => { row[h] = (cols[idx] ?? "").trim(); });
+    rows.push(row as CsvRow);
+  }
+  return rows;
+}
+
+// Soporta comillas dobles en campos (por si en el futuro las usás)
+function splitCsvLine(line: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
+      else { inQuotes = !inQuotes; }
+    } else if (c === ',' && !inQuotes) {
+      out.push(cur);
+      cur = "";
+    } else {
+      cur += c;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+
+// ===================== 3) MAPEO CSV POR ID =====================
+const csvRows = parseCSV(RAW_CSV);
+const csvById: Map<string, CsvRow> = new Map(
+  csvRows
+    .filter(r => r.COD_LISPRE && r.COD_LISPRE.trim())
+    .map(r => [r.COD_LISPRE.trim(), r])
+);
+
+// ===================== 4) LISTA BASE DE AGENTES =====================
+// 👉 Conservá tus agents base: IDs, accent y driveFolders son la "fuente de verdad".
+//    name/family/subfamily/description/faqs/systemPrompt se completan desde el CSV si hay datos.
+
+const AGENTS_BASE: Agent[] = [
   {
     id: "fe960",
     name: "Horno rotativo FE 4.0-960",
-    family:"Hornos",
-    subfamily:"Rotativo",
+    family: "Hornos",
+    subfamily: "Rotativo",
     description: "Especialista en horno rotativo FE 4.0-960 de Argental",
     accent: "from-blue-500 to-cyan-500",
-    driveFolders: [
-      "17enT9eKi8Wgr92wOhVlqHyIUFlZP1bo4",
-      "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
-    ],
+    driveFolders: ["17enT9eKi8Wgr92wOhVlqHyIUFlZP1bo4", "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo"],
     faqs: [
       "¿Por qué debería comprar este equipo?",
       "¿Qué productos puede hacer y con qué nivel de producción?",
@@ -333,7 +506,7 @@ export const AGENTS: Agent[] = [
     ],
     systemPrompt: BASE_PROMPT({ agentId: "fe960", agentName: "Horno rotativo FE 4.0-960", primaryFolderLabel: "Info pública" }),
   },
- {
+  {
     id: "MBE-80U-S",
     name: "Amasadora MBE-80U-S",
     family:"Amasadoras",
@@ -1835,10 +2008,70 @@ export const AGENTS: Agent[] = [
     ],
     systemPrompt: BASE_PROMPT({ agentId: "M-6130-17CORTE", agentName: "AMBRO - Laminadora M-600 con estación de corte ", primaryFolderLabel: "Info pública" }),
   },
-  
 
-]; 
+];
+
+// ===================== 5) FUNCIÓN DE MERGE DESDE CSV =====================
+function normalizeId(id: string) {
+  return (id || "").trim();
+}
+function emptyToUndefined(s?: string) {
+  const t = (s ?? "").trim();
+  return t.length ? t : undefined;
+}
+
+function applyCsvToAgent(agent: Agent): Agent {
+  const idUpper = normalizeId(agent.id).toUpperCase(); // en tu CSV los IDs vienen mayormente en MAYÚSCULAS
+  const idExact = csvById.get(agent.id) || csvById.get(idUpper);
+  if (!idExact) {
+    // Sin fila en CSV → devolvemos el agente tal como está
+    return agent;
+  }
+
+  const nameFromCsv = emptyToUndefined(idExact["Nombre Comercial del Producto"]);
+  const familyFromCsv = emptyToUndefined(idExact["Categoría"]);
+  const subfamilyFromCsv = emptyToUndefined(idExact["SubCategoría"]);
+
+  const p1 = emptyToUndefined(idExact.Preg1);
+  const p2 = emptyToUndefined(idExact.Preg2);
+  const p3 = emptyToUndefined(idExact.Preg3);
+  const p4 = emptyToUndefined(idExact.Preg4);
+
+  const newName = nameFromCsv ?? agent.name;
+  const newFamily = familyFromCsv ?? agent.family;
+  const newSubfamily = subfamilyFromCsv ?? agent.subfamily;
+
+  const newFaqs = [p1, p2, p3, p4].filter(Boolean) as string[];
+  const faqs = newFaqs.length ? newFaqs : agent.faqs;
+
+  const description = `Especialista en ${newName} de Argental`;
+  const systemPrompt = BASE_PROMPT({
+    agentId: agent.id,
+    agentName: newName,
+    primaryFolderLabel: "Info pública",
+  });
+
+  return {
+    ...agent,
+    name: newName,
+    family: newFamily,
+    subfamily: newSubfamily,
+    description,
+    faqs,
+    systemPrompt,
+  };
+}
+export function buildAgentPrompt(agentId: string, agentName: string, adminMode: boolean, primaryFolderLabel?: string) {
+  return BASE_PROMPT({ agentId, agentName, primaryFolderLabel, adminMode });
+}
+// ===================== 6) EXPORT FINAL =====================
+export const AGENTS: Agent[] = AGENTS_BASE.map(applyCsvToAgent);
 
 export function getAgentById(id: string) {
   return AGENTS.find(a => a.id === id);
 }
+
+
+
+
+
