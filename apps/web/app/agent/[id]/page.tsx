@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Home, Send, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { getAgentById } from "@/lib/agents";
+export const runtime = "nodejs"
 
 type ChatMessage = { role: "user" | "assistant"; content: string; ts?: number };
 

@@ -1,5 +1,6 @@
 // apps/web/lib/agents.ts
 export type ChatMessage = { role: "user" | "assistant"; content: string; ts?: number };
+export const runtime = "nodejs"
 
 export type Agent = {
   id: string;         // único, ej: "fe960"
