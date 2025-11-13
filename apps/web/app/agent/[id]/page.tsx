@@ -359,50 +359,67 @@ if (isAdmin && !missSent) {
     const folders = Array.isArray(agent?.driveFolders) && agent.driveFolders.length
       ? agent.driveFolders.join(", ")
       : agent?.id ?? "no disponible";
-    let filesLine = "";
-    
-    if (extractedFiles.length > 0) {
-      // Caso 1: Hay archivos extraídos de @@META
-      filesLine = extractedFiles
-        .map((f) => {
-          const parts = [];
-          if (f.name) parts.push(f.name);
-          if (f.id) parts.push(`ID: ${f.id}`);
-          if (f.pages) parts.push(`Págs: ${f.pages}`);
-          return parts.length > 0 ? parts.join(" · ") : null;
-        })
-        .filter(Boolean)
-        .join("\n    ");
-      
-      if (filesLine) {
-        filesLine = "\n    " + filesLine; // Indent para legibilidad
-      }
-    } else if (contextFiles && contextFiles.length > 0) {
-      // Caso 2: Fallback a contextFiles (todos los del folder)
-      filesLine = "\n    " + contextFiles
-        .slice(0, 15) // Limitar a 15 para no saturar
-        .map(f => `${f.name ?? "(sin nombre)"} · ID: ${f.id}`)
-        .join("\n    ");
-      
-      if (contextFiles.length > 15) {
-        filesLine += `\n    ... y ${contextFiles.length - 15} más`;
-      }
-    } else {
-      console.log("DEBUG footer", {
-  isAdmin,
-  missSent,
-  ctxLen: contextFiles?.length,
-  extractedFiles,
-});
+  // 🔥 MEJORADO: Construcción robusta de la línea de archivos
+let filesLine = "";
 
-      filesLine = " no disponible";
-    }
+// Mapeo rápido por ID para cruzar META ↔ contextFiles
+const metaById = new Map(
+  (contextFiles || []).map((f) => [f.id, f])
+);
+
+if (extractedFiles.length > 0) {
+  // Caso 1: Archivos citados por @@META
+  filesLine = extractedFiles
+    .map((f) => {
+      const meta = f.id ? metaById.get(f.id) : undefined;
+      const dt = meta?.modifiedTime
+        ? new Date(meta.modifiedTime).toLocaleString()
+        : undefined;
+
+      const parts: string[] = [];
+      if (f.name) parts.push(f.name);
+      if (f.id) parts.push(`ID: ${f.id}`);
+      if (dt) parts.push(`Modif: ${dt}`);
+      if (f.pages) parts.push(`Págs: ${f.pages}`);
+
+      return parts.length > 0 ? parts.join(" · ") : null;
+    })
+    .filter(Boolean)
+    .join("\n    ");
+
+  if (filesLine) {
+    filesLine = "\n    " + filesLine; // indent
+  }
+} else if (contextFiles && contextFiles.length > 0) {
+  // Caso 2: fallback a todo el contexto
+  filesLine =
+    "\n    " +
+    contextFiles
+      .slice(0, 15)
+      .map((f) => {
+        const dt = f.modifiedTime
+          ? new Date(f.modifiedTime).toLocaleString()
+          : undefined;
+        return (
+          `${f.name ?? "(sin nombre)"} · ID: ${f.id}` +
+          (dt ? ` · Modif: ${dt}` : "")
+        );
+      })
+      .join("\n    ");
+
+  if (contextFiles.length > 15) {
+    filesLine += `\n    ... y ${contextFiles.length - 15} más`;
+  }
+} else {
+  filesLine = " no disponible";
+}
+
 
     const adminFooter =
       `\n\n🔧 **Depuración y origen de datos (solo admin)**\n` +
       `📁 Carpetas consultadas: ${folders}\n` +
       `📄 Archivos fuente utilizados:${filesLine}\n` +
-      `⚡ Modo: ${extractedFiles.length > 0 ? "Citados en respuesta" : "Contexto completo"}`;
+      `⚡ Modo: ${extractedFiles.length > 0 ? "Citados en respuesta" : "Contexto completo"}` ;
 
     assistantMessage.content += adminFooter;
   }
