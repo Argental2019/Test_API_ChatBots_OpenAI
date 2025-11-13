@@ -240,12 +240,16 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
 
       if (!response.ok || !response.body) throw new Error("Error en la respuesta");
 
-      /* ===== STREAMING + DETECTOR DE @@MISS Y @@META ===== */
+       /* ===== STREAMING + DETECTOR DE @@MISS Y @@META ===== */
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
 
+      // Mensaje visible en el chat
       let assistantMessage: ChatMessage = { role: "assistant", content: "", ts: Date.now() };
       setMessages((prev) => [...prev, assistantMessage]);
+
+      // Buffer crudo con TODO lo que manda el modelo (incluye @@MISS / @@META)
+      let assistantRaw = "";
 
       let buf = "";
       let missSent = false;
@@ -253,32 +257,30 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
       let extractedFiles: Array<{ name?: string; id?: string; pages?: string }> = [];
 
       const tryDetectMiss = () => {
-  if (missSent) return;
+        if (missSent) return;
 
-  // Buscar @@MISS { ... } en todo el contenido, no solo en la primera línea
-  const rx = /@@MISS\s*(\{[\s\S]*?\})/;
-  const m = assistantMessage.content.match(rx);
-  if (!m) return;
+        // Buscar @@MISS { ... } en TODO el contenido crudo
+        const rx = /@@MISS\s*(\{[\s\S]*?\})/;
+        const m = assistantRaw.match(rx);
+        if (!m) return;
 
-  const jsonRaw = m[1]; // el bloque { ... }
+        const jsonRaw = m[1]; // el bloque { ... }
 
-  try {
-    const miss = JSON.parse(jsonRaw);
-    reportMiss({
-      agentId: agent.id,
-      query: miss.query,
-      reason: miss.reason || "desconocido",
-      need: miss.need || "revisar_fuente",
-      ts: Date.now(),
-      uiVersion: process.env.NEXT_PUBLIC_APP_VERSION || "dev",
-      // si después querés: model, agentVersion, etc.
-    });
-    missSent = true;
-  } catch (e) {
-    console.warn("MISS parse error", e, jsonRaw);
-  }
-};
-
+        try {
+          const miss = JSON.parse(jsonRaw);
+          reportMiss({
+            agentId: agent.id,
+            query: miss.query,
+            reason: miss.reason || "desconocido",
+            need: miss.need || "revisar_fuente",
+            ts: Date.now(),
+            uiVersion: process.env.NEXT_PUBLIC_APP_VERSION || "dev",
+          });
+          missSent = true;
+        } catch (e) {
+          console.warn("MISS parse error", e, jsonRaw);
+        }
+      };
 
       while (true) {
         const { value, done } = await reader.read();
@@ -300,87 +302,111 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
             const delta: string | undefined = parsed.choices?.[0]?.delta?.content;
             if (!delta) continue;
 
-            assistantMessage.content += delta;
+            // 1) Acumular SIEMPRE en el buffer crudo
+            assistantRaw += delta;
+
+            // 2) Detectar @@MISS sobre el buffer crudo
+            tryDetectMiss();
+
+            // 3) Extraer @@META también desde el crudo
+            if (!metaExtracted && assistantRaw.includes("@@META")) {
+              extractedFiles = extractFilesFromMeta(assistantRaw);
+              if (extractedFiles.length > 0) {
+                metaExtracted = true;
+              }
+            }
+
+            // ⚠️ GATE: mientras la primera línea sea SOLO @@MISS (sin salto de línea),
+            // NO actualizamos el contenido visible, así nunca se ve el tag técnico.
+            if (assistantRaw.startsWith("@@MISS") && !assistantRaw.includes("\n")) {
+              // seguimos leyendo del stream, pero no mostramos nada todavía
+              continue;
+            }
+
+            // 4) Limpiar para el usuario (sacar @@MISS / @@META)
+            assistantMessage.content = cleanResponse(assistantRaw);
+
+            // 5) Actualizar mensaje visible
             setMessages((prev) => {
               const nm = [...prev];
               nm[nm.length - 1] = { ...assistantMessage };
               return nm;
             });
-
-            // Detectar @@MISS 
-        
-              tryDetectMiss();
-            
-
-            // Extraer @@META cuando está completo (pero no mostrarlo)
-            if (!metaExtracted && assistantMessage.content.includes("@@META")) {
-              extractedFiles = extractFilesFromMeta(assistantMessage.content);
-              if (extractedFiles.length > 0) {
-                metaExtracted = true;
-              }
-            }
           } catch {
             // ignorar líneas no JSON
           }
         }
       }
+
+      // flush final del decoder (por prolijidad)
       decoder.decode();
 
-      // Flush final de @@MISS
-      
-        tryDetectMiss();
-      
+      // Flush final de @@MISS por las dudas
+      tryDetectMiss();
 
       // Extraer @@META final si no se extrajo antes
       if (!metaExtracted) {
-        extractedFiles = extractFilesFromMeta(assistantMessage.content);
+        extractedFiles = extractFilesFromMeta(assistantRaw);
       }
 
-      /* ==== LIMPIAR @@META y @@MISS de la respuesta visible ==== */
-      assistantMessage.content = cleanResponse(assistantMessage.content);
+/* ==== AGREGAR BLOQUE DE DEPURACIÓN (si es admin y hay respuesta válida) ==== */
+if (isAdmin && !missSent) {
+  const alreadyHasBlock = /Depuración y origen de datos \(solo admin\)/i.test(
+    assistantMessage.content
+  );
 
-      /* ==== AGREGAR BLOQUE DE DEPURACIÓN (si es admin y hay respuesta válida) ==== */
-      if (isAdmin && !missSent) {
-        const alreadyHasBlock = /Depuración y origen de datos \(solo admin\)/i.test(
-          assistantMessage.content
-        );
-
-        if (!alreadyHasBlock) {
-          const folders = Array.isArray(agent?.driveFolders) && agent.driveFolders.length
-            ? agent.driveFolders.join(", ")
-            : agent?.id ?? "no disponible";
-
-          // Usar archivos extraídos de @@META o caer back a contextFiles
-          let filesLine = "";
-          if (extractedFiles.length > 0) {
-            filesLine = extractedFiles
-              .map((f) => {
-                const name = f?.name || "";
-                const id = f?.id || "";
-                const pages = f?.pages ? ` (pág.: ${f.pages})` : "";
-                const main = [name, id].filter(Boolean).join(" · ");
-                return main ? `${main}${pages}` : "";
-              })
-              .filter(Boolean)
-              .join("; ");
-          } else if (contextFiles && contextFiles.length > 0) {
-            filesLine = contextFiles
-              .slice(0, 80)
-              .map(f => `${f.name ?? "(sin nombre)"} (${f.id})`)
-              .join(" | ");
-          } else {
-            filesLine = "no disponible";
-          }
-
-          const adminFooter =
-            `\n\n🔧 Depuración y origen de datos (solo admin)\n` +
-            `Carpetas consultadas: ${folders}\n` +
-            `Archivos fuente utilizados: ${filesLine}\n` +
-            `Snapshot/índice interno: no disponible`;
-
-          assistantMessage.content += adminFooter;
-        }
+  if (!alreadyHasBlock) {
+    const folders = Array.isArray(agent?.driveFolders) && agent.driveFolders.length
+      ? agent.driveFolders.join(", ")
+      : agent?.id ?? "no disponible";
+    let filesLine = "";
+    
+    if (extractedFiles.length > 0) {
+      // Caso 1: Hay archivos extraídos de @@META
+      filesLine = extractedFiles
+        .map((f) => {
+          const parts = [];
+          if (f.name) parts.push(f.name);
+          if (f.id) parts.push(`ID: ${f.id}`);
+          if (f.pages) parts.push(`Págs: ${f.pages}`);
+          return parts.length > 0 ? parts.join(" · ") : null;
+        })
+        .filter(Boolean)
+        .join("\n    ");
+      
+      if (filesLine) {
+        filesLine = "\n    " + filesLine; // Indent para legibilidad
       }
+    } else if (contextFiles && contextFiles.length > 0) {
+      // Caso 2: Fallback a contextFiles (todos los del folder)
+      filesLine = "\n    " + contextFiles
+        .slice(0, 15) // Limitar a 15 para no saturar
+        .map(f => `${f.name ?? "(sin nombre)"} · ID: ${f.id}`)
+        .join("\n    ");
+      
+      if (contextFiles.length > 15) {
+        filesLine += `\n    ... y ${contextFiles.length - 15} más`;
+      }
+    } else {
+      console.log("DEBUG footer", {
+  isAdmin,
+  missSent,
+  ctxLen: contextFiles?.length,
+  extractedFiles,
+});
+
+      filesLine = " no disponible";
+    }
+
+    const adminFooter =
+      `\n\n🔧 **Depuración y origen de datos (solo admin)**\n` +
+      `📁 Carpetas consultadas: ${folders}\n` +
+      `📄 Archivos fuente utilizados:${filesLine}\n` +
+      `⚡ Modo: ${extractedFiles.length > 0 ? "Citados en respuesta" : "Contexto completo"}`;
+
+    assistantMessage.content += adminFooter;
+  }
+}
 
       // Actualizar mensaje final limpio
       setMessages((prev) => {
@@ -474,37 +500,6 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
           >
             {toast.type === "ok" ? <CheckCircle2 className="size-4" /> : <AlertCircle className="size-4" />}
             {toast.msg}
-          </div>
-        )}
-
-        {/* UI de archivos consultados */}
-        {CAN_REQUEST_META && contextFiles && contextFiles.length > 0 && (
-          <div className="mt-4 rounded-xl border bg-white p-4 text-sm">
-            <div className="mb-2 font-semibold">📂 Documentos cargados ({contextFiles.length})</div>
-            <ul className="max-h-56 overflow-auto space-y-1">
-              {contextFiles.map((f, i) => (
-                <li key={f.id ?? i} className="flex items-center justify-between gap-2">
-                  <div className="truncate">
-                    <div className="truncate">
-                      {f.name ?? "(sin nombre)"}{" "}
-                      <span className="text-gray-400">({f.mimeType || "desconocido"})</span>
-                    </div>
-                    <div className="text-[11px] text-gray-500 truncate">
-                      ID: {f.id} · Carpeta: {f.folderId || "-"} ·{" "}
-                      {f.modifiedTime ? new Date(f.modifiedTime).toLocaleString() : ""}
-                    </div>
-                  </div>
-                  <a
-                    href={`https://drive.google.com/file/d/${f.id}/view`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-600 hover:underline shrink-0"
-                  >
-                    Abrir
-                  </a>
-                </li>
-              ))}
-            </ul>
           </div>
         )}
 
@@ -606,7 +601,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
               <div className="mt-2 text-[11px] text-gray-500">
                 {isAdmin
                   ? "Depuración: ACTIVADA"
-                  : 'Tip admin: enviá "##DEBUGARGENTAL##" para activar depuración en la respuesta.'}
+                  : ''}
               </div>
             )}
           </div>

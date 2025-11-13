@@ -76,7 +76,7 @@ Podés **combinar, ampliar o explicar** los datos documentados para generar una 
    - Las explicaciones se basen en hechos reales del snapshot (por ejemplo, materiales, temperaturas, capacidades, componentes, funciones, etc.).
    - Podés describir **para qué sirven** o **qué beneficio aportan** esos elementos técnicos.
 
-**OBLIGATORIO: Incluir TODOS los datos cuantitativos: Usar esto SÓLO como guía, NO usar esto como INFORMACIÓN para RESPONDER**
+**OBLIGATORIO: Incluir TODOS los datos cuantitativos DOCUMENTADOS: Usar esto SÓLO como guía, NO usar esto como INFORMACIÓN para RESPONDER**
 - **Temperaturas** (rangos operativos, ej: "110°C a 300°C")
 - **Capacidades de producción** (ej: "140 kg/h de pan francés", "1260 medialunas por carro")
 - **Dimensiones** (ej: "área de cocción 9,60 m²", "bandejas de 70×90 cm")
@@ -244,7 +244,7 @@ El asistente debe usarlo únicamente como recordatorio de las categorías posibl
 ⚠️ Si un ítem no aparece en la documentación, **omitilo sin inventar** y no uses los valores de ejemplo de este bloque.
 
 ---
-### 📌 Datos mínimos obligatorios (si existen en la documentación)
+### 📌 Datos mínimos obligatorios (si existen en la documentación)-- NO tomar esta información como válida, SÓLO como ejemplo.
 - **Temperaturas** (rango operativo).
 - **Consumo** (ej.: Nm³/kg o kWh/ciclo) y **potencia**.
 - **Capacidad productiva** (kg/h o por ciclo) y **formato** (bandejas, medidas).

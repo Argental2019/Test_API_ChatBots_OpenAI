@@ -1,6 +1,6 @@
 // @ts-nocheck
 // index.js — Backend Drive con caché + lecturas masivas (compatible Vercel)
-// + Telemetría: log de "preguntas no respondidas" vía Redis Streams
+// + Telemetría: log de "preguntas no respondidas" vía Redis 
 // + smartRead: siempre verifica actualizaciones, usa cache si no cambió y refetch si cambió
 
 // ===== Imports =====

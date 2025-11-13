@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
             folderId,
             knownFiles: [],
             nocache: false,
-            includeMeta: !!admin,   // 👈 clave
+            includeMeta: !!admin,   
           }),
           signal: ac.signal
         });
