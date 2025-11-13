@@ -14,19 +14,21 @@ function abortSignal(ms: number) {
   return ac;
 }
 
+// apps/web/api/context/route.ts
 export async function POST(req: NextRequest) {
   try {
     const BACKEND_URL = process.env.BACKEND_URL;
     if (!BACKEND_URL) return new Response("Missing BACKEND_URL", { status: 500 });
 
-    const { driveFolders } = await req.json();
+    const { driveFolders, admin } = await req.json();
     if (!Array.isArray(driveFolders) || driveFolders.length === 0) {
       return new Response(JSON.stringify({ error: "driveFolders requerido" }), { status: 400 });
     }
 
-    // Hacemos las llamadas en paralelo pero con timeout por carpeta
     const sid = `session-${Date.now()}`;
-    const perFolderTimeoutMs = 25000; // 25s por carpeta (para no exceder maxDuration total)
+    const perFolderTimeoutMs = 25000;
+
+    const filesMetaAll: any[] = [];
 
     const calls = driveFolders.map(async (folderId: string) => {
       const ac = abortSignal(perFolderTimeoutMs);
@@ -34,35 +36,57 @@ export async function POST(req: NextRequest) {
         const r = await fetch(`${BACKEND_URL}/smartRead`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-Session-Id": sid },
-          body: JSON.stringify({ folderId, knownFiles: [], nocache: false }),
+          body: JSON.stringify({
+            folderId,
+            knownFiles: [],
+            nocache: false,
+            includeMeta: !!admin,   // 👈 clave
+          }),
           signal: ac.signal
         });
         clearTimeout((ac as any).timeoutId);
-        if (!r.ok) {
-          const txt = await r.text().catch(() => "");
-          throw new Error(`smartRead ${r.status}: ${txt || "error"}`);
-        }
+        if (!r.ok) throw new Error(`smartRead ${r.status}: ${await r.text().catch(()=>"")}`);
+
         const data = await r.json();
-        const texts: string[] = (data.snapshot || []).map((f: any) => f?.content).filter(Boolean);
-        return texts.join("\n\n---\n\n");
+
+        // Texto
+        const texts: string[] = (data.snapshot || [])
+          .map((f: any) => f?.content)
+          .filter(Boolean);
+        const joined = texts.join("\n\n---\n\n");
+
+        // Metadatos (solo si admin y backend los envió)
+        if (admin && Array.isArray(data.files)) {
+          filesMetaAll.push(...data.files);
+        } else if (admin && Array.isArray(data.snapshot)) {
+          // fallback: sacarlos del snapshot
+          filesMetaAll.push(...data.snapshot.map((f:any)=>({
+            id: f.id, name: f.name, mimeType: f.mimeType,
+            modifiedTime: f.modifiedTime, size: f.size, folderId
+          })));
+        }
+
+        return joined;
       } catch (e) {
-        // devolvemos string vacío para permitir respuesta parcial
         console.error("smartRead error", folderId, (e as any)?.message || e);
         return "";
       }
     });
 
     const results = await Promise.allSettled(calls);
-    const allTexts = results
-      .map(r => (r.status === "fulfilled" ? r.value : ""))
-      .filter(Boolean)
-      .join("\n\n---\n\n");
+    const allTexts = results.map(r => (r.status === "fulfilled" ? r.value : "")).filter(Boolean).join("\n\n---\n\n");
 
-    const fullContext = allTexts.slice(0, 100000); // tope
+    const fullContext = allTexts.slice(0, 100000);
     if (!fullContext) {
       return new Response("No se pudo cargar contexto (timeout o error en backend).", { status: 504 });
     }
-    return new Response(JSON.stringify({ context: fullContext }), { status: 200 });
+
+    // 👇 ahora devolvés también files si admin
+    return new Response(JSON.stringify({
+      context: fullContext,
+      files: filesMetaAll
+    }), { status: 200 });
+
   } catch (e: any) {
     console.error("context route error:", e);
     return new Response(e?.message || "context error", { status: 500 });

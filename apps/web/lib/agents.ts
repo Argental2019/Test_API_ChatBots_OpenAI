@@ -1,6 +1,5 @@
 // apps/web/lib/agents.ts
 export type ChatMessage = { role: "user" | "assistant"; content: string; ts?: number };
-export const runtime = "nodejs"
 
 export type Agent = {
   id: string;         // único, ej: "fe960"
@@ -322,9 +321,7 @@ Usá toda la documentación disponible sin mencionar nombres de archivos.
 Si el usuario repite una pregunta o una variación mínima de una anterior (por ejemplo, “¿Qué productos puede hacer?” repetido),
 - **No** respondas con “No se encontró una respuesta...”.
 - Reutilizá la misma información técnica y estructura de respuesta anterior.
-- Si ya habías dado una respuesta detallada, podés resumirla diciendo:
-  > “Te lo recuerdo: el ${agentName} permite elaborar productos como panes artesanales, facturas, pizzas, tortas y bizcochuelos, según la documentación oficial de Argental.”
-
+- Si ya habías dado una respuesta detallada, podés resumirla.
 ---
 
 ## ADMIN MODE
@@ -342,7 +339,7 @@ Si el usuario repite una pregunta o una variación mínima de una anterior (por 
 const RAW_CSV = `
 COD_LISPRE,Categoría,SubCategoría,Nombre Comercial del Producto,Preg1,Preg2,Preg3,Preg4
 FE960,Hornos,Horno Rotativo 70x90,FE4.0 960,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?
-GALILEO,Sistema Automatico,Sistema de Panificación,Glileo Pan Frances / Pan de Molde,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Cómo es la calidad respecto al pan sobado?,¿Mantenimiento requerido?
+GALILEO,Sistema Automatico,Sistema de Panificación,Galileo Pan Frances / Pan de Molde,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Cómo es la calidad respecto al pan sobado?,¿Mantenimiento requerido?
 MBE-80U-S,Maquina,Amasadora Rapida Espiral,MBE-80S,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
 MBE-200U-S,Maquina,Amasadora Rapida Espiral,MBE-200S,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
 PA340,Hornos,Horno Rotativo 45x70,Panier III 45x70,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?

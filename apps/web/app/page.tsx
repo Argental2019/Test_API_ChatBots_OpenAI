@@ -1,5 +1,6 @@
-"use client" ;
-import Link from "next/link"; 
+//web/app/page.tsx
+"use client";
+import Link from "next/link";
 import Markdown from "@/components/markdown";
 import FooterPolicy from "@/components/FooterPolicy";
 
@@ -13,12 +14,23 @@ import {
   AlertCircle,
   MessageSquareText,
 } from "lucide-react";
-import Image from "next/image"; // 👈 NUEVO
+import Image from "next/image";
 
-// 👇 nuevo: importá los agentes desde el registry central
+// 👇 importá los agentes desde el registry central
 import { AGENTS } from "@/lib/agents";
 
 type ChatMessage = { role: "user" | "assistant"; content: string; ts?: number };
+type ContextFile = {
+  id: string;
+  name?: string;
+  mimeType?: string;
+  modifiedTime?: string;
+  size?: number;
+  etag?: string;
+  folderId?: string;
+};
+
+const IS_ADMIN = process.env.NEXT_PUBLIC_ADMIN === "1";
 
 function formatTime(ts?: number) {
   if (!ts) return "";
@@ -49,7 +61,6 @@ async function reportMiss(miss: any) {
   }
 }
 
-
 export default function MultiAgentChat() {
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -59,25 +70,28 @@ export default function MultiAgentChat() {
   const [contextCache, setContextCache] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
 
-  // 👇 estado de filtros (solo afectan la vista de lista)
+  // 👉 NUEVO: archivos del contexto (para MODO ADMIN)
+  const [contextFiles, setContextFiles] = useState<ContextFile[] | null>(null);
+
+  // filtros (solo afectan la vista de lista)
   const [familyFilter, setFamilyFilter] = useState<string>("");
   const [subfamilyFilter, setSubfamilyFilter] = useState<string>("");
   const [nameFilter, setNameFilter] = useState<string>("");
 
   // opciones únicas para selects
   const families = useMemo(
-    () => Array.from(new Set(AGENTS.map(a => a.family))).sort(),
+    () => Array.from(new Set(AGENTS.map((a) => a.family))).sort(),
     []
   );
   const subfamilies = useMemo(() => {
-    const subset = familyFilter ? AGENTS.filter(a => a.family === familyFilter) : AGENTS;
-    return Array.from(new Set(subset.map(a => a.subfamily))).sort();
+    const subset = familyFilter ? AGENTS.filter((a) => a.family === familyFilter) : AGENTS;
+    return Array.from(new Set(subset.map((a) => a.subfamily))).sort();
   }, [familyFilter]);
 
   // lista filtrada para la grilla
   const filteredAgents = useMemo(() => {
     const nf = norm(nameFilter);
-    return AGENTS.filter(a => {
+    return AGENTS.filter((a) => {
       const okFamily = familyFilter ? a.family === familyFilter : true;
       const okSubfamily = subfamilyFilter ? a.subfamily === subfamilyFilter : true;
       const okName = nf ? norm(a.name).includes(nf) : true;
@@ -121,19 +135,31 @@ export default function MultiAgentChat() {
       const r = await fetch("/api/context", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ driveFolders: selectedAgent.driveFolders }),
+        body: JSON.stringify({
+          driveFolders: selectedAgent.driveFolders,
+          // sólo pedimos metadatos si es admin
+          admin: IS_ADMIN,
+        }),
       });
+
       if (!r.ok) throw new Error(await r.text());
       const data = await r.json();
+
       setContextCache(data.context || "");
+      setContextFiles(Array.isArray(data.files) ? data.files : null);
       setContextLoaded(true);
+
       setToast({ type: "ok", msg: "Documentación cargada correctamente." });
       setTimeout(() => setToast(null), 2500);
     } catch (e) {
       console.error(e);
       setToast({ type: "err", msg: "No pude cargar el contexto documental." });
       setMessages([
-        { role: "assistant", content: "No pude cargar el contexto documental. Intentá nuevamente.", ts: Date.now() },
+        {
+          role: "assistant",
+          content: "No pude cargar el contexto documental. Intentá nuevamente.",
+          ts: Date.now(),
+        },
       ]);
     } finally {
       setLoading(false);
@@ -241,6 +267,7 @@ export default function MultiAgentChat() {
     setMessages([]);
     setContextLoaded(false);
     setContextCache(null);
+    setContextFiles(null);
     setToast(null);
   };
 
@@ -249,6 +276,7 @@ export default function MultiAgentChat() {
     setMessages([]);
     setContextLoaded(false);
     setContextCache(null);
+    setContextFiles(null);
     setToast(null);
   };
 
@@ -257,42 +285,35 @@ export default function MultiAgentChat() {
     return (
       <div className="min-h-screen bg-white">
         <header className="border-b bg-white/70 backdrop-blur">
-  <div className="mx-auto max-w-6xl px-4 py-5 flex items-center justify-between">
-    {/* IZQUIERDA: logo + título */}
-{/* IZQUIERDA: logo + título en una fila, párrafo debajo */}
-<div className="flex items-center gap-4 flex-wrap">
-  <Image
-    src="/logo-ai.jpg"
-    alt="Argental Avanza"
-    width={260}
-    height={84}
-    className="h-20 md:h-24 w-auto object-contain shrink-0" // ← evita que el logo se achique
-    priority
-  />
-
-  <span className="text-xl md:text-2xl font-semibold tracking-tight text-gray-900 whitespace-nowrap shrink-0">
-    Argental · Agentes IA
-  </span>
-
-  {/* forzamos nueva línea y tamaño menor */}
-  <p className="basis-full text-[11px] leading-relaxed text-gray-600 mt-1">
-    El uso de los Agentes Argental implica la aceptación de la siguiente{" "}
-    <a
-      href="/politicas-de-uso-Argental"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-blue-600 hover:underline"
-    >
-      Política de Uso y Limitación de Responsabilidad de los Agentes Argental
-    </a>.
-  </p>
-</div>
-
-
- 
-  </div>
-</header>
-
+          <div className="mx-auto max-w-6xl px-4 py-5 flex items-center justify-between">
+            {/* IZQUIERDA: logo + título en una fila, párrafo debajo */}
+            <div className="flex items-center gap-4 flex-wrap">
+              <Image
+                src="/logo-ai.jpg"
+                alt="Argental Avanza"
+                width={260}
+                height={84}
+                className="h-20 md:h-24 w-auto object-contain shrink-0"
+                priority
+              />
+              <span className="text-xl md:text-2xl font-semibold tracking-tight text-gray-900 whitespace-nowrap shrink-0">
+                Argental · Agentes IA
+              </span>
+              <p className="basis-full text-[11px] leading-relaxed text-gray-600 mt-1">
+                El uso de los Agentes Argental implica la aceptación de la siguiente{" "}
+                <a
+                  href="/politicas-de-uso-Argental"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  Política de Uso y Limitación de Responsabilidad de los Agentes Argental
+                </a>
+                .
+              </p>
+            </div>
+          </div>
+        </header>
 
         <main className="mx-auto max-w-6xl px-4 py-12">
           <div className="mb-10">
@@ -312,7 +333,9 @@ export default function MultiAgentChat() {
               >
                 <option value="">Todas</option>
                 {families.map((f) => (
-                  <option key={f} value={f}>{f}</option>
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
                 ))}
               </select>
             </div>
@@ -328,7 +351,9 @@ export default function MultiAgentChat() {
               >
                 <option value="">Todas</option>
                 {subfamilies.map((sf) => (
-                  <option key={sf} value={sf}>{sf}</option>
+                  <option key={sf} value={sf}>
+                    {sf}
+                  </option>
                 ))}
               </select>
             </div>
@@ -349,7 +374,7 @@ export default function MultiAgentChat() {
             {(filteredAgents.length ? filteredAgents : AGENTS).map((agent) => (
               <Link
                 key={agent.id}
-                href={`/agent/${agent.id}`}   // 👈 CAMBIO: ahora va a la ruta por agente
+                href={`/agent/${agent.id}`} // si preferís inline, reemplazá por onClick={() => selectAgent(agent)}
                 className="group relative overflow-hidden rounded-2xl border bg-white p-6 text-left shadow-sm transition-all hover:shadow-xl"
               >
                 <div
@@ -383,20 +408,22 @@ export default function MultiAgentChat() {
               No se encontraron agentes con esos filtros.
             </div>
           )}
+
           <footer className="mx-auto max-w-6xl pb-10 pt-6 text-center text-xs text-gray-500 space-y-2">
-  <p>© {new Date().getFullYear()} Argental · Asistentes</p>
-  <p className="text-[11px] leading-relaxed">
-    El uso de los Agentes Argental implica la aceptación de la siguiente{" "}
-    <a
-      href="/politicas-de-uso-Argental"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-blue-600 hover:underline"
-    >
-      Política de Uso y Limitación de Responsabilidad de los Agentes Argental
-    </a>.
-  </p>
-</footer>
+            <p>© {new Date().getFullYear()} Argental · Asistentes</p>
+            <p className="text-[11px] leading-relaxed">
+              El uso de los Agentes Argental implica la aceptación de la siguiente{" "}
+              <a
+                href="/politicas-de-uso-Argental"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                Política de Uso y Limitación de Responsabilidad de los Agentes Argental
+              </a>
+              .
+            </p>
+          </footer>
         </main>
       </div>
     );
@@ -432,7 +459,6 @@ export default function MultiAgentChat() {
       </header>
 
       <main className="mx-auto max-w-4xl px-4 pb-24">
-
         {/* Toast */}
         {toast && (
           <div
@@ -444,6 +470,37 @@ export default function MultiAgentChat() {
           >
             {toast.type === "ok" ? <CheckCircle2 className="size-4" /> : <AlertCircle className="size-4" />}
             {toast.msg}
+          </div>
+        )}
+
+        {/* 👉 UI (solo si admin): lista de archivos usados en el contexto */}
+        {IS_ADMIN && contextFiles && contextFiles.length > 0 && (
+          <div className="mt-4 rounded-xl border bg-white p-4 text-sm">
+            <div className="mb-2 font-semibold">📂 Documentos cargados ({contextFiles.length})</div>
+            <ul className="max-h-56 overflow-auto space-y-1">
+              {contextFiles.map((f, i) => (
+                <li key={f.id ?? i} className="flex items-center justify-between gap-2">
+                  <div className="truncate">
+                    <div className="truncate">
+                      {f.name ?? "(sin nombre)"}{" "}
+                      <span className="text-gray-400">({f.mimeType || "desconocido"})</span>
+                    </div>
+                    <div className="text-[11px] text-gray-500 truncate">
+                      ID: {f.id} · Carpeta: {f.folderId || "-"} ·{" "}
+                      {f.modifiedTime ? new Date(f.modifiedTime).toLocaleString() : ""}
+                    </div>
+                  </div>
+                  <a
+                    href={`https://drive.google.com/file/d/${f.id}/view`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:underline shrink-0"
+                  >
+                    Abrir
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
@@ -497,7 +554,7 @@ export default function MultiAgentChat() {
                   >
                     <Markdown
                       className={
-                          mine
+                        mine
                           ? "whitespace-pre-wrap leading-relaxed"
                           : "prose prose-sm sm:prose-base max-w-none whitespace-pre-wrap leading-relaxed [&_p]:mb-3 [&_ul]:my-3 [&_ol]:my-3 [&_li]:my-1 [&_strong]:block [&_strong]:mt-4 [&_strong]:mb-1"
                       }
@@ -539,12 +596,7 @@ export default function MultiAgentChat() {
             </div>
           </div>
         </section>
-
-
-
-
       </main>
-    
     </div>
   );
 }

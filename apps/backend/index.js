@@ -480,7 +480,7 @@ app.post(
   withTimer(
     "smartRead",
     asyncHandler(async (req, res) => {
-      const { folderId, knownFiles = [], nocache = false } = req.body || {};
+      const { folderId, knownFiles = [], nocache = false, includeMeta = false } = req.body || {};
       if (!folderId) return res.status(400).json({ error: "Falta folderId" });
 
       // 1) Manifest actual
@@ -516,8 +516,12 @@ app.post(
           needLoad.map((id) =>
             limit(async () => {
               const meta = currManifest.files.find((f) => f.id === id) || (await getFileMeta(id));
-              // usar readFileSmart para cachear con el etag fuerte
-              await readFileSmart({ id: meta.id, etag: meta.etag, mimeType: meta.mimeType, name: meta.name });
+              await readFileSmart({
+                id: meta.id,
+                etag: meta.etag,          // ojo: en manifest podría llamarse etag
+                mimeType: meta.mimeType,
+                name: meta.name,
+              });
             })
           )
         );
@@ -528,14 +532,14 @@ app.post(
       for (const f of currManifest.files) {
         const k = FILE_KEY(f.id, f.etag);
         const hit = await cacheGet(k);
-        if (hit) snapshot.push(hit);
+        if (hit) snapshot.push(hit); // hit debería incluir: { id,name,mimeType,etag,size,content,... }
       }
 
-      // 8) persistir manifest nuevo (para próxima comparación si no envían knownFiles)
+      // 8) persistir manifest nuevo
       await setCachedManifest(folderId, currManifest);
 
-      // 9) respuesta
-      res.status(200).json({
+      // 9) armar respuesta base
+      const response = {
         hasChanges: Boolean(added.length || changed.length || removed.length || nocache),
         added,
         changed: changed.map((f) => f.id),
@@ -544,8 +548,25 @@ app.post(
           folderId,
           files: currManifest.files.map((f) => ({ id: f.id, tag: f.etag })),
         },
-        snapshot, // [{fileId,name,mimeType,etag,size,content}]
-      });
+        snapshot, // [{ id,name,mimeType,etag,size,content }]
+      };
+
+      // 10) incluir metadatos si lo pidieron (sin content)
+      if (includeMeta) {
+        // si tu manifest trae estos campos, usalos acá; si no, ajustá al shape real
+        response.files = currManifest.files.map((f) => ({
+          id: f.id,
+          name: f.name,
+          mimeType: f.mimeType,
+          modifiedTime: f.modifiedTime,
+          size: f.size,
+          etag: f.etag,
+          folderId,
+        }));
+      }
+
+      // 11) enviar
+      res.status(200).json(response);
     })
   )
 );
