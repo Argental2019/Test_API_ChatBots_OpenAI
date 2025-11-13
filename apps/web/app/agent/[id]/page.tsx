@@ -414,29 +414,53 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="min-h-screen bg-white">
-      <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
-        <div className="relative mx-auto max-w-4xl px-4 h-24 flex items-center">
-          <Link
-            href="/"
-            className="absolute left-4 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <Home className="size-4" />
-            Volver
-          </Link>
+     <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
+  <div className="relative mx-auto max-w-4xl px-4 py-3 flex items-center">
+    <Link
+      href="/"
+      className="absolute left-4 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+    >
+      <Home className="size-4" />
+      Volver
+    </Link>
 
-          <div className="mx-auto text-center pointer-events-none">
-            <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-gray-600">
-              <span className="relative flex size-2">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
-              </span>
-              Activo {isAdmin && <span className="ml-2 rounded-full bg-gray-900 px-2 py-0.5 text-white">Admin</span>}
-            </div>
-            <h2 className="mt-1 text-base font-semibold text-gray-900 leading-tight">{agent.name}</h2>
-            <p className="text-[11px] text-gray-500">{agent.description}</p>
-          </div>
+    <div className="mx-auto text-center pointer-events-none">
+      <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-gray-600">
+        <span className="relative flex size-2">
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+          <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+        </span>
+        Activo{" "}
+        {isAdmin && (
+          <span className="ml-2 rounded-full bg-gray-900 px-2 py-0.5 text-white">
+            Admin
+          </span>
+        )}
+      </div>
+
+      {/* Categoría y Subcategoría en dos líneas */}
+      <div className="mt-1 text-[11px] text-gray-500 leading-snug">
+        <div>
+          Categoría:{" "}
+          <span className="font-medium text-gray-700">
+            {agent.family || "-"}
+          </span>
         </div>
-      </header>
+        <div>
+          Subcategoría:{" "}
+          <span className="font-medium text-gray-700">
+            {agent.subfamily || "-"}
+          </span>
+        </div>
+      </div>
+
+      <h2 className="mt-2 text-base font-semibold text-gray-900 leading-tight">
+        {agent.name}
+      </h2>
+    </div>
+  </div>
+</header>
+
 
       <main className="mx-auto max-w-4xl px-4">
         {/* Toast */}

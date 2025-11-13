@@ -450,6 +450,7 @@ export default function MultiAgentChat() {
               </span>
               Activo
             </div>
+
             <h2 className="mt-2 text-lg font-semibold text-gray-900">{selectedAgent.name}</h2>
             <p className="text-xs text-gray-500">{selectedAgent.description}</p>
           </div>
