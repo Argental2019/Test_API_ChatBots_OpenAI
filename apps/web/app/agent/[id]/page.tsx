@@ -359,67 +359,82 @@ if (isAdmin && !missSent) {
     const folders = Array.isArray(agent?.driveFolders) && agent.driveFolders.length
       ? agent.driveFolders.join(", ")
       : agent?.id ?? "no disponible";
-  // 🔥 MEJORADO: Construcción robusta de la línea de archivos
-let filesLine = "";
+  // 🔥 MEJORADO: Construcción markdown de la lista de archivos
+  let filesLine = "";
 
-// Mapeo rápido por ID para cruzar META ↔ contextFiles
-const metaById = new Map(
-  (contextFiles || []).map((f) => [f.id, f])
-);
+  // Mapeo rápido por ID para cruzar META ↔ contextFiles
+  const metaById = new Map((contextFiles || []).map((f) => [f.id, f]));
 
-if (extractedFiles.length > 0) {
-  // Caso 1: Archivos citados por @@META
-  filesLine = extractedFiles
-    .map((f) => {
+  if (extractedFiles.length > 0) {
+    // Caso 1: Archivos citados por @@META
+    const lines: string[] = [];
+
+    extractedFiles.forEach((f) => {
       const meta = f.id ? metaById.get(f.id) : undefined;
       const dt = meta?.modifiedTime
         ? new Date(meta.modifiedTime).toLocaleString()
         : undefined;
 
+      const name = f.name ?? meta?.name ?? "(sin nombre)";
       const parts: string[] = [];
-      if (f.name) parts.push(f.name);
-      if (f.id) parts.push(`ID: ${f.id}`);
-      if (dt) parts.push(`Modif: ${dt}`);
-      if (f.pages) parts.push(`Págs: ${f.pages}`);
 
-      return parts.length > 0 ? parts.join(" · ") : null;
-    })
-    .filter(Boolean)
-    .join("\n    ");
+      // Nombre en negrita
+      parts.push(`**${name}**`);
 
-  if (filesLine) {
-    filesLine = "\n    " + filesLine; // indent
+      // ID como código
+      if (f.id) parts.push(`**ID: **\`${f.id}\``);
+
+      if (dt) parts.push(`**Modif:** ${dt}`);
+      if (f.pages) parts.push(`**Págs:** ${f.pages}`);
+
+      lines.push(`- ${parts.join(" · ")}`);
+    });
+
+    if (lines.length > 0) {
+      filesLine = "\n" + lines.join("\n");
+    }
+  } else if (contextFiles && contextFiles.length > 0) {
+    // Caso 2: fallback a todo el contexto
+    const lines: string[] = [];
+
+    contextFiles.slice(0, 15).forEach((f) => {
+      const dt = f.modifiedTime
+        ? new Date(f.modifiedTime).toLocaleString()
+        : undefined;
+
+      const name = f.name ?? "(sin nombre)";
+      const id = f.id ? `**ID:** \`${f.id}\`` : "";
+      const extra = dt ? ` · **Modif:** ${dt}` : "";
+
+      lines.push(`- **${name}** · ${id}${extra}`);
+    });
+
+    if (contextFiles.length > 15) {
+      lines.push(`- _… y ${contextFiles.length - 15} más_`);
+    }
+
+    filesLine = "\n" + lines.join("\n");
+  } else {
+    filesLine = "\n- _(no disponible)_";
   }
-} else if (contextFiles && contextFiles.length > 0) {
-  // Caso 2: fallback a todo el contexto
-  filesLine =
-    "\n    " +
-    contextFiles
-      .slice(0, 15)
-      .map((f) => {
-        const dt = f.modifiedTime
-          ? new Date(f.modifiedTime).toLocaleString()
-          : undefined;
-        return (
-          `${f.name ?? "(sin nombre)"} · ID: ${f.id}` +
-          (dt ? ` · Modif: ${dt}` : "")
-        );
-      })
-      .join("\n    ");
 
-  if (contextFiles.length > 15) {
-    filesLine += `\n    ... y ${contextFiles.length - 15} más`;
-  }
-} else {
-  filesLine = " no disponible";
-}
 
+     // Carpetas como lista simple (IDs en código)
+    const folderLines = folders
+      .split(",")
+      .map((f) => f.trim())
+      .filter(Boolean)
+      .map((f) => `- \`${f}\``)
+      .join("\n");
 
     const adminFooter =
-      `\n\n🔧 **Depuración y origen de datos (solo admin)**\n` +
-      `📁 Carpetas consultadas: ${folders}\n` +
-      `📄 Archivos fuente utilizados:${filesLine}\n` +
-      `⚡ Modo: ${extractedFiles.length > 0 ? "Citados en respuesta" : "Contexto completo"}` ;
+      `\n\n---\n\n` +
+      `> 🔧 **Depuración y origen de datos (solo admin)**\n\n` +
+      `**📁 Carpetas consultadas**\n` +
+      (folderLines ? `${folderLines}\n\n` : `- _(no disponible)_\n\n`) +
+      `**📄 Archivos fuente utilizados**` +
+      `${filesLine}\n\n` +
+      `> ⚡ Modo: ${extractedFiles.length > 0 ? "Citados en respuesta" : "Contexto completo"}`;
 
     assistantMessage.content += adminFooter;
   }
