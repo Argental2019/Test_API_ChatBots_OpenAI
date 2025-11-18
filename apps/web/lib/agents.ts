@@ -887,11 +887,11 @@ const AGENTS_BASE: Agent[] = [
   },
 
  {
-    id: "FE-BIO-960-y-472",
-    name: "Horno rotativo FE 4.0-472 BIO",
+    id: "FE-BIO-960",
+    name: "Horno rotativo FE 4.0-960 BIO",
     family:"Hornos",
     subfamily:"A definir",
-    description: "Especialista en Horno rotativo FE 4.0-472 BIO",
+    description: "Especialista en Horno rotativo FE 4.0-960 BIO",
     accent: "from-blue-500 to-cyan-500",
     driveFolders: [
       "1GNuLy8NigfTRvMrhWvBY5CgQ1XadM2gY",
@@ -903,7 +903,26 @@ const AGENTS_BASE: Agent[] = [
       "¿La cocción es pareja y eficiente?",
       "¿Mantenimiento requerido?",
     ],
-    systemPrompt: BASE_PROMPT({ agentId: "FE-BIO-960-y-472", agentName: "Horno rotativo FE 4.0-472 BIO", primaryFolderLabel: "Info pública" }),
+    systemPrompt: BASE_PROMPT({ agentId: "FE-BIO-960", agentName: "Horno rotativo FE 4.0-960 BIO", primaryFolderLabel: "Info pública" }),
+  },
+   {
+    id: "FE-BIO-472",
+    name: "Horno rotativo FE 4.0-472 BIO",
+    family:"Hornos",
+    subfamily:"A definir",
+    description: "Especialista en Horno rotativo FE 4.0-472 BIO",
+    accent: "from-blue-500 to-cyan-500",
+    driveFolders: [
+      "1eMUxCPllX7plGpFd6fVC0dYQzeSXw7Z5",
+      "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
+    ],
+    faqs: [
+      "¿Por qué debería comprar este equipo?",
+      "¿Qué productos puede hacer y con qué nivel de producción?",
+      "¿La cocción es pareja y eficiente?",
+      "¿Mantenimiento requerido?",
+    ],
+    systemPrompt: BASE_PROMPT({ agentId: "FE-BIO-472", agentName: "Horno rotativo FE 4.0-472 BIO", primaryFolderLabel: "Info pública" }),
   },
    {
     id: "ARM-4000",
