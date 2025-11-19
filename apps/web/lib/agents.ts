@@ -334,7 +334,7 @@ Si el usuario repite una pregunta o una variación mínima de una anterior (por 
 const RAW_CSV = `
 COD_LISPRE,Categoría,SubCategoría,Nombre Comercial del Producto,Preg1,Preg2,Preg3,Preg4
 FE960,Hornos,Horno Rotativo 70x90,FE4.0 960,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?
-GALILEO,Sistema Automatico,Sistema de Panificación,Galileo Pan Frances / Pan de Molde,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Cómo es la calidad respecto al pan sobado?,¿Mantenimiento requerido?
+GALILEO,Sistema Automatico,Sistema de Panificación,Glileo Pan Frances / Pan de Molde,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Cómo es la calidad respecto al pan sobado?,¿Mantenimiento requerido?
 MBE-80U-S,Maquina,Amasadora Rapida Espiral,MBE-80S,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
 MBE-200U-S,Maquina,Amasadora Rapida Espiral,MBE-200S,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
 PA340,Hornos,Horno Rotativo 45x70,Panier III 45x70,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?
@@ -348,15 +348,16 @@ LINEA-CIABATTA,Maquina Semi Industria,Mesa de Corte ,Ciabattera,¿Por qué deber
 FOGLIA,Maquina,Laminadora Automatica,Foglia,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿Mantenimiento requerido?
 TORNADO-PL-II,Maquina,Mesa de Corte y Estibado,Tornado Plus E II,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Es un equipo seguro?,¿Mantenimiento requerido?
 GT-38,Maquina,Trinchadora,GT38-I,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-FE-III-315-ROTATIVO,Hornos,Horno Rotativo 10 45x70 / 40x60,FE III 315,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿La cocción es pareja y eficiente?,¿Es un equipo seguro?
+FE III-315-ROTATIVO,Hornos,Horno Rotativo 10 45x70 / 40x60,FE III 315,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿La cocción es pareja y eficiente?,¿Es un equipo seguro?
 FE-III-315-PISO,Hornos,A definir,,¿Por qué debería comprar este equipo?,Que productos puede hacer?,Cual es la capacidad de produccion?,Mantenimiento requerido?
 FE-III-315-CAMARA,Cámaras de fermentacíón,A definir,,¿Por qué debería comprar este equipo?,Que productos puede hacer?,Cual es la capacidad de produccion?,Mantenimiento requerido?
 360-BE,Maquina,Sobadora Semi Automatica,SA 360 BE,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿Mantenimiento requerido?
-CORBOLI,Maquina,Cortadora y Bollera,Corboli,,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+CORBOLI,Maquina,Cortadora y Bollera,Corboli,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
 MBE-160HA,Maquina,Amasadora Rapida Espiral,MBE-160HA,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
 DB,Maquina,Divisora Volumetrica,DB 1000,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
 FE4-0-472,Hornos,Horno Rotativo 45x70,FE4.0 472,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?
-FE-BIO-960-y-472,Hornos,Horno Rotativo 45x70 BIO,FE4.0 472 BIO,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿La cocción es pareja y eficiente?,¿Mantenimiento requerido?
+FE-BIO-472,Hornos,Horno Rotativo 45x70 BIO,FE4.0 472 BIO,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿La cocción es pareja y eficiente?,¿Mantenimiento requerido?
+FE-BIO-960,Hornos,,,¿Por qué deberia comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de produccion?,¿Mantenimiento requerido?
 ARM-4000,Maquina,Formadora de Medialunas / Croissants,Cabezal Armador 4000,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
 RAPIFREDDO-T5,Maquina,Ultracongelador 2/3/4/5 Carros 70x90,Rapifreddo T2 / T3 / T4 / T5,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
 GTC-MODULAR,Maquina,Trinchadora,GTC-I,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
@@ -374,10 +375,10 @@ SP-MODULAR,Trinchadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qu
 HORECA,Horno,Horno Rapido,Horeca BL,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
 NATO,Horno,Horno Convector,NATO,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
 MINICONV,Horno,Horno Convector,MINICONV,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-DOS-AR,Dosificador de agua,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+DOS-AR,Dosificador de agua,A definir,,¿Por qué debería comprar este equipo?,cuales son las dimensiones del equipo?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
 PA390,Hornos,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y cuál es el nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?
 RAPIFREDDO-15,Ultracongeladores,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-HCI-500,Enfriador,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+HCI-500,Enfriador,A definir,,¿Por qué debería comprar este equipo?,#REF!,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
 DBSA,Divisoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
 A-60,Batidoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
 CFC-40b,Cámaras de fermentacíón,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
@@ -419,6 +420,21 @@ MIX-60,Batidoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué prod
 BHC,Bolleras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
 M-6130-17CORTE,Laminadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
 DOSIF-RELLENO-X5,Dosificador de rellenos,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
+CFC-Vision-40B,Camara de fermentacion,A definir,,,,,
+TSI,Horno Combinado,A definir,,,,,
+Venecia,Horno Rapido,A definir,,,,,
+Horeca-XL,Horno Rapido,A definir,,,,,
+MT-MODULAR,Mesa de trabajo,A definir,,,,,
+PA20,A definir,A definir,,,,,
+PA40,A definir,A definir,,,,,
+PA80,A definir,A definir,,,,,
+,A definir,A definir,,,,,
+,A definir,A definir,,,,,
+,A definir,A definir,,,,,
+LANIN-II,Horno Convector,,,,,,
+PITA,Dosificador de rellenos,,,,,,
+AR-350,Armador ,,,,,,
+BATA,Dosificador de rellenos,,,,,,
 `.trim();
 
 // ===================== 2) PARSER CSV SIMPLE =====================
