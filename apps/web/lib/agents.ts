@@ -330,111 +330,111 @@ Si el usuario repite una pregunta o una variación mínima de una anterior (por 
 
 // ===================== 1) PEGÁ ACÁ TU CSV =====================
 // Importante: la primera fila debe contener estos encabezados exactos:
-// COD_LISPRE,Categoría,SubCategoría,Nombre Comercial del Producto,Preg1,Preg2,Preg3,Preg4
+// COD_LISPRE,Categoría,SubCategoría,Nombre Comercial del Producto,Preg1,Preg2,Preg3,Preg4,Preg5
 const RAW_CSV = `
-COD_LISPRE,Categoría,SubCategoría,Nombre Comercial del Producto,Preg1,Preg2,Preg3,Preg4
-FE960,Hornos,Horno Rotativo 70x90,FE4.0 960,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?
-GALILEO,Sistema Automatico,Sistema de Panificación,Glileo Pan Frances / Pan de Molde,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Cómo es la calidad respecto al pan sobado?,¿Mantenimiento requerido?
-MBE-80U-S,Maquina,Amasadora Rapida Espiral,MBE-80S,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-MBE-200U-S,Maquina,Amasadora Rapida Espiral,MBE-200S,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-PA340,Hornos,Horno Rotativo 45x70,Panier III 45x70,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?
-C4000-19,Maquina,Medialunera / Croissants,C-4000,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-M-6130-17,Maquina,Laminadora,Refinadora M-600,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿Mantenimiento requerido?
-TORNADO-PL,Maquina,Mesa de Corte,Tonado Plus E,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-BLIND-LI-FULL,Maquina,Sobadora Pesada,Blindi full,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-GALILEO-ARTESAN,Sistemas Automatico,Sistema de Panificación,Galileo Artesano,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Cómo es la calidad respecto al pan sobado?,¿Mantenimiento requerido?
-COMPRESSLINE,Maquina Semi Industria,Mesa de Corte ,Compressline,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-LINEA-CIABATTA,Maquina Semi Industria,Mesa de Corte ,Ciabattera,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-FOGLIA,Maquina,Laminadora Automatica,Foglia,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿Mantenimiento requerido?
-TORNADO-PL-II,Maquina,Mesa de Corte y Estibado,Tornado Plus E II,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Es un equipo seguro?,¿Mantenimiento requerido?
-GT-38,Maquina,Trinchadora,GT38-I,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-FE III-315-ROTATIVO,Hornos,Horno Rotativo 10 45x70 / 40x60,FE III 315,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿La cocción es pareja y eficiente?,¿Es un equipo seguro?
-FE-III-315-PISO,Hornos,A definir,,¿Por qué debería comprar este equipo?,Que productos puede hacer?,Cual es la capacidad de produccion?,Mantenimiento requerido?
-FE-III-315-CAMARA,Cámaras de fermentacíón,A definir,,¿Por qué debería comprar este equipo?,Que productos puede hacer?,Cual es la capacidad de produccion?,Mantenimiento requerido?
-360-BE,Maquina,Sobadora Semi Automatica,SA 360 BE,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿Mantenimiento requerido?
-CORBOLI,Maquina,Cortadora y Bollera,Corboli,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-MBE-160HA,Maquina,Amasadora Rapida Espiral,MBE-160HA,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-DB,Maquina,Divisora Volumetrica,DB 1000,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-FE4-0-472,Hornos,Horno Rotativo 45x70,FE4.0 472,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?
-FE-BIO-472,Hornos,Horno Rotativo 45x70 BIO,FE4.0 472 BIO,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿La cocción es pareja y eficiente?,¿Mantenimiento requerido?
-FE-BIO-960,Hornos,,,¿Por qué deberia comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de produccion?,¿Mantenimiento requerido?
-ARM-4000,Maquina,Formadora de Medialunas / Croissants,Cabezal Armador 4000,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-RAPIFREDDO-T5,Maquina,Ultracongelador 2/3/4/5 Carros 70x90,Rapifreddo T2 / T3 / T4 / T5,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-GTC-MODULAR,Maquina,Trinchadora,GTC-I,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-GTCG,Trinchadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-H2C,Hornos,Horno de Piso,H2C,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-DBS,Maquina,Divisora Bollera Panier,DBS 30-100-30,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-CFA,Camara Fermentacion,Camara de Fermentacion 2/4/6 Carros 70x90,CFA 2 / 4 / 6 carros 70x90,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-EU2C-MODULAR,Maquina,Cortadora y Armadora,EU2C-I,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-ELEVA,Maquina,Elevador de Bateas ,ELEVA T160H,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-MBE-40T,Maquina,Amasadora Rapida Espiral,MBE-40T,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-SGAU-MODULAR,Maquina,Trinchadora Estibadora ,SGAUI 7090 / 6080,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-SGGPM,Trinchadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-SGAUG,Trinchadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-SP-MODULAR,Trinchadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-HORECA,Horno,Horno Rapido,Horeca BL,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-NATO,Horno,Horno Convector,NATO,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-MINICONV,Horno,Horno Convector,MINICONV,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-DOS-AR,Dosificador de agua,A definir,,¿Por qué debería comprar este equipo?,cuales son las dimensiones del equipo?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-PA390,Hornos,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y cuál es el nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?
-RAPIFREDDO-15,Ultracongeladores,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-HCI-500,Enfriador,A definir,,¿Por qué debería comprar este equipo?,#REF!,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-DBSA,Divisoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-A-60,Batidoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-CFC-40b,Cámaras de fermentacíón,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-DB4B,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-DB2B,Divisoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-BPNS-20L,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-GP-70I-MOD,Grissinera,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-RAPIFREDDO-30,Ultracongeladores,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-BRISEELINE,Depositadora,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-GT-MINI,Trinchadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-GT-PANIER,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-BPNS-40L,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-DOSIF-RELLENO,Dosificador de rellenos,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-A-160,Batidoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-MINI-LINEA-COORD,Líneas Modulares,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-MINI-LINEA-RETRAC,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-C12000,Equipos para croissants,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-ARTESAN,Divisoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-CHOPRA-III,Depositadora,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-LINEA-PIZZAS,Líneas Modulares,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-LINEA-EMPANADAS,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-M-66,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-LPN-520S,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-LIDO,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-SPNI-500,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-BC1200I,Bolleras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-ARD6I-MOD,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-FDPM,Formador de pizza,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-DB1200,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-TRANSP-BARRAS,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-INSIGNIA,Sistemas de panificación,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-AMBRO-PRESS,Prensagrasa,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-RPNM-RPN,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-FMI-10-12,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-BPNV-300,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-MP-1I,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-DPN-2232,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-MIX-60,Batidoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-BHC,Bolleras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-M-6130-17CORTE,Laminadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-DOSIF-RELLENO-X5,Dosificador de rellenos,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?
-CFC-Vision-40B,Camara de fermentacion,A definir,,,,,
-TSI,Horno Combinado,A definir,,,,,
-Venecia,Horno Rapido,A definir,,,,,
-Horeca-XL,Horno Rapido,A definir,,,,,
-MT-MODULAR,Mesa de trabajo,A definir,,,,,
-PA20,A definir,A definir,,,,,
-PA40,A definir,A definir,,,,,
-PA80,A definir,A definir,,,,,
-,A definir,A definir,,,,,
-,A definir,A definir,,,,,
-,A definir,A definir,,,,,
-LANIN-II,Horno Convector,,,,,,
-PITA,Dosificador de rellenos,,,,,,
-AR-350,Armador ,,,,,,
-BATA,Dosificador de rellenos,,,,,,
+COD_LISPRE,Categoría,SubCategoría,Nombre Comercial del Producto,Preg1,Preg2,Preg3,Preg4,Preg5
+FE960,Hornos,Horno Rotativo 70x90,FE4.0 960,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?,¿Cuáles son las dimensiones del equipo?
+GALILEO,Sistema Automatico,Sistema de Panificación,Glileo Pan Frances / Pan de Molde,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Cómo es la calidad respecto al pan sobado?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+MBE-80U-S,Maquina,Amasadora Rapida Espiral,MBE-80S,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+MBE-200U-S,Maquina,Amasadora Rapida Espiral,MBE-200S,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+PA340,Hornos,Horno Rotativo 45x70,Panier III 45x70,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?,¿Cuáles son las dimensiones del equipo?
+C4000-19,Maquina,Medialunera / Croissants,C-4000,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+M-6130-17,Maquina,Laminadora,Refinadora M-600,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+TORNADO-PL,Maquina,Mesa de Corte,Tonado Plus E,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+BLIND-LI-FULL,Maquina,Sobadora Pesada,Blindi full,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+GALILEO-ARTESAN,Sistemas Automatico,Sistema de Panificación,Galileo Artesano,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Cómo es la calidad respecto al pan sobado?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+COMPRESSLINE,Maquina Semi Industria,Mesa de Corte ,Compressline,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+LINEA-CIABATTA,Maquina Semi Industria,Mesa de Corte ,Ciabattera,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+FOGLIA,Maquina,Laminadora Automatica,Foglia,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+TORNADO-PL-II,Maquina,Mesa de Corte y Estibado,Tornado Plus E II,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Es un equipo seguro?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+GT-38,Maquina,Trinchadora,GT38-I,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+FE III-315-ROTATIVO,Hornos,Horno Rotativo 10 45x70 / 40x60,FE III 315,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿La cocción es pareja y eficiente?,¿Es un equipo seguro?,¿Cuáles son las dimensiones del equipo?
+FE-III-315-PISO,Hornos,A definir,,¿Por qué debería comprar este equipo?,Que productos puede hacer?,Cual es la capacidad de produccion?,Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+FE-III-315-CAMARA,Cámaras de fermentacíón,A definir,,¿Por qué debería comprar este equipo?,Que productos puede hacer?,Cual es la capacidad de produccion?,Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+360-BE,Maquina,Sobadora Semi Automatica,SA 360 BE,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+CORBOLI,Maquina,Cortadora y Bollera,Corboli,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+MBE-160HA,Maquina,Amasadora Rapida Espiral,MBE-160HA,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+DB,Maquina,Divisora Volumetrica,DB 1000,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+FE4-0-472,Hornos,Horno Rotativo 45x70,FE4.0 472,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?,¿Cuáles son las dimensiones del equipo?
+FE-BIO-472,Hornos,Horno Rotativo 45x70 BIO,FE4.0 472 BIO,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿La cocción es pareja y eficiente?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+FE-BIO-960,Hornos,,,¿Por qué deberia comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de produccion?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+ARM-4000,Maquina,Formadora de Medialunas / Croissants,Cabezal Armador 4000,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+RAPIFREDDO-T5,Maquina,Ultracongelador 2/3/4/5 Carros 70x90,Rapifreddo T2 / T3 / T4 / T5,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+GTC-MODULAR,Maquina,Trinchadora,GTC-I,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+GTCG,Trinchadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+H2C,Hornos,Horno de Piso,H2C,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+DBS,Maquina,Divisora Bollera Panier,DBS 30-100-30,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+CFA,Camara Fermentacion,Camara de Fermentacion 2/4/6 Carros 70x90,CFA 2 / 4 / 6 carros 70x90,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+EU2C-MODULAR,Maquina,Cortadora y Armadora,EU2C-I,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+ELEVA,Maquina,Elevador de Bateas ,ELEVA T160H,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+MBE-40T,Maquina,Amasadora Rapida Espiral,MBE-40T,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+SGAU-MODULAR,Maquina,Trinchadora Estibadora ,SGAUI 7090 / 6080,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+SGGPM,Trinchadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+SGAUG,Trinchadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+SP-MODULAR,Trinchadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+HORECA,Horno,Horno Rapido,Horeca BL,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+NATO,Horno,Horno Convector,NATO,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+MINICONV,Horno,Horno Convector,MINICONV,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+DOS-AR,Dosificador de agua,A definir,,¿Por qué debería comprar este equipo?,¿Cuáles son las dimensiones del equipo?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+PA390,Hornos,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y cuál es el nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?,¿Cuáles son las dimensiones del equipo?
+RAPIFREDDO-15,Ultracongeladores,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+HCI-500,Enfriador,A definir,,¿Por qué debería comprar este equipo?,¿Cuál es la capacidad de producción?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+DBSA,Divisoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+A-60,Batidoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+CFC-40b,Cámaras de fermentacíón,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+DB4B,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+DB2B,Divisoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+BPNS-20L,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+GP-70I-MOD,Grissinera,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+RAPIFREDDO-30,Ultracongeladores,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+BRISEELINE,Depositadora,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+GT-MINI,Trinchadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+GT-PANIER,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+BPNS-40L,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+DOSIF-RELLENO,Dosificador de rellenos,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+A-160,Batidoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+MINI-LINEA-COORD,Líneas Modulares,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+MINI-LINEA-RETRAC,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+C12000,Equipos para croissants,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+ARTESAN,Divisoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+CHOPRA-III,Depositadora,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+LINEA-PIZZAS,Líneas Modulares,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+LINEA-EMPANADAS,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+M-66,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+LPN-520S,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+LIDO,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+SPNI-500,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+BC1200I,Bolleras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+ARD6I-MOD,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+FDPM,Formador de pizza,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+DB1200,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+TRANSP-BARRAS,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+INSIGNIA,Sistemas de panificación,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+AMBRO-PRESS,Prensagrasa,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+RPNM-RPN,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+FMI-10-12,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+BPNV-300,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+MP-1I,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+DPN-2232,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+MIX-60,Batidoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+BHC,Bolleras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+M-6130-17CORTE,Laminadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+DOSIF-RELLENO-X5,Dosificador de rellenos,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+CFC-Vision-40B,Camara de fermentacion,A definir,,,,,,¿Cuáles son las dimensiones del equipo?
+TSI,Horno Combinado,A definir,,,,,,¿Cuáles son las dimensiones del equipo?
+Venecia,Horno Rapido,A definir,,,,,,¿Cuáles son las dimensiones del equipo?
+Horeca-XL,Horno Rapido,A definir,,,,,,¿Cuáles son las dimensiones del equipo?
+MT-MODULAR,Mesa de trabajo,A definir,,,,,,¿Cuáles son las dimensiones del equipo?
+PA20,A definir,A definir,,,,,,¿Cuáles son las dimensiones del equipo?
+PA40,A definir,A definir,,,,,,¿Cuáles son las dimensiones del equipo?
+PA80,A definir,A definir,,,,,,¿Cuáles son las dimensiones del equipo?
+,A definir,A definir,,,,,,
+,A definir,A definir,,,,,,
+,A definir,A definir,,,,,,
+LANIN-II,Horno Convector,,,,,,,
+PITA,Dosificador de rellenos,,,,,,,
+AR-350,Armador ,,,,,,,
+BATA,Dosificador de rellenos,,,,,,,
 `.trim();
 
 // ===================== 2) PARSER CSV SIMPLE =====================
@@ -447,6 +447,7 @@ type CsvRow = {
   Preg2?: string;
   Preg3?: string;
   Preg4?: string;
+  Preg5?: string;
 };
 
 function parseCSV(text: string): CsvRow[] {
@@ -497,6 +498,13 @@ const csvById: Map<string, CsvRow> = new Map(
 // ===================== 4) LISTA BASE DE AGENTES =====================
 // 👉 Conservá tus agents base: IDs, accent y driveFolders son la "fuente de verdad".
 //    name/family/subfamily/description/faqs/systemPrompt se completan desde el CSV si hay datos.
+const faqsDefault =   [
+      "¿Por qué debería comprar este equipo?",
+      "¿Qué productos puede hacer y con qué nivel de producción?",
+      "¿Es un equipo seguro?",
+      "¿La cocción es pareja y eficiente?",
+      "¿Cuáles son las dimensiones del equipo?"
+    ];
 
 const AGENTS_BASE: Agent[] = [
   {
@@ -507,12 +515,7 @@ const AGENTS_BASE: Agent[] = [
     description: "Especialista en horno rotativo FE 4.0-960 de Argental",
     accent: "from-blue-500 to-cyan-500",
     driveFolders: ["17enT9eKi8Wgr92wOhVlqHyIUFlZP1bo4", "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo"],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer y con qué nivel de producción?",
-      "¿Es un equipo seguro?",
-      "¿La cocción es pareja y eficiente?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "fe960", agentName: "Horno rotativo FE 4.0-960", primaryFolderLabel: "Info pública" }),
   },
   {
@@ -526,12 +529,7 @@ const AGENTS_BASE: Agent[] = [
       "1-4pagM_vzAW2QXJzlV19ktsQs8wBHd4U",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "MBE-80U-S", agentName: "Amasadora MBE-80U-S", primaryFolderLabel: "Info pública" }),
   },
    {
@@ -545,12 +543,7 @@ const AGENTS_BASE: Agent[] = [
       "1WBKqrI_dmveS6u-viV2TWTmU3gCBrCkk",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer y con qué nivel de producción?",
-      "¿Cómo es la calidad respecto al pan sobado?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs:faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "GALILEO", agentName: "Sistema GALILEO SGAUIG PF y PM", primaryFolderLabel: "Info pública" }),
   },
     {
@@ -564,12 +557,7 @@ const AGENTS_BASE: Agent[] = [
       "14dSfoRlexMPoUVnu92DQ2FYkCCTJS_ug",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "MBE-200U-S", agentName: "Amasadora MBE-200U-S", primaryFolderLabel: "Info pública" }),
   },
     {
@@ -583,12 +571,7 @@ const AGENTS_BASE: Agent[] = [
       "1Z4n_7q8XlfkP-XxdWT9qZSZGXKqZx_tu",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer y con qué nivel de producción?",
-      "¿Es un equipo seguro?",
-      "¿La cocción es pareja y eficiente?",
-    ],
+    faqs:faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "PA340", agentName: "HORNO PANIER-III-4570 GN-IN-GAS-VM-PROG-T380/50", primaryFolderLabel: "Info pública" }),
   },
      {
@@ -602,12 +585,7 @@ const AGENTS_BASE: Agent[] = [
       "18qbTEsdxbtyCuk2QvrZZ1rkLqm74GrG2",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "C4000-19", agentName: "AMBRO - Elaboradora de Croissants C4000", primaryFolderLabel: "Info pública" }),
   },
      {
@@ -621,12 +599,7 @@ const AGENTS_BASE: Agent[] = [
       "1K_7FUccMyKQHeN25nahcJLyfBCG-55dJ",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer y con qué nivel de producción?",
-      "¿Es un equipo seguro?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "M-6130-17", agentName: "AMBRO - Refinadora M-600", primaryFolderLabel: "Info pública" }),
   },
     {
@@ -640,12 +613,7 @@ const AGENTS_BASE: Agent[] = [
       "1luezKJGoaKxln8NGrbqYDdVthBZLWXqb",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "TORNADO-PL", agentName: "AMBRO - Mesa Tornado Plus E", primaryFolderLabel: "Info pública" }),
   },
    {
@@ -659,12 +627,7 @@ const AGENTS_BASE: Agent[] = [
       "1CbB73gkQofoDDW-DVhkueTnIo3KqN5cU",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "BLIND-LI-FULL", agentName: "Sobadora BLIND LI FULL INOX", primaryFolderLabel: "Info pública" }),
   },
   {
@@ -678,12 +641,7 @@ const AGENTS_BASE: Agent[] = [
       "1J49ep5Q2PA9YCvf-iYxGKA1b6Vv-cOEm",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer y con qué nivel de producción?",
-      "¿Cómo es la calidad respecto al pan sobado?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs:faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "GALILEO-ARTESAN", agentName: "Sistema GALILEO ARTESANO", primaryFolderLabel: "Info pública" }),
   },
    {
@@ -697,12 +655,7 @@ const AGENTS_BASE: Agent[] = [
       "1-vX4iYDdYgVVOik9_w1mhP1q_7daCD9_",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "COMPRESSLINE", agentName: "AMBRO - Mesa modular COMPRESSLINE", primaryFolderLabel: "Info pública" }),
   },
  {
@@ -716,12 +669,7 @@ const AGENTS_BASE: Agent[] = [
       "17klf-CMD02lrvQcZrL0_C7D8cYYHBS7j",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "LINEA-CIABATTA", agentName: "AMBRO - LINEA CIABATTA", primaryFolderLabel: "Info pública" }),
   },
  {
@@ -735,12 +683,7 @@ const AGENTS_BASE: Agent[] = [
       "13a8Zj7XWNK_Ghp-yOtekHv4TPh0joAJy",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer y con qué nivel de producción?",
-      "¿Es un equipo seguro?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs:faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "FOGLIA", agentName: "AMBRO - Laminadora Automática FOGLIA", primaryFolderLabel: "Info pública" }),
   },
  {
@@ -754,12 +697,7 @@ const AGENTS_BASE: Agent[] = [
       "1NRQKDxmiN41iancltwE9Ird2Kvb12MGO",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Es un equipo seguro?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs:faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "TORNADO-PL-II", agentName: "AMBRO - Mesa Tornado Plus II", primaryFolderLabel: "Info pública" }),
   },
 
@@ -774,12 +712,7 @@ const AGENTS_BASE: Agent[] = [
       "1l8aLHxZgHWM1e7p7-c2zLCepbGUFnWY6",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "GT-38", agentName: "Grupo trinchador GT38-I Mod.", primaryFolderLabel: "Info pública" }),
   },
  {
@@ -793,12 +726,7 @@ const AGENTS_BASE: Agent[] = [
       "17MVKw06b02TN8JVaSiJFA4n_SscxhzIf",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer y con qué nivel de producción?",
-      "¿La cocción es pareja y eficiente?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "FE-III-315-ROTATIVO", agentName: "Horno rotativo FE III-315", primaryFolderLabel: "Info pública" }),
   },
 
@@ -813,12 +741,7 @@ const AGENTS_BASE: Agent[] = [
       "1UHB2yzlz6y-xRTW9a2KS6C-R6vCrxTvI",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer y con qué nivel de producción?",
-      "¿Es un equipo seguro?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "360-BE", agentName: "SOBADORA AUTOMATICA 360 BE", primaryFolderLabel: "Info pública" }),
   },
 
@@ -834,12 +757,7 @@ const AGENTS_BASE: Agent[] = [
       "1Bf_IQClyuuKMtDTDTlRMqM1Zw1r6pxFE",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Es un equipo seguro?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs:faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "CORBOLI", agentName: "Cortadora-Bollera Corboli", primaryFolderLabel: "Info pública" }),
   },
  {
@@ -853,12 +771,7 @@ const AGENTS_BASE: Agent[] = [
       "1evTLb9DevWuh09ei-sI-t43y8FpA0dZ4",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Es un equipo seguro?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "MBE-160HA", agentName: "Amasadora MBE-160HA", primaryFolderLabel: "Info pública" }),
   },
 
@@ -873,12 +786,7 @@ const AGENTS_BASE: Agent[] = [
       "1vjXBuzouDoFRF6krwOjFculpJPEu8PP1",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Es un equipo seguro?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs:faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "DB", agentName: "Divisora Argental DB1000", primaryFolderLabel: "Info pública" }),
   },
 
@@ -893,12 +801,7 @@ const AGENTS_BASE: Agent[] = [
       "1G8BR6eNfrTAl3twQTlidrfqsN5BJ8pL5",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer y con qué nivel de producción?",
-      "¿Es un equipo seguro?",
-      "¿La cocción es pareja y eficiente?",
-    ],
+    faqs:faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "FE4-0-472", agentName: "Horno rotativo FE 4.0-472", primaryFolderLabel: "Info pública" }),
   },
 
@@ -913,12 +816,7 @@ const AGENTS_BASE: Agent[] = [
       "1GNuLy8NigfTRvMrhWvBY5CgQ1XadM2gY",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer y con qué nivel de producción?",
-      "¿La cocción es pareja y eficiente?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs:faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "FE-BIO-960", agentName: "Horno rotativo FE 4.0-960 BIO", primaryFolderLabel: "Info pública" }),
   },
    {
@@ -932,12 +830,7 @@ const AGENTS_BASE: Agent[] = [
       "1eMUxCPllX7plGpFd6fVC0dYQzeSXw7Z5",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer y con qué nivel de producción?",
-      "¿La cocción es pareja y eficiente?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "FE-BIO-472", agentName: "Horno rotativo FE 4.0-472 BIO", primaryFolderLabel: "Info pública" }),
   },
    {
@@ -951,12 +844,7 @@ const AGENTS_BASE: Agent[] = [
       "10goSXm0032C7hz_21KPFMIAixgysud5i",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "ARM-4000", agentName: "AMBRO - Cabezal Armador C4000", primaryFolderLabel: "Info pública" }),
   },
    {
@@ -970,12 +858,7 @@ const AGENTS_BASE: Agent[] = [
       "1ePGsC1PfHDTVNKpQtQFXAT4iz9FXRoUx",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "RAPIFREDDO-T5", agentName: "Túnel Ultracongelador RAPIFREDDO 70X90 T2C-T3C-T4C-T5C", primaryFolderLabel: "Info pública" }),
   },
   {
@@ -989,12 +872,7 @@ const AGENTS_BASE: Agent[] = [
       "18QvdumOvayNEdGTbigHxBfeAynddycGf",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "GTC-MODULAR", agentName: "Grupo trinchador GTC-I Mod.", primaryFolderLabel: "Info pública" }),
   },
    {
@@ -1008,12 +886,7 @@ const AGENTS_BASE: Agent[] = [
       "1-bW6ZDYHBnFffhThHfK348RYzpbUpzTk",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "H2C", agentName: "Horno de piso H2C", primaryFolderLabel: "Info pública" }),
   },
    {
@@ -1027,12 +900,7 @@ const AGENTS_BASE: Agent[] = [
       "1ecYCrRantUOW9YAnJ_e2opAlhrB4hPDb",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "DBS", agentName: "DIVISORA-BOLLERA SEMI. PANIER DBS30-100-30 T380/50", primaryFolderLabel: "Info pública" }),
   },
    {
@@ -1046,12 +914,7 @@ const AGENTS_BASE: Agent[] = [
       "1hyU5_fHfVZwuYedFaFhfxyCrY-lFN2Ak",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "CFA", agentName: "Cámara Fermentación CFA INOX. 2C/4C/6C", primaryFolderLabel: "Info pública" }),
   },
    {
@@ -1065,12 +928,7 @@ const AGENTS_BASE: Agent[] = [
       "1Afu3F8mKvnEPxATYT5yOndYeD4QrzQcV",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "EU2C-MODULAR", agentName: "Equipo Unific. Mod. INOX.EU2C-I", primaryFolderLabel: "Info pública" }),
   },
    {
@@ -1084,12 +942,7 @@ const AGENTS_BASE: Agent[] = [
       "1w-k7Cdit1S2Om1BaYh9Q5rx1INSSu1vx",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "ELEVA", agentName: "Elevador ELEVA-T160H", primaryFolderLabel: "Info pública" }),
   },
   {
@@ -1103,12 +956,7 @@ const AGENTS_BASE: Agent[] = [
       "1qqSGPpt9yACTlbMKNKyYgyoEDjClN0Pk",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "MBE-40T", agentName: "Amasadora MBE-40T", primaryFolderLabel: "Info pública" }),
   },
   {
@@ -1122,12 +970,7 @@ const AGENTS_BASE: Agent[] = [
       "1Bz-GpG8IdP8hacJGAXMANFwjuSvWnYUD",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "SGAU-MODULAR", agentName: "Grupo Automático Universal SGAUI", primaryFolderLabel: "Info pública" }),
   },
   {
@@ -1141,12 +984,7 @@ const AGENTS_BASE: Agent[] = [
       "1ZWIIWH7GH_bUJWYwn4uVrVuhTmi5PM-8",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "HORECA", agentName: "HORNO RÁPIDO ARGENTAL HORECA ", primaryFolderLabel: "Info pública" }),
   },
   {
@@ -1160,12 +998,7 @@ const AGENTS_BASE: Agent[] = [
       "1W8aWFHz-GWtyOE8ZrdFsB-UlbsumnNPG",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "NATO", agentName: "HORNO CONVECTOR PANIER MANUAL HCP NATO", primaryFolderLabel: "Info pública" }),
   },
   {
@@ -1179,12 +1012,7 @@ const AGENTS_BASE: Agent[] = [
       "1JbPeo36mEdBm4-vohz_fWherwJe8iisz",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "MINICONV", agentName: "HORNO CONVECTOR PANIER MANUAL MINICONV", primaryFolderLabel: "Info pública" }),
   },
   //Amarillos
@@ -1199,12 +1027,7 @@ const AGENTS_BASE: Agent[] = [
       "1ffFIgzea-t7UQiqgBKllwiGY3yvL5Qus",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "DOS-AR", agentName: "Dosificador de Agua DOS-AR", primaryFolderLabel: "Info pública" }),
   },
 
@@ -1219,12 +1042,7 @@ const AGENTS_BASE: Agent[] = [
       "1ED6j5RKCMhhsBn9-JRd1RKhaJKJAWIpw",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer y cuál es el nivel de producción?",
-      "¿Es un equipo seguro?",
-      "¿La cocción es pareja y eficiente?",
-    ],
+    faqs:faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "PA390", agentName: "HORNO PANIER-III-7090 GN-IN-GAS-VM-PROG-T380/50", primaryFolderLabel: "Info pública" }),
   },
  {
@@ -1238,12 +1056,7 @@ const AGENTS_BASE: Agent[] = [
       "1jSj-R6JzmZsllHBNHVaMVh6XDK_Z4ZL0",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "RAPIFREDDO-15", agentName: "Ultracongelador RAPIFREDDO-V15 45X70", primaryFolderLabel: "Info pública" }),
   },
  {
@@ -1257,12 +1070,7 @@ const AGENTS_BASE: Agent[] = [
       "1GcydOXAJOxr4JdOYpESZTYvo349d-V_f",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "HCI-500", agentName: "Enfriador de Agua HCI-500 INOX.", primaryFolderLabel: "Info pública" }),
   },
 
@@ -1277,12 +1085,7 @@ const AGENTS_BASE: Agent[] = [
       "1ryWuF4ksiL0dxrKUgnDxC3gqIjtKV5k9",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "DBSA", agentName: "Divisora - Bollera Semi. Ambro DBSA30-40-135", primaryFolderLabel: "Info pública" }),
   },
 
@@ -1297,12 +1100,7 @@ const AGENTS_BASE: Agent[] = [
       "1RYCksOVszec3zSru_Sc-mczbxkYPJIuW",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "A-60", agentName: "Batidora Ambro A-60", primaryFolderLabel: "Info pública" }),
   },
  {
@@ -1316,12 +1114,7 @@ const AGENTS_BASE: Agent[] = [
       "1bwjveMWPeqjikrep_kQXldsDY_hgmyBn",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "CFC-40b", agentName: "Cámara de Fermentción Controlada 40b Panier", primaryFolderLabel: "Info pública" }),
   },
  {
@@ -1335,12 +1128,7 @@ const AGENTS_BASE: Agent[] = [
       "1lxLNVJJDX8IAczfGoB3Z6jBm1LwRJwUC",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "DB4B", agentName: "Divisora Volumétrica 4B30-200/4B30-200", primaryFolderLabel: "Info pública" }),
   },
  {
@@ -1354,12 +1142,7 @@ const AGENTS_BASE: Agent[] = [
       "19KeSbv2EuNO0WP2YzQv_yNdx_HJAWlHq",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "DB2B", agentName: "Divisora Volumétrica 2B25-200/4B25-200", primaryFolderLabel: "Info pública" }),
   },
 
@@ -1374,12 +1157,7 @@ const AGENTS_BASE: Agent[] = [
       "1obVahVTZ3fJilHK-Kp4Gsjq9ZHClUQao",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "BPNS-20L", agentName: "BATIDORA BPNS-20L", primaryFolderLabel: "Info pública" }),
   },
 
@@ -1394,12 +1172,7 @@ const AGENTS_BASE: Agent[] = [
       "1jzbqfMErpUJDuxbSVzh4woKPH1gEIyf-",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "GP-70I-MOD", agentName: "Grissinera Panchera GP70-I", primaryFolderLabel: "Info pública" }),
   },
 
@@ -1414,12 +1187,7 @@ const AGENTS_BASE: Agent[] = [
       "18WdrSvyQK-dR6UJQ26Y47LL6ueM9a9yU",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "RAPIFREDDO-30", agentName: "Ultracongelador RAPIFREDDO-30 1C 70X90", primaryFolderLabel: "Info pública" }),
   },
 
@@ -1434,12 +1202,7 @@ const AGENTS_BASE: Agent[] = [
       "12Ar1-RAwWw5tNAM4S512QLc-d4qkPUQ0",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "BRISEELINE", agentName: "AMBRO - Depositadora BRISEELINE", primaryFolderLabel: "Info pública" }),
   },
  {
@@ -1453,12 +1216,7 @@ const AGENTS_BASE: Agent[] = [
       "19Wl3FyfIYjgHRNRgZPIUE7e50uCHCFvu",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "GT-MINI", agentName: "Grupo trinchador GTMINI ARGENTAL", primaryFolderLabel: "Info pública" }),
   },
  {
@@ -1472,12 +1230,7 @@ const AGENTS_BASE: Agent[] = [
       "1q9ao1yUwnjnMNMCZXR2jsWlpT_6zfDNG",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "GT-PANIER", agentName: "Grupo trinchador GT- PANIER", primaryFolderLabel: "Info pública" }),
   },
  {
@@ -1491,12 +1244,7 @@ const AGENTS_BASE: Agent[] = [
       "19BsrdpNyGesOlAmrLNfrZlPWOLG8EOh8",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "BPNS-40L", agentName: "BATIDORA BPNS-40L", primaryFolderLabel: "Info pública" }),
   },
  {
@@ -1510,12 +1258,7 @@ const AGENTS_BASE: Agent[] = [
       "1gvE0zCYeGkpR0Xvy0gVd8z5i7SJnB4g4",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "DOSIF-RELLENO", agentName: "AMBRO - Dosificador de Rellenos con PEDESTAL / de MESA", primaryFolderLabel: "Info pública" }),
   },
  {
@@ -1529,12 +1272,7 @@ const AGENTS_BASE: Agent[] = [
       "1v-d1yIFR1ktXYUhim_7HUk8QnGUg5fKF",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "A-160", agentName: "Batidora Ambro A-160", primaryFolderLabel: "Info pública" }),
   },
  {
@@ -1548,12 +1286,7 @@ const AGENTS_BASE: Agent[] = [
       "1LI9HV3mFg9S7-hS2FcMuykz_IjfQEy8i",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "MINI-LINEA-COORD", agentName: "AMBRO - Mesa modular MINI-LINEA con ESTIBADOR COORDINADO", primaryFolderLabel: "Info pública" }),
   },
 
@@ -1568,12 +1301,7 @@ const AGENTS_BASE: Agent[] = [
       "1pRYMOYChLdbUr-3VIv178bH9bhf_b3BL",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "MINI-LINEA-RETRAC", agentName: "AMBRO - Mesa modular MINI-LINEA con ESTIBADOR RETRACTIL", primaryFolderLabel: "Info pública" }),
   },
  {
@@ -1587,12 +1315,7 @@ const AGENTS_BASE: Agent[] = [
       "1n46W6083cNjLTDBg8vjaL6aPzZHOJ_Tp",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "C12000", agentName: "AMBRO - Elaboradora de Croissants C12000", primaryFolderLabel: "Info pública" }),
   },
  {
@@ -1606,12 +1329,7 @@ const AGENTS_BASE: Agent[] = [
       "1s4hFGVp5vCo9-BSA4oM8RRLVZp-jwf4z",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "ARTESAN", agentName: "Divisora Masa Hidratada ARTESAN", primaryFolderLabel: "Info pública" }),
   },
  {
@@ -1625,12 +1343,7 @@ const AGENTS_BASE: Agent[] = [
       "1mURAE25z6ADbLgC4l4FTld-kRKVwDK4N",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "CHOPRA-III", agentName: "AMBRO - Dosificadora Cortadora CHOPRA III", primaryFolderLabel: "Info pública" }),
   },
 
@@ -1646,12 +1359,7 @@ const AGENTS_BASE: Agent[] = [
       "1EDtL9VeqjLawgsQ4gLFsHEPCcuNjoEW-",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "LINEA-PIZZAS", agentName: "AMBRO - Línea Pizza 2.0", primaryFolderLabel: "Info pública" }),
   },
  {
@@ -1665,12 +1373,7 @@ const AGENTS_BASE: Agent[] = [
       "1TbRwhoi9p2CHe6giK_n71Asi-gV5Gru9",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "LINEA-EMPANADAS", agentName: "LINEA EMPANADAS COMPAC", primaryFolderLabel: "Info pública" }),
   },
 
@@ -1686,12 +1389,7 @@ const AGENTS_BASE: Agent[] = [
       "1ZfkOWPeCPxrwUxz9KzMt-JL6S9uPk-co",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "M-66", agentName: "CORTADO M66I MODULAR ", primaryFolderLabel: "Info pública" }),
   },
     {
@@ -1705,12 +1403,7 @@ const AGENTS_BASE: Agent[] = [
       "1qRG1M9vOYD7jZxZ_q9hZd0YUAdwUYCgd",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "LPN-520S", agentName: "LAMINADORA DE MESA LPN+520S ", primaryFolderLabel: "Info pública" }),
   },
     {
@@ -1724,12 +1417,7 @@ const AGENTS_BASE: Agent[] = [
       "1jO_BnQKAOHg7w3hY5QdfTIk_0PevOxW7",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "LIDO", agentName: "HORNO ROTATIVO LIDO 960", primaryFolderLabel: "Info pública" }),
   },
     {
@@ -1743,12 +1431,7 @@ const AGENTS_BASE: Agent[] = [
       "1W97MfMFsgKY-TwfR9DKaaKlO5ew9Ymvk",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "SPNI-500", agentName: "SOBADORA PASTELERA SPNI-500", primaryFolderLabel: "Info pública" }),
   },
     {
@@ -1762,12 +1445,7 @@ const AGENTS_BASE: Agent[] = [
       "1kfD_1jJoekSkGfElAtyTkYyg7SHzd7vo",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "BC1200I", agentName: "Bollera Cónica BC1200I", primaryFolderLabel: "Info pública" }),
   },
     {
@@ -1781,12 +1459,7 @@ const AGENTS_BASE: Agent[] = [
       "1wQb5BfZukePo38MUAXUvREhWHM9MZk0D",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "ARD6I-MOD", agentName: "ARMADORA MODULAR ARD6-I MOD", primaryFolderLabel: "Info pública" }),
   },
     {
@@ -1800,12 +1473,7 @@ const AGENTS_BASE: Agent[] = [
       "1-P3S8oBUQc7gmkAwH5m-yzp4qCgXOf1l",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "FDPM", agentName: "Formadora de pizzas FDP", primaryFolderLabel: "Info pública" }),
   },
     {
@@ -1819,12 +1487,7 @@ const AGENTS_BASE: Agent[] = [
       "19qMp1Dmp8XEU0QzaaOyl5apEDyJMqRc-",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "DB1200", agentName: "DIVISORA VOLUMÉTRICA DE MASA DB1200", primaryFolderLabel: "Info pública" }),
   },
     {
@@ -1838,12 +1501,7 @@ const AGENTS_BASE: Agent[] = [
       "1yPOmwz_NYHvlt1ymyyZcV7-0d6ssgYQT",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "TRANSP-BARRAS", agentName: "TRANSPORTADOR DE BARRAS", primaryFolderLabel: "Info pública" }),
   },
     {
@@ -1857,12 +1515,7 @@ const AGENTS_BASE: Agent[] = [
       "1i-IFrDpjrcXF9Xy2cGuCnVEDT48sFK_y",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "INSIGNIA", agentName: "ARGENTAL - INSIGNIA", primaryFolderLabel: "Info pública" }),
   },
    {
@@ -1876,12 +1529,7 @@ const AGENTS_BASE: Agent[] = [
       "1D0w02OHj-mhihW-qSURQEQUA7vrskAP1",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "AMBRO-PRESS", agentName: "AMBRO - Prensagrasa AmbroPress", primaryFolderLabel: "Info pública" }),
   },
    {
@@ -1895,12 +1543,7 @@ const AGENTS_BASE: Agent[] = [
       "13xJQYsx9VesiIKNMEy96CMgPGQoZ1B0T",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "RPNM-RPN", agentName: "REBANADORA RPNM PANIER", primaryFolderLabel: "Info pública" }),
   },
    {
@@ -1914,12 +1557,7 @@ const AGENTS_BASE: Agent[] = [
       "1zyclXEs6T2lzNSgWMVvs4xIhaNo9cwPD",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "FMI-10-12", agentName: "FORMADORA DE MASA FMI-10", primaryFolderLabel: "Info pública" }),
   },
    {
@@ -1933,12 +1571,7 @@ const AGENTS_BASE: Agent[] = [
       "1DLxmdfeMXZgmm3gV0xWXtonfw4GGN0EY",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "BPNV-300", agentName: "BIZCOMATICA BPNV-300 PANIER", primaryFolderLabel: "Info pública" }),
   },
   {
@@ -1952,12 +1585,7 @@ const AGENTS_BASE: Agent[] = [
       "1bOeZ6yCr5KFgylwe9M52oGTrMzLTy7ce",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "MP-1I", agentName: "MOLINO RALLADOR MP-1I PANIER ", primaryFolderLabel: "Info pública" }),
   },
   {
@@ -1971,12 +1599,7 @@ const AGENTS_BASE: Agent[] = [
       "1Muq-5v8pMpJsK_GoPMJDlSE3ZCsTkdRi",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "DPN-2232", agentName: "DESCORTEZADORA DPN-2232 PANIER ", primaryFolderLabel: "Info pública" }),
   },
   {
@@ -1990,12 +1613,7 @@ const AGENTS_BASE: Agent[] = [
       "1DLoeMiW3MBpSlCG7fDpXTu7xuFgyQU60",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "MIX-60", agentName: "Batidora Argental MIX-60 ", primaryFolderLabel: "Info pública" }),
   },
   {
@@ -2009,12 +1627,7 @@ const AGENTS_BASE: Agent[] = [
       "1bbpynBtFh6e6I7WVGzKoUZRME5I_B0mZ",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "BHC", agentName: "Bollera Horizontal BHC ", primaryFolderLabel: "Info pública" }),
   },
   {
@@ -2028,12 +1641,7 @@ const AGENTS_BASE: Agent[] = [
       "1uYV31JD00lKkX41lwujlsUu1h5QRqgnY",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "M-6130-17CORTE", agentName: "AMBRO - Laminadora M-600 con estación de corte ", primaryFolderLabel: "Info pública" }),
   },
     {
@@ -2047,12 +1655,7 @@ const AGENTS_BASE: Agent[] = [
       "1B9sjckr0xcgTjRoFkx3yoknRtzyNKV9x",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "CFC-Vision-40B", agentName: "CAMARA FERM. CONT. ARGENTAL CFC40B VISION M220/50", primaryFolderLabel: "Info pública" }),
   },
       {
@@ -2066,12 +1669,7 @@ const AGENTS_BASE: Agent[] = [
       "1_fkPyOkrKkV_0jm7EVwUNla-MOScAFnm",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "TSI", agentName: "HORNO COMBINADO ELECTRICO TSI", primaryFolderLabel: "Info pública" }),
   },
         {
@@ -2085,12 +1683,7 @@ const AGENTS_BASE: Agent[] = [
       "1WFkszndnW677weDbJGmAfMXu2w6hztdT",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "Venecia", agentName: "HORNO RAPIDO ELECTRICO VENECIA", primaryFolderLabel: "Info pública" }),
   },
        {
@@ -2104,12 +1697,7 @@ const AGENTS_BASE: Agent[] = [
       "1keIDRpKwqQDRIT1H3VWzTKnHe3n7VGZ1",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "Horeca-XL", agentName: "HORNO RAPIDO ELECTRICO HORECA XL", primaryFolderLabel: "Info pública" }),
   },
          {
@@ -2123,12 +1711,7 @@ const AGENTS_BASE: Agent[] = [
       "1RAj7biEvZQPgs4l3E5kJdGgzSDKnwDNL",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "MT-MODULAR", agentName: "MESA DE TRABAJO MODULAR", primaryFolderLabel: "Info pública" }),
   },
          {
@@ -2142,12 +1725,7 @@ const AGENTS_BASE: Agent[] = [
       "1aY3M6Azo5BbSiU5fGd_dtiEnjphRkbRf",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "PA20", agentName: "AMASADORA PANIER PA20", primaryFolderLabel: "Info pública" }),
   },
   {
@@ -2161,12 +1739,7 @@ const AGENTS_BASE: Agent[] = [
       "1l-GmqKUpQZQ74GzitN4ZpVlvDNoH2oQ0",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "PA40", agentName: "AMASADORA PANIER PA40", primaryFolderLabel: "Info pública" }),
   },
    {
@@ -2180,12 +1753,7 @@ const AGENTS_BASE: Agent[] = [
       "1UjlQghOAY6QJKPXQDwWwED-ZophW42Ia",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
-    faqs: [
-      "¿Por qué debería comprar este equipo?",
-      "¿Qué productos puede hacer?",
-      "¿Cuál es la capacidad de producción?",
-      "¿Mantenimiento requerido?",
-    ],
+    faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "PA80", agentName: "AMASADORA PANIER PA80", primaryFolderLabel: "Info pública" }),
   },
 ];
@@ -2215,12 +1783,12 @@ function applyCsvToAgent(agent: Agent): Agent {
   const p2 = emptyToUndefined(idExact.Preg2);
   const p3 = emptyToUndefined(idExact.Preg3);
   const p4 = emptyToUndefined(idExact.Preg4);
-
+  const p5 = emptyToUndefined(idExact.Preg5);
   const newName = nameFromCsv ?? agent.name;
   const newFamily = familyFromCsv ?? agent.family;
   const newSubfamily = subfamilyFromCsv ?? agent.subfamily;
 
-  const newFaqs = [p1, p2, p3, p4].filter(Boolean) as string[];
+  const newFaqs = [p1, p2, p3, p4, p5].filter(Boolean) as string[];
   const faqs = newFaqs.length ? newFaqs : agent.faqs;
 
   const description = `Especialista en ${newName} de Argental`;
