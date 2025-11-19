@@ -1209,7 +1209,7 @@ const AGENTS_BASE: Agent[] = [
       "¿Es un equipo seguro?",
       "¿La cocción es pareja y eficiente?",
     ],
-    systemPrompt: BASE_PROMPT({ agentId: "DOS-AR", agentName: "HORNO PANIER-III-7090 GN-IN-GAS-VM-PROG-T380/50", primaryFolderLabel: "Info pública" }),
+    systemPrompt: BASE_PROMPT({ agentId: "PA390", agentName: "HORNO PANIER-III-7090 GN-IN-GAS-VM-PROG-T380/50", primaryFolderLabel: "Info pública" }),
   },
  {
     id: "RAPIFREDDO-15",
