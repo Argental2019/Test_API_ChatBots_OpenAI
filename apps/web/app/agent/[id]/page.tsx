@@ -39,6 +39,22 @@ async function reportMiss(miss: any) {
     console.warn("log-miss error", e);
   }
 }
+function openWhatsApp() {
+  const url = "https://wa.me/5493415470737";
+
+  // Detectar si es dispositivo móvil
+  const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(
+    navigator.userAgent
+  );
+
+  if (isMobile) {
+    // En móvil, abrir directamente WhatsApp (la app se hace cargo)
+    window.location.href = url;
+  } else {
+    // En PC, abrir el enlace en pestaña nueva
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
 
 /* ===== Extraer archivos desde @@META (sin mostrarlo) ===== */
 function extractFilesFromMeta(text: string): Array<{ name?: string; id?: string; pages?: string }> {
@@ -160,6 +176,28 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
       </div>
     );
   }
+// ===== Interceptar links de WhatsApp en el chat =====
+// ===== Interceptar links de WhatsApp en el chat =====
+useEffect(() => {
+  const links = document.querySelectorAll<HTMLAnchorElement>("a[href*='wa.me']");
+
+  const handler = (e: MouseEvent) => {
+    e.preventDefault();
+    openWhatsApp();
+  };
+
+  links.forEach((a) => {
+    a.addEventListener("click", handler);
+  });
+
+  // Cleanup para que no se acumulen listeners
+  return () => {
+    links.forEach((a) => {
+      a.removeEventListener("click", handler);
+    });
+  };
+}, [messages]);
+
 
   const loadContext = async () => {
     if (!agent?.driveFolders) return;
