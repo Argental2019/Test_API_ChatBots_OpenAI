@@ -1794,6 +1794,20 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "ESCAMA-1-0", agentName: "ESCAMA-1.0", primaryFolderLabel: "Info pública" }),
   },
+        {
+    id: "DOSIF-RELLENO-X5",
+    name: "Dosificadora Multiple X5",
+    family:"Maquina",
+    subfamily:"Dosificadora",
+    description: "Especialista en Dosificadora Multiple X5 de Argental",
+    accent: "from-blue-500 to-cyan-500",
+    driveFolders: [
+      "1iyb8UQtky847k4v5pHSWPOiQ2HbxR_v_",
+      "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
+    ],
+    faqs: faqsDefault,
+    systemPrompt: BASE_PROMPT({ agentId: "DOSIF-RELLENO-X5", agentName: "Dosificadora Multiple X5", primaryFolderLabel: "Info pública" }),
+  },
 ];
 
 // ===================== 5) FUNCIÓN DE MERGE DESDE CSV =====================
