@@ -333,38 +333,38 @@ Si el usuario repite una pregunta o una variación mínima de una anterior (por 
 // COD_LISPRE,Categoría,SubCategoría,Nombre Comercial del Producto,Preg1,Preg2,Preg3,Preg4,Preg5
 const RAW_CSV = `
 COD_LISPRE,Categoría,SubCategoría,Nombre Comercial del Producto,Preg1,Preg2,Preg3,Preg4,Preg5
-FE960,Hornos,Horno Rotativo 70x90,FE4.0 960,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?,¿Cuáles son las dimensiones del equipo?
+FE960,Horno,Horno Rotativo 70x90,FE4.0 960,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?,¿Cuáles son las dimensiones del equipo?
 GALILEO,Sistema Automatico,Sistema de Panificación,Glileo Pan Frances / Pan de Molde,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Cómo es la calidad respecto al pan sobado?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 MBE-80U-S,Maquina,Amasadora Rapida Espiral,MBE-80S,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 MBE-200U-S,Maquina,Amasadora Rapida Espiral,MBE-200S,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-PA340,Hornos,Horno Rotativo 45x70,Panier III 45x70,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?,¿Cuáles son las dimensiones del equipo?
+PA340,Horno,Horno Rotativo 45x70,Panier III 45x70,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?,¿Cuáles son las dimensiones del equipo?
 C4000-19,Maquina,Medialunera / Croissants,C-4000,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 M-6130-17,Maquina,Laminadora,Refinadora M-600,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 TORNADO-PL,Maquina,Mesa de Corte,Tonado Plus E,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 BLIND-LI-FULL,Maquina,Sobadora Pesada,Blindi full,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-GALILEO-ARTESAN,Sistemas Automatico,Sistema de Panificación,Galileo Artesano,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Cómo es la calidad respecto al pan sobado?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-COMPRESSLINE,Maquina Semi Industria,Mesa de Corte ,Compressline,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-LINEA-CIABATTA,Maquina Semi Industria,Mesa de Corte ,Ciabattera,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+GALILEO-ARTESAN,Sistema Automatico,Sistema de Panificación,Galileo Artesano,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Cómo es la calidad respecto al pan sobado?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+COMPRESSLINE,Maquina Semi Industrial,Mesa de Corte ,Compressline,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+LINEA-CIABATTA,Maquina Semi Industrial,Mesa de Corte ,Ciabattera,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 FOGLIA,Maquina,Laminadora Automatica,Foglia,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 TORNADO-PL-II,Maquina,Mesa de Corte y Estibado,Tornado Plus E II,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Es un equipo seguro?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 GT-38,Maquina,Trinchadora,GT38-I,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-FE III-315-ROTATIVO,Hornos,Horno Rotativo 10 45x70 / 40x60,FE III 315,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿La cocción es pareja y eficiente?,¿Es un equipo seguro?,¿Cuáles son las dimensiones del equipo?
+FE III-315-ROTATIVO,Horno,Horno Rotativo 10 45x70 / 40x60,FE III 315,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿La cocción es pareja y eficiente?,¿Es un equipo seguro?,¿Cuáles son las dimensiones del equipo?
 FE-III-315-PISO,Hornos,A definir,,¿Por qué debería comprar este equipo?,Que productos puede hacer?,Cual es la capacidad de produccion?,Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 FE-III-315-CAMARA,Cámaras de fermentacíón,A definir,,¿Por qué debería comprar este equipo?,Que productos puede hacer?,Cual es la capacidad de produccion?,Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 360-BE,Maquina,Sobadora Semi Automatica,SA 360 BE,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 CORBOLI,Maquina,Cortadora y Bollera,Corboli,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 MBE-160HA,Maquina,Amasadora Rapida Espiral,MBE-160HA,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 DB,Maquina,Divisora Volumetrica,DB 1000,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-FE4-0-472,Hornos,Horno Rotativo 45x70,FE4.0 472,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?,¿Cuáles son las dimensiones del equipo?
-FE-BIO-472,Hornos,Horno Rotativo 45x70 BIO,FE4.0 472 BIO,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿La cocción es pareja y eficiente?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-FE-BIO-960,Hornos,,,¿Por qué deberia comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de produccion?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+FE4-0-472,Horno,Horno Rotativo 45x70,FE4.0 472,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?,¿Cuáles son las dimensiones del equipo?
+FE-BIO-472,Horno,Horno Rotativo 45x70 BIO,FE4.0 472 BIO,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿La cocción es pareja y eficiente?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+FE-BIO-960,Horno,Horno Rotativo 70x90 BIO,FE4.0 960 BIO,¿Por qué deberia comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de produccion?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 ARM-4000,Maquina,Formadora de Medialunas / Croissants,Cabezal Armador 4000,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 RAPIFREDDO-T5,Maquina,Ultracongelador 2/3/4/5 Carros 70x90,Rapifreddo T2 / T3 / T4 / T5,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 GTC-MODULAR,Maquina,Trinchadora,GTC-I,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 GTCG,Trinchadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-H2C,Hornos,Horno de Piso,H2C,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-DBS,Maquina,Divisora Bollera Panier,DBS 30-100-30,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-CFA,Camara Fermentacion,Camara de Fermentacion 2/4/6 Carros 70x90,CFA 2 / 4 / 6 carros 70x90,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+H2C,Horno,Horno de Piso,H2C,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+DBS,Maquina,Divisora Bollera ,DBS 30-100-30,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+CFA,Camara de Fermentacion,Camara de Fermentacion 2/4/6 Carros 70x90,CFA 2 / 4 / 6 carros 70x90,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 EU2C-MODULAR,Maquina,Cortadora y Armadora,EU2C-I,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 ELEVA,Maquina,Elevador de Bateas ,ELEVA T160H,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 MBE-40T,Maquina,Amasadora Rapida Espiral,MBE-40T,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
@@ -375,66 +375,62 @@ SP-MODULAR,Trinchadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qu
 HORECA,Horno,Horno Rapido,Horeca BL,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 NATO,Horno,Horno Convector,NATO,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 MINICONV,Horno,Horno Convector,MINICONV,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-DOS-AR,Dosificador de agua,A definir,,¿Por qué debería comprar este equipo?,¿Cuáles son las dimensiones del equipo?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-PA390,Hornos,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y cuál es el nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?,¿Cuáles son las dimensiones del equipo?
-RAPIFREDDO-15,Ultracongeladores,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-HCI-500,Enfriador,A definir,,¿Por qué debería comprar este equipo?,¿Cuál es la capacidad de producción?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-DBSA,Divisoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-A-60,Batidoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-CFC-40b,Cámaras de fermentacíón,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-DB4B,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-DB2B,Divisoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-BPNS-20L,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-GP-70I-MOD,Grissinera,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-RAPIFREDDO-30,Ultracongeladores,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-BRISEELINE,Depositadora,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-GT-MINI,Trinchadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-GT-PANIER,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-BPNS-40L,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-DOSIF-RELLENO,Dosificador de rellenos,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-A-160,Batidoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-MINI-LINEA-COORD,Líneas Modulares,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-MINI-LINEA-RETRAC,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-C12000,Equipos para croissants,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-ARTESAN,Divisoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-CHOPRA-III,Depositadora,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-LINEA-PIZZAS,Líneas Modulares,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-LINEA-EMPANADAS,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-M-66,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-LPN-520S,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-LIDO,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-SPNI-500,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-BC1200I,Bolleras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-ARD6I-MOD,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-FDPM,Formador de pizza,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-DB1200,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-TRANSP-BARRAS,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-INSIGNIA,Sistemas de panificación,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-AMBRO-PRESS,Prensagrasa,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-RPNM-RPN,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-FMI-10-12,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-BPNV-300,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-MP-1I,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-DPN-2232,A definir,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-MIX-60,Batidoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-BHC,Bolleras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-M-6130-17CORTE,Laminadoras,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-DOSIF-RELLENO-X5,Dosificador de rellenos,A definir,,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-CFC-Vision-40B,Camara de fermentacion,A definir,,,,,,¿Cuáles son las dimensiones del equipo?
-TSI,Horno Combinado,A definir,,,,,,¿Cuáles son las dimensiones del equipo?
-Venecia,Horno Rapido,A definir,,,,,,¿Cuáles son las dimensiones del equipo?
-Horeca-XL,Horno Rapido,A definir,,,,,,¿Cuáles son las dimensiones del equipo?
-MT-MODULAR,Mesa de trabajo,A definir,,,,,,¿Cuáles son las dimensiones del equipo?
-PA20,A definir,A definir,,,,,,¿Cuáles son las dimensiones del equipo?
-PA40,A definir,A definir,,,,,,¿Cuáles son las dimensiones del equipo?
-PA80,A definir,A definir,,,,,,¿Cuáles son las dimensiones del equipo?
-,A definir,A definir,,,,,,
-,A definir,A definir,,,,,,
-,A definir,A definir,,,,,,
-LANIN-II,Horno Convector,,,,,,,
-PITA,Dosificador de rellenos,,,,,,,
-AR-350,Armador ,,,,,,,
-BATA,Dosificador de rellenos,,,,,,,
+DOS-AR,Maquina,Dosificadora de Agua,Dos-Ar,¿Por qué debería comprar este equipo?,¿Cuáles son las dimensiones del equipo?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+PA390,Horno,Horno Rotativo 70x90,Panier III 7090,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y cuál es el nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?,¿Cuáles son las dimensiones del equipo?
+RAPIFREDDO-15,Maquina,Ultracongelador 15 bandejas,Rapifreddo V-15,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+HCI-500,Maquina,Enfriador de Agua,HCI-500,¿Por qué debería comprar este equipo?,¿Cuál es la capacidad de producción?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+DBSA,Maquina,Divisora Bollera   ,DBSA 30-40-135,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+A-60,Maquina,Batidora Planetaria,A-60,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+CFC-40b,Camara de fermentacíon,Camara de Fermentacion Controlada 40B,CFC 40B Panier,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+DB4B,Maquina,Divisora Volumetrica,DB-4 Bocas,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+DB2B,Maquina,Divisora Volumetrica,DB-2 Bocas,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+BPNS-20L,Maquina,Batidora Planetaria,BPNS-20L,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+GP-70I-MOD,Maquina,Grissinera - Panchera,GP70-I,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+RAPIFREDDO-30,Maquina,Ultracongelador 1 carro 70x90,Rapifreddo T-30,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+BRISEELINE,Maquina,Depositadora,Briseeline,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+GT-MINI,Maquina,Trinchadora,GT-Mini,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+GT-PANIER,Maquina,Trinchadora,GT-Panier,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+BPNS-40L,Maquina,Batidora Planetaria,BPNS-40L,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+DOSIF-RELLENO,Maquina,Dosificador ,Dosificador de Rellenos,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+A-160,Maquina,Batidora Planetaria,A-160,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+MINI-LINEA-COORD,Maquina Semi Industrial,Mesa de Corte,Mini-Linea con E/C,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+MINI-LINEA-RETRAC,Maquina Semi Industrial,Mesa de Corte,Mini-Linea con E/R,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+C12000,Maquina Semi Industrial,Medialunera / Croissants,C-12000,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+ARTESAN,Maquina,Divisora de masas hidratadas,Artesan,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+CHOPRA-III,Maquina,Depositadora,Chopra III,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+LINEA-PIZZAS,Maquina Semi Industrial,Mesa de Corte ,Linea Pizza 2.0,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+LINEA-EMPANADAS,Maquina,Mesa de Corte ,Compac,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+M-66,Maquina,Divisora de Masas  ,M-66I,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+LPN-520S,Maquina,Laminadora,Laminadora de Mesa LPN-520S,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+LIDO,Horno,Horno Rotativo 70x90,Lido,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+SPNI-500,Maquina,Sobadora,Sobadora Pastelera SPNI-500,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+BC1200I,Maquina,Bollera,BC-1200I,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+ARD6I-MOD,Maquina,Formadora,ARD6-I,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+FDPM,Maquina,Formadora de Pizzas,FDP,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+DB1200,Maquina,Divisora Volumetrica,DB-1200,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+TRANSP-BARRAS,Maquina,Transportador de Barras,Transportador Inclinado de Barras,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+INSIGNIA,Sistema Automatico,Sistema de Panificacion,Insignia,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+AMBRO-PRESS,Maquina,Prensa Grasa,Ambro Press,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+RPNM-RPN,Maquina,Rebanadora Pan Molde,RPNM-12,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+FMI-10-12,Maquina,Formadora de masa,FMI-10,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+BPNV-300,Maquina,Depositadora,Bizcomatica BPNV-300,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+MP-1I,Maquina,Molino Rallador,MP-1I,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+DPN-2232,Maquina,Descortezadora,DPN-2232,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+MIX-60,Maquina,Batidora Planetaria,Mix-60,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+BHC,Maquina,Bollera,BHC,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+M-6130-17CORTE,Maquina,Laminadora,Refinadora M-600 Con E/C,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+DOSIF-RELLENO-X5,Maquina,Dosificadora,Dosificadora Multiple X5,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+CFC-Vision-40B,Camara de fermentacion,Camara de Fermentacion 40B / 20B,Vision,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+TSI,Horno,Horno Conbinado,TSI,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+Venecia,Horno,Horno Rapido,Venecia,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+Horeca-XL,Horno ,Horno Rapido,Horeca XL,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+MT-MODULAR,Maquina,Mesa de Corte,Mesa de Trabajo Modular,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+PORTO-20,Maquina,Amasadora Rapida Espiral,Porto-20,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+PORTO-40,Maquina,Amasadora Rapida Espiral,Porto-40,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+PORTO-80,Maquina,Amasadora Rapida Espiral,Porto-80,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+LPN-600,Maquina,Laminadora,LPN-600,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+RA12-PACK,Maquina,Rebanadora Pan Molde,RA12-Pack,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+ESCAMA-1-0,Maquina,Escamadora de Hielo,Escama-1.0,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 `.trim();
 
 // ===================== 2) PARSER CSV SIMPLE =====================
@@ -1715,7 +1711,7 @@ const AGENTS_BASE: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "MT-MODULAR", agentName: "MESA DE TRABAJO MODULAR", primaryFolderLabel: "Info pública" }),
   },
          {
-    id: "PA20",
+    id: "PORTO-20",
     name: "AMASADORA PANIER PA20",
     family:"A definir",
     subfamily:"A definir",
@@ -1726,10 +1722,10 @@ const AGENTS_BASE: Agent[] = [
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
     faqs: faqsDefault,
-    systemPrompt: BASE_PROMPT({ agentId: "PA20", agentName: "AMASADORA PANIER PA20", primaryFolderLabel: "Info pública" }),
+    systemPrompt: BASE_PROMPT({ agentId: "PORTO-20", agentName: "AMASADORA PANIER PA20", primaryFolderLabel: "Info pública" }),
   },
   {
-    id: "PA40",
+    id: "PORTO-40",
     name: "AMASADORA PANIER PA40",
     family:"A definir",
     subfamily:"A definir",
@@ -1740,10 +1736,10 @@ const AGENTS_BASE: Agent[] = [
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
     faqs: faqsDefault,
-    systemPrompt: BASE_PROMPT({ agentId: "PA40", agentName: "AMASADORA PANIER PA40", primaryFolderLabel: "Info pública" }),
+    systemPrompt: BASE_PROMPT({ agentId: "PORTO-40", agentName: "AMASADORA PANIER PA40", primaryFolderLabel: "Info pública" }),
   },
    {
-    id: "PA80",
+    id: "PORTO-80",
     name: "AMASADORA PANIER PA80",
     family:"A definir",
     subfamily:"A definir",
@@ -1754,7 +1750,49 @@ const AGENTS_BASE: Agent[] = [
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
     faqs: faqsDefault,
-    systemPrompt: BASE_PROMPT({ agentId: "PA80", agentName: "AMASADORA PANIER PA80", primaryFolderLabel: "Info pública" }),
+    systemPrompt: BASE_PROMPT({ agentId: "PORTO-80", agentName: "AMASADORA PANIER PA80", primaryFolderLabel: "Info pública" }),
+  },
+  {
+    id: "LPN-600",
+    name: "LPN-600",
+    family:"Maquina",
+    subfamily:"Laminadora",
+    description: "Especialista en LPN-600 de Argental",
+    accent: "from-blue-500 to-cyan-500",
+    driveFolders: [
+      "1FKS9hrrrsXwezKnfuLiRGXm4433yXRRD",
+      "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
+    ],
+    faqs: faqsDefault,
+    systemPrompt: BASE_PROMPT({ agentId: "LPN-600", agentName: "LPN-600", primaryFolderLabel: "Info pública" }),
+  },
+    {
+    id: "RA12-PACK",
+    name: "RA12-Pack",
+    family:"Maquina",
+    subfamily:"Rebanadora Pan Molde",
+    description: "Especialista en RA12-Pack de Argental",
+    accent: "from-blue-500 to-cyan-500",
+    driveFolders: [
+      "1xkPXd1LGY9OjGR84Sc3nMDMbPkjD5RJi",
+      "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
+    ],
+    faqs: faqsDefault,
+    systemPrompt: BASE_PROMPT({ agentId: "RA12-PACK", agentName: "RA12-Pack", primaryFolderLabel: "Info pública" }),
+  },
+      {
+    id: "ESCAMA-1-0",
+    name: "ESCAMA-1.0",
+    family:"Maquina",
+    subfamily:"Escamadora de Hielo",
+    description: "Especialista en ESCAMA-1.0 de Argental",
+    accent: "from-blue-500 to-cyan-500",
+    driveFolders: [
+      "1OzsHpfxdMll_XMOrdq1l1IqsDuXJUrK-",
+      "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
+    ],
+    faqs: faqsDefault,
+    systemPrompt: BASE_PROMPT({ agentId: "ESCAMA-1-0", agentName: "ESCAMA-1.0", primaryFolderLabel: "Info pública" }),
   },
 ];
 
