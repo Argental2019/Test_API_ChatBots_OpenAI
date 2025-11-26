@@ -348,7 +348,7 @@ LINEA-CIABATTA,Máquina Semi Industrial,Mesa de Corte ,Ciabattera,¿Por qué deb
 FOGLIA,Máquina,Laminadora Automatica,Foglia,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 TORNADO-PL-II,Máquina,Mesa de Corte y Estibado,Tornado Plus E II,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Es un equipo seguro?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 GT-38,Máquina,Trinchadora,GT38-I,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-FE III-315-ROTATIVO,Horno,Horno Rotativo 10 45x70 / 40x60,FE III 315,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿La cocción es pareja y eficiente?,¿Es un equipo seguro?,¿Cuáles son las dimensiones del equipo?
+FE-III-315-ROTATIVO,Horno,Horno Rotativo 10 45x70 / 40x60,FE III 315,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿La cocción es pareja y eficiente?,¿Es un equipo seguro?,¿Cuáles son las dimensiones del equipo?
 360-BE,Máquina,Sobadora Semi Automatica,SA 360 BE,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 CORBOLI,Máquina,Cortadora y Bollera,Corboli,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 MBE-160HA,Máquina,Amasadora Rapida Espiral,MBE-160HA,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
@@ -712,7 +712,7 @@ const AGENTS_BASE: Agent[] = [
  {
     id: "FE-III-315-ROTATIVO",
     name: "Horno rotativo FE III-315",
-    family:"Hornos",
+    family:"Horno",
     subfamily:"A definir",
     description: "Especialista en Horno rotativo FE III-315 de Argental",
     accent: "from-blue-500 to-cyan-500",
