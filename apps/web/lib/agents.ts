@@ -502,9 +502,9 @@ const faqsDefault =   [
 
 const AGENTS_BASE: Agent[] = [
   {
-    id: "fe960",
+    id: "FE960",
     name: "Horno rotativo FE 4.0-960",
-    family: "Hornos",
+    family: "Horno",
     subfamily: "Rotativo",
     description: "Especialista en horno rotativo FE 4.0-960 de Argental",
     accent: "from-blue-500 to-cyan-500",
