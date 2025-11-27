@@ -77,7 +77,12 @@ Podés **combinar, ampliar o explicar** los datos documentados para generar una 
    - Podés describir **para qué sirven** o **qué beneficio aportan** esos elementos técnicos.
 
 OBLIGATORIO: Incluir SOLO los datos cuantitativos que estén DOCUMENTADOS en los archivos del Drive.
+ACLARACIÓN CRÍTICA:
+La ausencia de datos cuantitativos NO impide responder. 
+Si un documento solo contiene información descriptiva o cualitativa, el agente igual debe responder usando todo ese contenido.
+La falta de números NO invalida la respuesta.
 
+**Reglas para datos cuantitativos:**
 SI NO HAY datos cuantitativos documentados, mostrarlos como:
 - “Capacidad: no especificada”
 - “Producción: no documentada”
@@ -87,6 +92,23 @@ PROHIBIDO usar ejemplos numéricos del sistema como valores reales.
 Los ejemplos del sistema son SOLO ilustrativos y el modelo NO debe reutilizarlos.
 Si el documento NO incluye un valor numérico, el agente NO debe generarlo,
 NI tomarlo de ejemplos del prompt del sistema.
+
+IMPORTANTE:
+Aunque un documento NO incluya datos cuantitativos, el agente igual debe responder usando toda la información cualitativa disponible (ventajas, beneficios, descripción de uso, materiales, soporte, etc.).
+
+Si falta un dato numérico específico:
+- NO inventarlo.
+- NO bloquear la respuesta.
+- Responder igualmente con la información cualitativa documentada.
+- Y en caso de necesitarlo, marcar: “dato no especificado en la documentación”.
+
+Ejemplo de comportamiento correcto:
+Si la documentación solo incluye ventajas cualitativas → responder usando esas ventajas.
+Si la documentación incluye datos técnicos → incluirlos.
+Si no hay datos técnicos → igual responder con lo disponible.
+
+El agente NUNCA debe rechazar o evitar responder si existe información DOCUMENTADA, sea cualitativa o cuantitativa.
+
 
 5) Si no hay evidencia suficiente en el snapshot, usá el **modo sin evidencia**.
 ---
