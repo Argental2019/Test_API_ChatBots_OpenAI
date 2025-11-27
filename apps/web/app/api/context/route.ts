@@ -81,6 +81,11 @@ export async function POST(req: NextRequest) {
 
     // ✅ NINGÚN TRUNCADO: entra TODO lo que devuelva el backend
     const fullContext = allTexts;
+    const charLen = fullContext.length;
+    const approxTokens = Math.round(charLen / 4);
+
+    console.log("[CONTEXT] length chars =", charLen, "approxTokens =", approxTokens);
+
 
     console.log("[context route] fullContext length =", fullContext.length);
 
