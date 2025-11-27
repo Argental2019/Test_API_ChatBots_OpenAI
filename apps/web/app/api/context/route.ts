@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
             folderId,
             knownFiles: [],
             nocache: false,
-            includeMeta: !!admin,   
+            includeMeta: !!admin,
           }),
           signal: ac.signal
         });
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
         const data = await r.json();
 
-        // Texto
+        // Texto: TODO el contenido que venga del backend, sin truncar
         const texts: string[] = (data.snapshot || [])
           .map((f: any) => f?.content)
           .filter(Boolean);
@@ -74,14 +74,21 @@ export async function POST(req: NextRequest) {
     });
 
     const results = await Promise.allSettled(calls);
-    const allTexts = results.map(r => (r.status === "fulfilled" ? r.value : "")).filter(Boolean).join("\n\n---\n\n");
+    const allTexts = results
+      .map(r => (r.status === "fulfilled" ? r.value : ""))
+      .filter(Boolean)
+      .join("\n\n---\n\n");
 
-    const fullContext = allTexts.slice(0, 100000);
+    // ✅ NINGÚN TRUNCADO: entra TODO lo que devuelva el backend
+    const fullContext = allTexts;
+
+    console.log("[context route] fullContext length =", fullContext.length);
+
     if (!fullContext) {
       return new Response("No se pudo cargar contexto (timeout o error en backend).", { status: 504 });
     }
 
-    // 👇 ahora devolvés también files si admin
+    // devolvés también files si admin
     return new Response(JSON.stringify({
       context: fullContext,
       files: filesMetaAll
