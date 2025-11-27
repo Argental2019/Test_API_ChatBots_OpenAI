@@ -612,7 +612,15 @@ for (const f of currManifest.files) {
           folderId,
         }));
       }
-
+   console.log("[smartRead] OUT", {
+        folderId,
+        snapshotCount: snapshot.length,
+        snapshotFiles: snapshot.map((f) => ({
+          id: f.fileId || f.id,
+          name: f.name,
+          len: (f.content || "").length,
+        })),
+      });
       // 11) enviar
       res.status(200).json(response);
     })
