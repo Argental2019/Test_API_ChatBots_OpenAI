@@ -238,18 +238,32 @@ async function setCachedManifest(folderId, manifest, ttlSec = 3600) {
 
 // Lee 1 archivo respetando cache por etag; para robustez reobtiene meta fuerte
 async function readFileSmart(file) {
-  const strongMeta = await getFileMeta(file.id); // asegura etag fuerte
+  const strongMeta = await getFileMeta(file.id);
   const { id, name, mimeType, etag } = strongMeta;
   const k = FILE_KEY(id, etag);
 
   const hit = await cacheGet(k);
-  if (hit) return { fromCache: true, ...hit };
+  if (hit) {
+    console.log("[readFileSmart] HIT", { id, name, mimeType, etag });
+    return { fromCache: true, ...hit };
+  }
+
+  console.log("[readFileSmart] MISS, leyendo de Drive", { id, name, mimeType, etag });
 
   const buffer = await getFileBinary(id, mimeType);
   const content = await extractTextFromBuffer(buffer, mimeType);
+
+  console.log("[readFileSmart] EXTRACTION", {
+    id,
+    name,
+    mimeType,
+    size: buffer.length,
+    contentLen: content?.length ?? 0,
+    sample: (content || "").slice(0, 200),
+  });
+
   const payload = { fileId: id, name, mimeType, etag, size: buffer.length, content };
 
-  // PURGA versiones anteriores antes de escribir la nueva
   await cacheDelByPrefix(FILE_PREFIX(id));
   await cacheSet(k, payload, 60 * 60 * 24 * 7);
   return { fromCache: false, ...payload };
@@ -447,6 +461,7 @@ app.post(
               size: buffer.length,
               content,
             };
+        console.log("ARCHIVO PROCESADO:", fileId, extractedText.length);
 
             // PURGA versiones anteriores antes de escribir la nueva
             await cacheDelByPrefix(FILE_PREFIX(meta.id));
@@ -457,6 +472,7 @@ app.post(
               await cacheSet(cacheKey, payload);
             }
             return { fileId: id, ...payload };
+            
           })
         )
       );
@@ -468,6 +484,7 @@ app.post(
       );
 
       return res.status(200).json(body);
+      
     })
   )
 );
@@ -528,12 +545,43 @@ app.post(
       }
 
       // 7) snapshot para el agente (todo lo actual del folder)
-      const snapshot = [];
-      for (const f of currManifest.files) {
-        const k = FILE_KEY(f.id, f.etag);
-        const hit = await cacheGet(k);
-        if (hit) snapshot.push(hit); // hit debería incluir: { id,name,mimeType,etag,size,content,... }
-      }
+    // 7) snapshot para el agente (todo lo actual del folder)
+const snapshot = [];
+for (const f of currManifest.files) {
+  const k = FILE_KEY(f.id, f.etag);
+  let hit = await cacheGet(k);
+
+  if (!hit) {
+    // Fallback: si no está en cache, lo leo ahora mismo
+    try {
+      const loaded = await readFileSmart({
+        id: f.id,
+        etag: f.etag,
+        mimeType: f.mimeType,
+        name: f.name,
+      });
+      hit = loaded;
+      console.log("[smartRead] cache miss → reload", {
+        id: f.id,
+        name: f.name,
+        mimeType: f.mimeType,
+        contentLen: loaded.content?.length ?? 0,
+      });
+    } catch (e) {
+      console.error("[smartRead] error releyendo archivo en fallback", f.id, e);
+    }
+  }
+
+  if (hit) {
+    snapshot.push(hit);
+  } else {
+    console.warn("[smartRead] archivo sin contenido ni cache", {
+      id: f.id,
+      name: f.name,
+      mimeType: f.mimeType,
+    });
+  }
+}
 
       // 8) persistir manifest nuevo
       await setCachedManifest(folderId, currManifest);

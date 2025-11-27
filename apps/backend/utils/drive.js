@@ -56,6 +56,7 @@ export async function getFileMeta(drive, fileId) {
     md5Checksum: data.md5Checksum ?? null,
     modifiedTime: data.modifiedTime ?? null,
   };
+  
 }
 
 export function buildCacheKey(meta) {
