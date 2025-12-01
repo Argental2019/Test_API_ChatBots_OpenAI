@@ -348,7 +348,7 @@ Si el usuario repite una pregunta o una variación mínima de una anterior (por 
 const RAW_CSV = `
 COD_LISPRE,Categoría,SubCategoría,Nombre Comercial del Producto,Preg1,Preg2,Preg3,Preg4,Preg5
 FE960,Horno,Horno Rotativo 70x90,FE4.0 960,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?,¿Cuáles son las dimensiones del equipo?
-GALILEO,Sistema Automático,Sistema de Panificacion,Glileo Pan Frances / Pan de Molde,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Cómo es la calidad respecto al pan sobado?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+GALILEO,Sistema Automático,Sistema de Panificacion,Galileo Pan Frances / Pan de Molde,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Cómo es la calidad respecto al pan sobado?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 MBE-80U-S,Máquina,Amasadora Rapida Espiral,MBE-80S,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 MBE-200U-S,Máquina,Amasadora Rapida Espiral,MBE-200S,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 PA340,Horno,Horno Rotativo 45x70,Panier III 45x70,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer y con qué nivel de producción?,¿Es un equipo seguro?,¿La cocción es pareja y eficiente?,¿Cuáles son las dimensiones del equipo?
@@ -442,7 +442,7 @@ PORTO-40,Máquina,Amasadora Rapida Espiral,Porto-40,¿Por qué debería comprar 
 PORTO-80,Máquina,Amasadora Rapida Espiral,Porto-80,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 LPN-600,Máquina,Laminadora,LPN-600,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 RA12-PACK,Máquina,Rebanadora Pan Molde,RA12-Pack,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-ESCAMA-1-0,Máquina,Escamadora de Hielo,Escama-1.0,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+ESCAMA-1-0,Máquina,Escamadora de Hielo,Escama-1.0,¿Por qué debería comprar este equipo?,¿En qué mejoran mis procesos?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 `.trim();
 
 // ===================== 2) PARSER CSV SIMPLE =====================
@@ -1758,7 +1758,7 @@ const AGENTS_BASE: Agent[] = [
     description: "Especialista en AMASADORA PANIER PA80 de Argental",
     accent: "from-blue-500 to-cyan-500",
     driveFolders: [
-      "1UjlQghOAY6QJKPXQDwWwED-ZophW42Ia",
+      "1lM3qIvtwExtCgJKTmkfEfiskR-Yueah6",
       "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
     ],
     faqs: faqsDefault,
