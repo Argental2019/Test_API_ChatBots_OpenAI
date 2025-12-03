@@ -12,9 +12,10 @@ import Redis from "ioredis";
 import { google } from "googleapis";
 import { extractTextFromBuffer } from "./utils/extractText.js";
 import cors from "cors";
+import multer from "multer";
+import OpenAI from "openai";
 // ...
 dotenv.config();
-
 const app = express();
 const port = process.env.PORT || 3000;
 app.use(express.json({ limit: "10mb" }));
@@ -23,6 +24,28 @@ app.use(cors({
   methods: ["GET","POST","OPTIONS"],
   allowedHeaders: ["Content-Type","X-Session-Id"],
 }));
+
+// ===== Upload de audio (multer) =====
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // máx ~5MB (ajustable)
+  },
+});
+
+// ===== Cliente OpenAI (para voz → texto y opcionalmente chat) =====
+let openai = null;
+if (!process.env.OPENAI_API_KEY) {
+  console.warn("⚠️ Falta OPENAI_API_KEY: /voice-chat no funcionará hasta que la configures.");
+} else {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
+
+// Opcional: backend de agentes (si querés encadenar voz → agentes directamente)
+// Ej: https://test-chatbots-back.vercel.app/chat
+const AGENT_BACKEND_URL = process.env.AGENT_BACKEND_URL || null;
 
 // ===== Métricas simples =====
 // TTL configurable (opcional). También podés dejarlo sin expiración si preferís.
@@ -350,6 +373,123 @@ app.get("/diag", (req, res) => {
 app.get("/health-lite", (req, res) => {
   res.status(200).json({ ok: true, ts: new Date().toISOString() });
 });
+
+/**
+ * 🎙 /voice-chat
+ * - Espera multipart/form-data con:
+ *   - campo "audio" (Blob/archivo WebM/OGG/M4A, etc.)
+ *   - opcional "agentId" y "sessionId"
+ * - Si AGENT_BACKEND_URL está definido:
+ *   - Transcribe audio → texto con OpenAI
+ *   - Envía ese texto al backend de agentes (POST /chat)
+ *   - Devuelve { ok, question, answer }
+ * - Si NO hay AGENT_BACKEND_URL:
+ *   - Solo transcribe y devuelve { ok, question }
+ */
+app.post(
+  "/voice-chat",
+  upload.single("audio"), // campo de archivo: "audio"
+  withTimer(
+    "voiceChat",
+    asyncHandler(async (req, res) => {
+      try {
+        if (!openai) {
+          return res.status(500).json({
+            ok: false,
+            error: "OPENAI_API_KEY no está configurada en el backend.",
+          });
+        }
+
+        const file = req.file;
+        const { agentId, sessionId } = req.body || {};
+
+        if (!file) {
+          return res.status(400).json({ ok: false, error: "No se recibió archivo de audio (campo 'audio')." });
+        }
+
+        console.log("[/voice-chat] Audio recibido:", {
+          originalname: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size,
+          agentId,
+          sessionId,
+        });
+
+        // 1) Transcribir audio con OpenAI (Whisper)
+        const transcription = await openai.audio.transcriptions.create({
+          model: "whisper-1", // o "gpt-4o-mini-transcribe" si luego querés cambiar
+          file: {
+            data: file.buffer,
+            name: file.originalname || "audio.webm",
+          },
+          language: "es",
+          response_format: "text",
+        });
+
+        const question = (transcription && transcription.text ? transcription.text : "").trim();
+        console.log("[/voice-chat] Transcripción:", question);
+
+        if (!question) {
+          return res.status(500).json({
+            ok: false,
+            error: "No se pudo obtener texto de la transcripción.",
+          });
+        }
+
+        // Si no hay backend de agentes configurado, devolvemos solo el texto
+        if (!AGENT_BACKEND_URL) {
+          return res.status(200).json({
+            ok: true,
+            question,
+            answer: null,
+            viaAgentBackend: false,
+          });
+        }
+
+        // 2) Encadenar con tu backend de agentes (voz → texto → agentes)
+        let answer = null;
+        try {
+          const chatRes = await fetch(`${AGENT_BACKEND_URL.replace(/\/+$/, "")}/chat`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Session-Id": sessionId || req.header("X-Session-Id") || "",
+            },
+            body: JSON.stringify({
+              agentId: agentId || null,
+              message: question,
+              fromVoice: true,
+            }),
+          });
+
+          if (!chatRes.ok) {
+            const txt = await chatRes.text();
+            console.error("[/voice-chat] Error en backend de agentes:", chatRes.status, txt);
+          } else {
+            const chatData = await chatRes.json();
+            // Ajustá acá al shape real que devuelva tu /chat
+            answer = chatData.answer || chatData.response || null;
+          }
+        } catch (e) {
+          console.error("[/voice-chat] Error llamando a AGENT_BACKEND_URL:", e);
+        }
+
+        return res.status(200).json({
+          ok: true,
+          question,
+          answer,
+          viaAgentBackend: Boolean(answer),
+        });
+      } catch (err) {
+        console.error("[/voice-chat] Error inesperado:", err);
+        return res.status(500).json({
+          ok: false,
+          error: "Error procesando audio en /voice-chat.",
+        });
+      }
+    })
+  )
+);
 
 // Leer archivo con caché (soporta ?force=true)
 app.get(
