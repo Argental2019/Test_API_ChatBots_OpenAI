@@ -5,7 +5,6 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Home, Send, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { getAgentById } from "@/lib/agents";
-
 type ChatMessage = { role: "user" | "assistant"; content: string; ts?: number };
 type ContextFile = {
   id: string;
@@ -491,7 +490,7 @@ if (isAdmin && !missSent) {
         ...prev,
         {
           role: "assistant",
-          content: "Error generando respuesta. Verificá la configuración del servidor.",
+          content: "El servicio de IA está procesando muchas consultas en este momento. Probá de nuevo en unos segundos.",
           ts: Date.now(),
         },
       ]);
