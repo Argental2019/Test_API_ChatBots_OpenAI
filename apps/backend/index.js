@@ -4,6 +4,14 @@
 // + smartRead: siempre verifica actualizaciones, usa cache si no cambió y refetch si cambió
 
 // ===== Imports =====
+import { fileURLToPath } from "url";
+import path from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+console.log("🔥 Backend Express cargado desde:", __filename);
+
 import express from "express";
 import dotenv from "dotenv";
 import crypto from "crypto";
@@ -17,7 +25,7 @@ import OpenAI from "openai";
 // ...
 dotenv.config();
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3001;
 app.use(express.json({ limit: "10mb" }));
 app.use(cors({
   origin: (process.env.CORS_ORIGIN?.split(",") ?? ["*"]),
