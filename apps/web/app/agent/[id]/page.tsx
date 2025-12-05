@@ -1,10 +1,10 @@
-//web/app/agent/[id]/page.tsx
 "use client";
 import Markdown from "@/components/markdown";
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Home, Send, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Home, Send, Loader2, CheckCircle2, AlertCircle, Mic } from "lucide-react";
 import { getAgentById } from "@/lib/agents";
+import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 type ChatMessage = { role: "user" | "assistant"; content: string; ts?: number };
 type ContextFile = {
   id: string;
@@ -17,6 +17,21 @@ type ContextFile = {
 };
 
 const CAN_REQUEST_META = process.env.NEXT_PUBLIC_ADMIN === "1";
+
+const AUDIO_NOISE_PATTERNS = [
+  "subtítulos realizados por la comunidad de amara.org",
+  "subtitulos realizados por la comunidad de amara.org",
+  "gracias por ver el video",
+  "gracias por ver el vídeo",
+  "no olvides suscribirte",
+  "no olvides suscribirte al canal",
+  "suscríbete al canal",
+  "suscribete al canal",
+  "activa la campanita",
+  "dale like y comparte",
+  "presionando el boton",
+];
+
 
 function formatTime(ts?: number) {
   if (!ts) return "";
@@ -38,19 +53,17 @@ async function reportMiss(miss: any) {
     console.warn("log-miss error", e);
   }
 }
+
 function openWhatsApp() {
   const url = "https://wa.me/5493415470737";
 
-  // Detectar si es dispositivo móvil
   const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(
     navigator.userAgent
   );
 
   if (isMobile) {
-    // En móvil, abrir directamente WhatsApp (la app se hace cargo)
     window.location.href = url;
   } else {
-    // En PC, abrir el enlace en pestaña nueva
     window.open(url, "_blank", "noopener,noreferrer");
   }
 }
@@ -93,9 +106,13 @@ function buildSystemPrompt(
   let base = String(agent.systemPrompt || "");
   if (adminMode) {
     const folderLine = folders?.length ? folders.join(", ") : "no disponible";
-    const filesLine = (files?.length
-      ? files.slice(0, 80).map(f => `${f.name ?? "(sin nombre)"} (${f.id})`).join(" | ")
-      : "no disponible");
+    const filesLine =
+      files?.length
+        ? files
+            .slice(0, 80)
+            .map((f) => `${f.name ?? "(sin nombre)"} (${f.id})`)
+            .join(" | ")
+        : "no disponible";
 
     base += `
 
@@ -149,6 +166,162 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Mantener siempre el último contexto disponible para el micrófono
+  const contextRef = useRef<string | null>(null);
+  useEffect(() => {
+    contextRef.current = contextCache;
+  }, [contextCache]);
+
+  const backendBase = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+
+  const { isRecording, startRecording, stopRecording } = useVoiceRecorder(
+    async (audioBlob) => {
+      if (!agent) {
+        console.error("No hay agente cargado para voice-chat");
+        return;
+      }
+
+      if (!backendBase) {
+        console.error("Falta NEXT_PUBLIC_BACKEND_URL");
+        setToast({
+          type: "err",
+          msg: "No está configurado el backend de audio.",
+        });
+        setTimeout(() => setToast(null), 2500);
+        return;
+      }
+
+      const currentContext = contextRef.current;
+
+      if (!contextLoaded || !currentContext) {
+        console.error("Contexto no cargado aún para voice-chat");
+        setToast({
+          type: "err",
+          msg: "Todavía no se cargó la documentación del agente.",
+        });
+        setTimeout(() => setToast(null), 2500);
+        return;
+      }
+
+      console.log("[voice-front] contextLoaded:", contextLoaded);
+      console.log("[voice-front] context length:", currentContext.length);
+      console.log("[voice-front] context sample:", currentContext.slice(0, 120));
+
+      const systemPromptForVoice = buildSystemPrompt(
+        agent,
+        isAdmin,
+        agent.driveFolders,
+        contextFiles
+      );
+
+      setLoading(true);
+      setToast(null);
+
+      try {
+        const formData = new FormData();
+
+        formData.append("audio", audioBlob, "audio.webm");
+        formData.append("agentId", agent.id);
+        formData.append("systemPrompt", systemPromptForVoice);
+        formData.append("context", currentContext);
+        formData.append("sessionId", `voice-${agent.id}-${Date.now()}`);
+
+        const res = await fetch(
+          `${backendBase.replace(/\/$/, "")}/api/voice-chat`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        const data = await res.json();
+
+        if (!data.ok) {
+          console.error("Error /voice-chat:", data);
+          setToast({
+            type: "err",
+            msg: "No pude procesar el audio. Probá de nuevo.",
+          });
+          setTimeout(() => setToast(null), 2500);
+          return;
+        }
+
+// ================== POST-PROCESO DE RESPUESTA VOZ ==================
+let question: string = data.question || "";
+let answer: string | null = data.answer || null;
+
+// --- Filtro anti-ruido en el FRONT (segunda barrera) ---
+const qLower = (question || "").toLowerCase();
+
+const looksLikeNoise = !question
+  ? true
+  : AUDIO_NOISE_PATTERNS.some((p) => qLower.includes(p));
+
+const isVeryShort = (question || "").trim().length < 3;
+
+// Si detectamos ruido o texto demasiado corto, lo tratamos como "no escuchado"
+if (looksLikeNoise || isVeryShort) {
+  console.warn("[voice-front] Ruido o pregunta vacía, no mostramos transcripción:", {
+    question,
+  });
+
+  question = ""; // así no aparece la frase rara
+
+  if (!answer || !answer.trim()) {
+    answer =
+      "Lo siento, no pude escuchar ninguna pregunta clara en el audio. " +
+      "Podés repetir la consulta o escribirla directamente en el chat.";
+  }
+}
+
+// Limpiar @@MISS / @@META igual que en el flujo de texto normal
+let safeAnswer = answer ? cleanResponse(answer) : "";
+
+// 🧯 Fallback definitivo: si después de limpiar quedó vacío,
+// mostramos SIEMPRE un mensaje estándar al usuario.
+if (!safeAnswer || !safeAnswer.trim()) {
+  safeAnswer =
+    "No encontré información suficiente en la documentación disponible para responder esa consulta. " +
+    "Probá reformular la pregunta o, si lo necesitás, contactar a un asesor de Argental para más detalles.";
+}
+
+setMessages((prev) => {
+  const now = Date.now();
+  const updated: ChatMessage[] = [
+    ...prev,
+    {
+      role: "user",
+      // Si no hay pregunta válida → mostramos texto genérico
+      content:
+        question || "📣 (no se detectó una pregunta clara en el audio)",
+      ts: now,
+    },
+  ];
+
+  // safeAnswer SIEMPRE tiene texto acá
+  updated.push({
+    role: "assistant",
+    content: safeAnswer,
+    ts: now,
+  });
+
+  return updated;
+});
+
+
+      } catch (e) {
+        console.error("Error enviando audio:", e);
+        setToast({
+          type: "err",
+          msg: "Error enviando audio al servidor.",
+        });
+        setTimeout(() => setToast(null), 2500);
+      } finally {
+        setLoading(false);
+      }
+    }
+  );
+
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -169,40 +342,44 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
     return (
       <div className="mx-auto max-w-4xl p-6">
         <p className="text-sm text-gray-600">Agente no encontrado.</p>
-        <Link href="/" className="mt-3 inline-flex items-center gap-2 text-sm text-gray-700 underline">
+        <Link
+          href="/"
+          className="mt-3 inline-flex items-center gap-2 text-sm text-gray-700 underline"
+        >
           <Home className="size-4" /> Volver al inicio
         </Link>
       </div>
     );
   }
-// ===== Interceptar links de WhatsApp en el chat =====
-// ===== Interceptar links de WhatsApp en el chat =====
-useEffect(() => {
-  const links = document.querySelectorAll<HTMLAnchorElement>("a[href*='wa.me']");
 
-  const handler = (e: MouseEvent) => {
-    e.preventDefault();
-    openWhatsApp();
-  };
+  // Interceptar links de WhatsApp en el chat
+  useEffect(() => {
+    const links = document.querySelectorAll<HTMLAnchorElement>("a[href*='wa.me']");
 
-  links.forEach((a) => {
-    a.addEventListener("click", handler);
-  });
+    const handler = (e: MouseEvent) => {
+      e.preventDefault();
+      openWhatsApp();
+    };
 
-  // Cleanup para que no se acumulen listeners
-  return () => {
     links.forEach((a) => {
-      a.removeEventListener("click", handler);
+      a.addEventListener("click", handler);
     });
-  };
-}, [messages]);
 
+    return () => {
+      links.forEach((a) => {
+        a.removeEventListener("click", handler);
+      });
+    };
+  }, [messages]);
 
   const loadContext = async () => {
     if (!agent?.driveFolders) return;
-    setLoading(true); setToast(null);
+    setLoading(true);
+    setToast(null);
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_BACKEND_HEALTH ?? ""}` || "/api/noop").catch(() => {});
+      await fetch(`${process.env.NEXT_PUBLIC_BACKEND_HEALTH ?? ""}` || "/api/noop").catch(
+        () => {}
+      );
       const r = await fetch("/api/context", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -218,7 +395,14 @@ useEffect(() => {
     } catch (e) {
       console.error(e);
       setToast({ type: "err", msg: "No pude cargar el contexto documental." });
-      setMessages([...messages, { role: "assistant", content: "No pude cargar el contexto documental. Intentá nuevamente.", ts: Date.now() }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "No pude cargar el contexto documental. Intentá nuevamente.",
+          ts: Date.now(),
+        },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -228,7 +412,6 @@ useEffect(() => {
     const content = (text ?? input).trim();
     if (!content || loading || !contextLoaded) return;
 
-    // Toggle admin persistente por chat
     if (content === "##DEBUGARGENTAL##") {
       setIsAdmin(true);
       setInput("");
@@ -277,15 +460,12 @@ useEffect(() => {
 
       if (!response.ok || !response.body) throw new Error("Error en la respuesta");
 
-       /* ===== STREAMING + DETECTOR DE @@MISS Y @@META ===== */
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
 
-      // Mensaje visible en el chat
       let assistantMessage: ChatMessage = { role: "assistant", content: "", ts: Date.now() };
       setMessages((prev) => [...prev, assistantMessage]);
 
-      // Buffer crudo con TODO lo que manda el modelo (incluye @@MISS / @@META)
       let assistantRaw = "";
 
       let buf = "";
@@ -296,12 +476,11 @@ useEffect(() => {
       const tryDetectMiss = () => {
         if (missSent) return;
 
-        // Buscar @@MISS { ... } en TODO el contenido crudo
         const rx = /@@MISS\s*(\{[\s\S]*?\})/;
         const m = assistantRaw.match(rx);
         if (!m) return;
 
-        const jsonRaw = m[1]; // el bloque { ... }
+        const jsonRaw = m[1];
 
         try {
           const miss = JSON.parse(jsonRaw);
@@ -339,13 +518,10 @@ useEffect(() => {
             const delta: string | undefined = parsed.choices?.[0]?.delta?.content;
             if (!delta) continue;
 
-            // 1) Acumular SIEMPRE en el buffer crudo
             assistantRaw += delta;
 
-            // 2) Detectar @@MISS sobre el buffer crudo
             tryDetectMiss();
 
-            // 3) Extraer @@META también desde el crudo
             if (!metaExtracted && assistantRaw.includes("@@META")) {
               extractedFiles = extractFilesFromMeta(assistantRaw);
               if (extractedFiles.length > 0) {
@@ -353,17 +529,12 @@ useEffect(() => {
               }
             }
 
-            // ⚠️ GATE: mientras la primera línea sea SOLO @@MISS (sin salto de línea),
-            // NO actualizamos el contenido visible, así nunca se ve el tag técnico.
             if (assistantRaw.startsWith("@@MISS") && !assistantRaw.includes("\n")) {
-              // seguimos leyendo del stream, pero no mostramos nada todavía
               continue;
             }
 
-            // 4) Limpiar para el usuario (sacar @@MISS / @@META)
             assistantMessage.content = cleanResponse(assistantRaw);
 
-            // 5) Actualizar mensaje visible
             setMessages((prev) => {
               const nm = [...prev];
               nm[nm.length - 1] = { ...assistantMessage };
@@ -375,115 +546,123 @@ useEffect(() => {
         }
       }
 
-      // flush final del decoder (por prolijidad)
       decoder.decode();
 
-      // Flush final de @@MISS por las dudas
       tryDetectMiss();
 
-      // Extraer @@META final si no se extrajo antes
-      if (!metaExtracted) {
+           if (!metaExtracted) {
         extractedFiles = extractFilesFromMeta(assistantRaw);
       }
 
-/* ==== AGREGAR BLOQUE DE DEPURACIÓN (si es admin y hay respuesta válida) ==== */
-if (isAdmin && !missSent) {
-  const alreadyHasBlock = /Depuración y origen de datos \(solo admin\)/i.test(
-    assistantMessage.content
-  );
+      // 🔁 Fallbacks según el caso
+      const isEmpty =
+        !assistantMessage.content || !assistantMessage.content.trim();
 
-  if (!alreadyHasBlock) {
-    const folders = Array.isArray(agent?.driveFolders) && agent.driveFolders.length
-      ? agent.driveFolders.join(", ")
-      : agent?.id ?? "no disponible";
-  // 🔥 MEJORADO: Construcción markdown de la lista de archivos
-  let filesLine = "";
-
-  // Mapeo rápido por ID para cruzar META ↔ contextFiles
-  const metaById = new Map((contextFiles || []).map((f) => [f.id, f]));
-
-  if (extractedFiles.length > 0) {
-    // Caso 1: Archivos citados por @@META
-    const lines: string[] = [];
-
-    extractedFiles.forEach((f) => {
-      const meta = f.id ? metaById.get(f.id) : undefined;
-      const dt = meta?.modifiedTime
-        ? new Date(meta.modifiedTime).toLocaleString()
-        : undefined;
-
-      const name = f.name ?? meta?.name ?? "(sin nombre)";
-      const parts: string[] = [];
-
-      // Nombre en negrita
-      parts.push(`**${name}**`);
-
-      // ID como código
-      if (f.id) parts.push(`**ID: **\`${f.id}\``);
-
-      if (dt) parts.push(`**Modif:** ${dt}`);
-      if (f.pages) parts.push(`**Págs:** ${f.pages}`);
-
-      lines.push(`- ${parts.join(" · ")}`);
-    });
-
-    if (lines.length > 0) {
-      filesLine = "\n" + lines.join("\n");
-    }
-  } else if (contextFiles && contextFiles.length > 0) {
-    // Caso 2: fallback a todo el contexto
-    const lines: string[] = [];
-
-    contextFiles.slice(0, 15).forEach((f) => {
-      const dt = f.modifiedTime
-        ? new Date(f.modifiedTime).toLocaleString()
-        : undefined;
-
-      const name = f.name ?? "(sin nombre)";
-      const id = f.id ? `**ID:** \`${f.id}\`` : "";
-      const extra = dt ? ` · **Modif:** ${dt}` : "";
-
-      lines.push(`- **${name}** · ${id}${extra}`);
-    });
-
-    if (contextFiles.length > 15) {
-      lines.push(`- _… y ${contextFiles.length - 15} más_`);
-    }
-
-    filesLine = "\n" + lines.join("\n");
-  } else {
-    filesLine = "\n- _(no disponible)_";
-  }
+      if (isEmpty) {
+        if (missSent) {
+          // Caso 1: hubo @@MISS pero ninguna explicación útil
+          assistantMessage.content =
+            "No encontré información suficiente en la documentación disponible para responder esa consulta. " +
+            "Podés reformular la pregunta o, si lo necesitás, contactar a un asesor de Argental para más detalles.";
+        } else {
+          // Caso 2: el modelo no devolvió nada útil (stream vacío o error silencioso)
+          assistantMessage.content =
+            "No pude generar una respuesta en base a la información disponible. " +
+            "Probá reformular la consulta o intentá nuevamente en unos segundos.";
+        }
+      }
 
 
-     // Carpetas como lista simple (IDs en código)
-    const folderLines = folders
-      .split(",")
-      .map((f) => f.trim())
-      .filter(Boolean)
-      .map((f) => `- \`${f}\``)
-      .join("\n");
+      if (isAdmin && !missSent) {
+        const alreadyHasBlock = /Depuración y origen de datos \(solo admin\)/i.test(
+          assistantMessage.content
+        );
 
-    const adminFooter =
-      `\n\n---\n\n` +
-      `> 🔧 **Depuración y origen de datos (solo admin)**\n\n` +
-      `**📁 Carpetas consultadas**\n` +
-      (folderLines ? `${folderLines}\n\n` : `- _(no disponible)_\n\n`) +
-      `**📄 Archivos fuente utilizados**` +
-      `${filesLine}\n\n` +
-      `> ⚡ Modo: ${extractedFiles.length > 0 ? "Citados en respuesta" : "Contexto completo"}`;
+        if (!alreadyHasBlock) {
+          const folders =
+            Array.isArray(agent?.driveFolders) && agent.driveFolders.length
+              ? agent.driveFolders.join(", ")
+              : agent?.id ?? "no disponible";
 
-    assistantMessage.content += adminFooter;
-  }
-}
+          let filesLine = "";
 
-      // Actualizar mensaje final limpio
+          const metaById = new Map((contextFiles || []).map((f) => [f.id, f]));
+
+          if (extractedFiles.length > 0) {
+            const lines: string[] = [];
+
+            extractedFiles.forEach((f) => {
+              const meta = f.id ? metaById.get(f.id) : undefined;
+              const dt = meta?.modifiedTime
+                ? new Date(meta.modifiedTime).toLocaleString()
+                : undefined;
+
+              const name = f.name ?? meta?.name ?? "(sin nombre)";
+              const parts: string[] = [];
+
+              parts.push(`**${name}**`);
+
+              if (f.id) parts.push(`**ID: **\`${f.id}\``);
+              if (dt) parts.push(`**Modif:** ${dt}`);
+              if (f.pages) parts.push(`**Págs:** ${f.pages}`);
+
+              lines.push(`- ${parts.join(" · ")}`);
+            });
+
+            if (lines.length > 0) {
+              filesLine = "\n" + lines.join("\n");
+            }
+          } else if (contextFiles && contextFiles.length > 0) {
+            const lines: string[] = [];
+
+            contextFiles.slice(0, 15).forEach((f) => {
+              const dt = f.modifiedTime
+                ? new Date(f.modifiedTime).toLocaleString()
+                : undefined;
+
+              const name = f.name ?? "(sin nombre)";
+              const id = f.id ? `**ID:** \`${f.id}\`` : "";
+              const extra = dt ? ` · **Modif:** ${dt}` : "";
+
+              lines.push(`- **${name}** · ${id}${extra}`);
+            });
+
+            if (contextFiles.length > 15) {
+              lines.push(`- _… y ${contextFiles.length - 15} más_`);
+            }
+
+            filesLine = "\n" + lines.join("\n");
+          } else {
+            filesLine = "\n- _(no disponible)_";
+          }
+
+          const folderLines = folders
+            .split(",")
+            .map((f) => f.trim())
+            .filter(Boolean)
+            .map((f) => `- \`${f}\``)
+            .join("\n");
+
+          const adminFooter =
+            `\n\n---\n\n` +
+            `> 🔧 **Depuración y origen de datos (solo admin)**\n\n` +
+            `**📁 Carpetas consultadas**\n` +
+            (folderLines ? `${folderLines}\n\n` : `- _(no disponible)_\n\n`) +
+            `**📄 Archivos fuente utilizados**` +
+            `${filesLine}\n\n` +
+            `> ⚡ Modo: ${
+              extractedFiles.length > 0 ? "Citados en respuesta" : "Contexto completo"
+            }`;
+
+          assistantMessage.content += adminFooter;
+        }
+      }
+
       setMessages((prev) => {
         const nm = [...prev];
         nm[nm.length - 1] = { ...assistantMessage };
         return nm;
       });
-
     } catch (error) {
       console.error(error);
       setMessages((prev) => [
@@ -509,53 +688,51 @@ if (isAdmin && !missSent) {
 
   return (
     <div className="min-h-screen bg-white">
-     <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
-  <div className="relative mx-auto max-w-4xl px-4 py-3 flex items-center">
-    <Link
-      href="/"
-      className="absolute left-4 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-    >
-      <Home className="size-4" />
-      Volver
-    </Link>
+      <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
+        <div className="relative mx-auto max-w-4xl px-4 py-3 flex items-center">
+          <Link
+            href="/"
+            className="absolute left-4 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <Home className="size-4" />
+            Volver
+          </Link>
 
-    <div className="mx-auto text-center pointer-events-none">
-      <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-gray-600">
-        <span className="relative flex size-2">
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
-        </span>
-        Activo{" "}
-        {isAdmin && (
-          <span className="ml-2 rounded-full bg-gray-900 px-2 py-0.5 text-white">
-            Admin
-          </span>
-        )}
-      </div>
+          <div className="mx-auto text-center pointer-events-none">
+            <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-gray-600">
+              <span className="relative flex size-2">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+              </span>
+              Activo{" "}
+              {isAdmin && (
+                <span className="ml-2 rounded-full bg-gray-900 px-2 py-0.5 text-white">
+                  Admin
+                </span>
+              )}
+            </div>
 
-      {/* Categoría y Subcategoría en dos líneas */}
-      <div className="mt-1 text-[11px] text-gray-500 leading-snug">
-        <div>
-          Categoría:{" "}
-          <span className="font-medium text-gray-700">
-            {agent.family || "-"}
-          </span>
+            <div className="mt-1 text-[11px] text-gray-500 leading-snug">
+              <div>
+                Categoría:{" "}
+                <span className="font-medium text-gray-700">
+                  {agent.family || "-"}
+                </span>
+              </div>
+              <div>
+                Subcategoría:{" "}
+                <span className="font-medium text-gray-700">
+                  {agent.subfamily || "-"}
+                </span>
+              </div>
+            </div>
+
+            <h2 className="mt-2 text-base font-semibold text-gray-900 leading-tight">
+              {agent.name}
+            </h2>
+          </div>
         </div>
-        <div>
-          Subcategoría:{" "}
-          <span className="font-medium text-gray-700">
-            {agent.subfamily || "-"}
-          </span>
-        </div>
-      </div>
-
-      <h2 className="mt-2 text-base font-semibold text-gray-900 leading-tight">
-        {agent.name}
-      </h2>
-    </div>
-  </div>
-</header>
-
+      </header>
 
       <main className="mx-auto max-w-4xl px-4">
         {/* Toast */}
@@ -567,7 +744,11 @@ if (isAdmin && !missSent) {
                 : "border-rose-200 bg-rose-50 text-rose-700"
             }`}
           >
-            {toast.type === "ok" ? <CheckCircle2 className="size-4" /> : <AlertCircle className="size-4" />}
+            {toast.type === "ok" ? (
+              <CheckCircle2 className="size-4" />
+            ) : (
+              <AlertCircle className="size-4" />
+            )}
             {toast.msg}
           </div>
         )}
@@ -612,10 +793,15 @@ if (isAdmin && !missSent) {
             {messages.map((m, i) => {
               const mine = m.role === "user";
               return (
-                <div key={i} className={`mb-3 flex ${mine ? "justify-end" : "justify-start"}`}>
+                <div
+                  key={i}
+                  className={`mb-3 flex ${mine ? "justify-end" : "justify-start"}`}
+                >
                   <div
                     className={`w-fit max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-6 ${
-                      mine ? "bg-gray-900 text-white shadow-md" : "border bg-white text-gray-900 shadow-sm"
+                      mine
+                        ? "bg-gray-900 text-white shadow-md"
+                        : "border bg-white text-gray-900 shadow-sm"
                     }`}
                   >
                     <Markdown
@@ -633,7 +819,11 @@ if (isAdmin && !missSent) {
                       {m.content}
                     </Markdown>
 
-                    <div className={`mt-1 text-[11px] ${mine ? "text-gray-300" : "text-gray-500"}`}>
+                    <div
+                      className={`mt-1 text-[11px] ${
+                        mine ? "text-gray-300" : "text-gray-500"
+                      }`}
+                    >
                       {mine ? "Vos" : agent.name} · {formatTime(m.ts)}
                     </div>
                   </div>
@@ -653,24 +843,45 @@ if (isAdmin && !missSent) {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyPress}
                 disabled={loading || !contextLoaded}
-                placeholder={contextLoaded ? "Escribí tu pregunta…" : "Cargando contexto…"}
-                className="max-h-[200px] w-full resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
+                placeholder={
+                  contextLoaded ? "Escribí tu pregunta…" : "Cargando contexto…"
+                }
+                className="max-h-[200px] flex-1 resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
               />
+
+              {/* Mic */}
+              <button
+                type="button"
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={loading || !contextLoaded}
+                className={`mb-1 inline-flex items-center justify-center rounded-full border px-3 py-3 text-sm shadow-sm transition ${
+                  isRecording
+                    ? "bg-red-500 text-white border-red-500"
+                    : "bg-white text-gray-700 hover:bg-gray-50"
+                } disabled:cursor-not-allowed disabled:opacity-50`}
+                title={isRecording ? "Detener grabación" : "Hablar por micrófono"}
+              >
+                <Mic className="size-4" />
+              </button>
+
+              {/* Enviar */}
               <button
                 onClick={() => sendMessage()}
                 disabled={loading || !contextLoaded || !input.trim()}
                 className="inline-flex items-center gap-2 rounded-2xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {loading ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                {loading ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Send className="size-4" />
+                )}
                 {loading ? "Enviando" : "Enviar"}
               </button>
             </div>
 
             {CAN_REQUEST_META && (
               <div className="mt-2 text-[11px] text-gray-500">
-                {isAdmin
-                  ? "Depuración: ACTIVADA"
-                  : ''}
+                {isAdmin ? "Depuración: ACTIVADA" : ""}
               </div>
             )}
           </div>

@@ -1,3 +1,4 @@
+// apps\web\app\api\chat\route.ts
 import { NextRequest } from "next/server";
 
 export const runtime = "edge";
