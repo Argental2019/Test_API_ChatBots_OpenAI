@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
   };
 
   const payload = {
-    model: "gpt-4.1-nano",
+    model: "gpt-5.1",
     temperature: 0.2,
     stream: true,
     response_format: { type: "text" },
