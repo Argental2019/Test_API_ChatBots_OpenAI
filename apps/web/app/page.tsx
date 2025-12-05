@@ -3,6 +3,8 @@
 import Link from "next/link";
 import Markdown from "@/components/markdown";
 import FooterPolicy from "@/components/FooterPolicy";
+import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
+
 
 import React, { useMemo, useEffect, useRef, useState } from "react";
 import {
@@ -104,6 +106,95 @@ export default function MultiAgentChat() {
 
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const backendBase = (process.env.NEXT_PUBLIC_BACKEND_URL || "").replace(/\/$/, "");
+
+  const { isRecording, startRecording, stopRecording } = useVoiceRecorder(
+  async (audioBlob) => {
+    if (!backendBase) {
+      console.error("Falta NEXT_PUBLIC_BACKEND_URL");
+      setToast({
+        type: "err",
+        msg: "No está configurado el backend de audio.",
+      });
+      setTimeout(() => setToast(null), 2500);
+      return;
+    }
+
+    if (!selectedAgent) {
+      console.error("No hay agente seleccionado para enviar el audio.");
+      return;
+    }
+
+    if (!contextLoaded || !contextCache) {
+      setToast({
+        type: "err",
+        msg: "Todavía no se cargó la documentación del agente.",
+      });
+      setTimeout(() => setToast(null), 2500);
+      return;
+    }
+
+    setLoading(true);
+    setToast(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "audio.webm");
+      formData.append("agentId", selectedAgent.id);
+      formData.append("systemPrompt", selectedAgent.systemPrompt); // 👈 CLAVE
+      formData.append("context", contextCache);                    // 👈 snapshot de smartRead
+      // opcional: para agrupar conversaciones
+      formData.append("sessionId", `voice-${selectedAgent.id}-${Date.now()}`);
+
+      const res = await fetch(`${backendBase}/api/voice-chat`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!data.ok) {
+        console.error("Error /voice-chat:", data);
+        setToast({
+          type: "err",
+          msg: "No pude procesar el audio. Probá de nuevo.",
+        });
+        setTimeout(() => setToast(null), 2500);
+        return;
+      }
+
+      const question: string = data.question;
+      const answer: string | null = data.answer;
+
+      setMessages((prev) => {
+        const now = Date.now();
+        const updated: ChatMessage[] = [
+          ...prev,
+          { role: "user", content: question, ts: now },
+        ];
+        if (answer) {
+          updated.push({
+            role: "assistant",
+            content: answer,
+            ts: now,
+          });
+        }
+        return updated;
+      });
+    } catch (e) {
+      console.error("Error enviando audio:", e);
+      setToast({
+        type: "err",
+        msg: "Error enviando audio al servidor.",
+      });
+      setTimeout(() => setToast(null), 2500);
+    } finally {
+      setLoading(false);
+    }
+  }
+);
+
+
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -576,6 +667,21 @@ export default function MultiAgentChat() {
           {/* Composer */}
           <div className="sticky bottom-0 border-t bg-white p-3 sm:p-4">
             <div className="flex items-end gap-3">
+              {/* Botón de micrófono */}
+              <button
+                type="button"
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={loading || !contextLoaded}
+                className={`mb-1 inline-flex items-center justify-center rounded-full border px-3 py-3 text-sm shadow-sm transition ${
+                  isRecording
+                    ? "bg-red-500 text-white border-red-500"
+                    : "bg-white text-gray-700 hover:bg-gray-50"
+                } disabled:cursor-not-allowed disabled:opacity-50`}
+                title={isRecording ? "Detener grabación" : "Hablar por micrófono"}
+              >
+                {isRecording ? "■" : "🎙"}
+              </button>
+
               <textarea
                 ref={inputRef}
                 rows={1}
@@ -584,8 +690,9 @@ export default function MultiAgentChat() {
                 onKeyDown={handleKeyPress}
                 disabled={loading || !contextLoaded}
                 placeholder={contextLoaded ? "Escribí tu pregunta…" : "Cargando contexto…"}
-                className="max-h=[200px] w-full resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
+                className="max-h-[200px] flex-1 resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
               />
+
               <button
                 onClick={sendMessage}
                 disabled={loading || !contextLoaded || !input.trim()}

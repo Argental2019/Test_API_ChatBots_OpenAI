@@ -1,6 +1,6 @@
 // @ts-nocheck
 // index.js — Backend Drive con caché + lecturas masivas (compatible Vercel)
-// + Telemetría: log de "preguntas no respondidas" vía Redis 
+// + Telemetría: log de "preguntas no respondidas" vía Redis
 // + smartRead: siempre verifica actualizaciones, usa cache si no cambió y refetch si cambió
 
 // ===== Imports =====
@@ -14,6 +14,7 @@ console.log("🔥 Backend Express cargado desde:", __filename);
 
 import express from "express";
 import dotenv from "dotenv";
+import fetch from "node-fetch";
 import crypto from "crypto";
 import pLimit from "p-limit";
 import Redis from "ioredis";
@@ -27,11 +28,13 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3001;
 app.use(express.json({ limit: "10mb" }));
-app.use(cors({
-  origin: (process.env.CORS_ORIGIN?.split(",") ?? ["*"]),
-  methods: ["GET","POST","OPTIONS"],
-  allowedHeaders: ["Content-Type","X-Session-Id"],
-}));
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN?.split(",") ?? ["*"],
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "X-Session-Id"],
+  })
+);
 
 // ===== Upload de audio (multer) =====
 const upload = multer({
@@ -54,6 +57,7 @@ if (!process.env.OPENAI_API_KEY) {
 // Opcional: backend de agentes (si querés encadenar voz → agentes directamente)
 // Ej: https://test-chatbots-back.vercel.app/chat
 const AGENT_BACKEND_URL = process.env.AGENT_BACKEND_URL || null;
+const FRONTEND_URL = process.env.FRONTEND_URL || null; // ej: https://tu-frontend.vercel.app
 
 // ===== Métricas simples =====
 // TTL configurable (opcional). También podés dejarlo sin expiración si preferís.
@@ -75,22 +79,24 @@ const metricsSnapshot = () =>
     })
   );
 
-const withTimer = (name, fn) => async (req, res, next) => {
-  const t0 = Date.now();
-  METRICS.counts[name] = (METRICS.counts[name] || 0) + 1;
-  try {
-    await fn(req, res, next);
-  } finally {
-    const dt = Date.now() - t0;
-    let arr = METRICS.durs[name];
-    if (!arr) {
-      arr = [];
-      METRICS.durs[name] = arr;
+const withTimer =
+  (name, fn) =>
+  async (req, res, next) => {
+    const t0 = Date.now();
+    METRICS.counts[name] = (METRICS.counts[name] || 0) + 1;
+    try {
+      await fn(req, res, next);
+    } finally {
+      const dt = Date.now() - t0;
+      let arr = METRICS.durs[name];
+      if (!arr) {
+        arr = [];
+        METRICS.durs[name] = arr;
+      }
+      arr.push(dt);
+      if (arr.length > 500) arr.shift();
     }
-    arr.push(dt);
-    if (arr.length > 500) arr.shift();
-  }
-};
+  };
 
 const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 const makeEtag = (payload) => crypto.createHash("md5").update(payload).digest("hex");
@@ -324,6 +330,48 @@ const ensureSessionId = (req, res, next) => {
   next();
 };
 
+// Convierte el stream SSE de /api/chat en texto plano
+async function readSSEStreamToText(stream) {
+  if (!stream) return "";
+
+  const decoder = new TextDecoder();
+  let full = "";
+
+  for await (const chunk of stream) {
+    const textChunk = decoder.decode(chunk, { stream: true });
+
+    // /api/chat devuelve SSE tipo "data: {...}\n\n"
+    const lines = textChunk.split("\n");
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("data:")) continue;
+
+      const data = trimmed.slice(5).trim(); // después de "data:"
+      if (!data || data === "[DONE]") continue;
+
+      try {
+        const json = JSON.parse(data);
+        const delta = json.choices?.[0]?.delta?.content || "";
+        if (delta) full += delta;
+      } catch (err) {
+        console.warn("[voice-chat] No se pudo parsear chunk SSE:", data);
+      }
+    }
+  }
+
+  return full;
+}
+
+// Limpia @@META y @@MISS de la respuesta del modelo
+function cleanLLMResponse(text) {
+  if (!text) return "";
+  // Eliminar @@META {...}
+  let cleaned = text.replace(/@@META\s*\{[\s\S]*?\}/g, "").trim();
+  // Eliminar @@MISS {...} (solo la línea técnica)
+  cleaned = cleaned.replace(/^@@MISS\s*\{[^\n]*\}\s*\n?/m, "").trim();
+  return cleaned;
+}
+
 // ===== Endpoints Drive =====
 
 // Ping raíz
@@ -373,7 +421,7 @@ app.get("/diag", (req, res) => {
       REDIS_URL: !!process.env.REDIS_URL,
       ALLOWED_FOLDER_IDS: !!process.env.ALLOWED_FOLDER_IDS,
     },
-    cache: { provider: redis ? "redis" : "memory" }
+    cache: { provider: redis ? "redis" : "memory" },
   });
 });
 
@@ -386,17 +434,13 @@ app.get("/health-lite", (req, res) => {
  * 🎙 /voice-chat
  * - Espera multipart/form-data con:
  *   - campo "audio" (Blob/archivo WebM/OGG/M4A, etc.)
- *   - opcional "agentId" y "sessionId"
- * - Si AGENT_BACKEND_URL está definido:
- *   - Transcribe audio → texto con OpenAI
- *   - Envía ese texto al backend de agentes (POST /chat)
- *   - Devuelve { ok, question, answer }
- * - Si NO hay AGENT_BACKEND_URL:
- *   - Solo transcribe y devuelve { ok, question }
+ *   - campo "agentId" (string)
+ *   - opcional "systemPrompt" (string) → si querés mandarlo desde el front
+ *   - opcional "context" (string) → snapshot de smartRead que ya usás en /api/chat
  */
 app.post(
-  "/voice-chat",
-  upload.single("audio"), // campo de archivo: "audio"
+  "/api/voice-chat",
+  upload.single("audio"),
   withTimer(
     "voiceChat",
     asyncHandler(async (req, res) => {
@@ -408,91 +452,156 @@ app.post(
           });
         }
 
-        const file = req.file;
-        const { agentId, sessionId } = req.body || {};
-
-        if (!file) {
-          return res.status(400).json({ ok: false, error: "No se recibió archivo de audio (campo 'audio')." });
+        if (!FRONTEND_URL) {
+          return res.status(500).json({
+            ok: false,
+            error: "FRONTEND_URL no está configurada (URL del Next que expone /api/chat).",
+          });
         }
 
-        console.log("[/voice-chat] Audio recibido:", {
-          originalname: file.originalname,
-          mimetype: file.mimetype,
-          size: file.size,
+        const file = req.file;
+        const agentId = req.body.agentId;
+        const sessionId =
+          req.body.sessionId || req.headers["x-session-id"] || `voice-${Date.now()}`;
+
+        // Estos dos los puede mandar el front junto con el audio
+        const systemPromptFromBody = req.body.systemPrompt;
+        const contextFromBody = req.body.context || "";
+
+        console.log("[/voice-chat] Request recibido:", {
+          hasFile: !!file,
           agentId,
+          mimetype: file?.mimetype,
+          size: file?.size,
           sessionId,
         });
 
-        // 1) Transcribir audio con OpenAI (Whisper)
-        const transcription = await openai.audio.transcriptions.create({
-          model: "whisper-1", // o "gpt-4o-mini-transcribe" si luego querés cambiar
-          file: {
-            data: file.buffer,
-            name: file.originalname || "audio.webm",
+        if (!file) {
+          return res.status(400).json({
+            ok: false,
+            error: "No se recibió archivo de audio (campo 'audio').",
+          });
+        }
+
+// 1️⃣ Transcribir audio con OpenAI Whisper
+console.log("[/voice-chat] Transcribiendo audio...");
+
+const transcription = await openai.audio.transcriptions.create({
+  file: new File([file.buffer], file.originalname || "audio.webm", {
+    type: file.mimetype || "audio/webm",
+  }),
+  model: "whisper-1",
+  language: "es",
+});
+
+const rawText = (transcription.text || "").trim();
+const lower = rawText.toLowerCase();
+
+console.log("[/voice-chat] ✅ Transcripción:", {
+  textPreview: rawText.substring(0, 120),
+  length: rawText.length,
+});
+
+// 🚫 Frases típicas de ruido (YouTube, Amara, etc.)
+const NOISE_PATTERNS = [
+  "subtítulos realizados por la comunidad de amara.org",
+  "subtitulos realizados por la comunidad de amara.org",
+  "gracias por ver el video",
+  "gracias por ver el vídeo",
+  "no olvides suscribirte",
+  "no olvides suscribirte al canal",
+  "suscríbete al canal",
+  "suscribete al canal",
+  "activa la campanita",
+  "dale like y comparte",
+];
+
+const looksLikeNoise = NOISE_PATTERNS.some((p) => lower.includes(p));
+
+// Heurística extra: texto muy corto o solo una frase suelta sin pinta de consulta
+const isVeryShort = rawText.length < 5;
+
+// ⚠️ Si no hay texto, es muy corto o detectamos ruido conocido:
+// devolvemos mensaje amable y NO llamamos a /api/chat
+if (!rawText || isVeryShort || looksLikeNoise) {
+  const friendlyMsg =
+    "Lo siento, no pude escuchar ninguna pregunta clara en el audio. " +
+    "Podés repetir la consulta o escribirla directamente en el chat.";
+
+  console.warn(
+    "[/voice-chat] Transcripción vacía / muy corta o ruido conocido, devolviendo mensaje amable."
+  );
+
+  return res.status(200).json({
+    ok: true,
+    question: "",
+    answer: friendlyMsg,
+  });
+}
+
+// Si llegamos acá, la transcripción se considera una pregunta válida
+const question = rawText;
+        // 2️⃣ Armar payload EXACTO que espera /api/chat
+        // Si no te mandan systemPrompt desde el front, usamos uno genérico según agentId
+        const fallbackPrompt =
+          agentId === "panier-iii-45x70"
+            ? "Sos un asistente experto en productos Argental, específicamente en el Panier III 45x70. Respondé de forma clara, breve y profesional."
+            : "Sos un asistente de Argental. Respondé de forma clara y profesional usando únicamente la información del contexto documental proporcionado.";
+
+        const systemPrompt = (systemPromptFromBody || fallbackPrompt).trim();
+        console.log("[/voice-chat] SYSTEM PROMPT LEN:", systemPrompt.length);
+        console.log("[/voice-chat] CONTEXT LEN:", (contextFromBody || "").length);
+        const payload = {
+          systemPrompt,
+          context: contextFromBody, // snapshot que ya armás con smartRead en el front
+          messages: [
+            {
+              role: "user",
+              content: question,
+            },
+          ],
+        };
+
+        const chatUrl = `${FRONTEND_URL}/api/chat`;
+        console.log("[/voice-chat] Llamando a", chatUrl);
+
+        const r = await fetch(chatUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-          language: "es",
-          response_format: "text",
+          body: JSON.stringify(payload),
         });
 
-        const question = (transcription && transcription.text ? transcription.text : "").trim();
-        console.log("[/voice-chat] Transcripción:", question);
-
-        if (!question) {
+        if (!r.ok || !r.body) {
+          const txt = await r.text().catch(() => "");
+          console.error("[/voice-chat] Error en /api/chat:", r.status, txt);
           return res.status(500).json({
             ok: false,
-            error: "No se pudo obtener texto de la transcripción.",
+            error: "Error al consultar /api/chat en el frontend.",
+            details: txt,
           });
         }
 
-        // Si no hay backend de agentes configurado, devolvemos solo el texto
-        if (!AGENT_BACKEND_URL) {
-          return res.status(200).json({
-            ok: true,
-            question,
-            answer: null,
-            viaAgentBackend: false,
-          });
-        }
+        // 3️⃣ /api/chat devuelve un stream SSE → lo convertimos a texto final y lo limpiamos
+        const rawAnswer = await readSSEStreamToText(r.body);
+        const answer = cleanLLMResponse(rawAnswer);
 
-        // 2) Encadenar con tu backend de agentes (voz → texto → agentes)
-        let answer = null;
-        try {
-          const chatRes = await fetch(`${AGENT_BACKEND_URL.replace(/\/+$/, "")}/chat`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Session-Id": sessionId || req.header("X-Session-Id") || "",
-            },
-            body: JSON.stringify({
-              agentId: agentId || null,
-              message: question,
-              fromVoice: true,
-            }),
-          });
-
-          if (!chatRes.ok) {
-            const txt = await chatRes.text();
-            console.error("[/voice-chat] Error en backend de agentes:", chatRes.status, txt);
-          } else {
-            const chatData = await chatRes.json();
-            // Ajustá acá al shape real que devuelva tu /chat
-            answer = chatData.answer || chatData.response || null;
-          }
-        } catch (e) {
-          console.error("[/voice-chat] Error llamando a AGENT_BACKEND_URL:", e);
-        }
+        console.log("[/voice-chat] ✅ Respuesta final (limpia):", {
+          preview: answer.substring(0, 120),
+        });
 
         return res.status(200).json({
           ok: true,
           question,
           answer,
-          viaAgentBackend: Boolean(answer),
         });
       } catch (err) {
-        console.error("[/voice-chat] Error inesperado:", err);
+        console.error("[/voice-chat] ❌ Error:", err);
         return res.status(500).json({
           ok: false,
           error: "Error procesando audio en /voice-chat.",
+          details: err.message,
         });
       }
     })
@@ -609,7 +718,7 @@ app.post(
               size: buffer.length,
               content,
             };
-        console.log("ARCHIVO PROCESADO:", fileId, extractedText.length);
+            console.log("ARCHIVO PROCESADO:", id, (content || "").length);
 
             // PURGA versiones anteriores antes de escribir la nueva
             await cacheDelByPrefix(FILE_PREFIX(meta.id));
@@ -620,7 +729,6 @@ app.post(
               await cacheSet(cacheKey, payload);
             }
             return { fileId: id, ...payload };
-            
           })
         )
       );
@@ -632,7 +740,6 @@ app.post(
       );
 
       return res.status(200).json(body);
-      
     })
   )
 );
@@ -683,7 +790,7 @@ app.post(
               const meta = currManifest.files.find((f) => f.id === id) || (await getFileMeta(id));
               await readFileSmart({
                 id: meta.id,
-                etag: meta.etag,          // ojo: en manifest podría llamarse etag
+                etag: meta.etag, // ojo: en manifest podría llamarse etag
                 mimeType: meta.mimeType,
                 name: meta.name,
               });
@@ -693,43 +800,42 @@ app.post(
       }
 
       // 7) snapshot para el agente (todo lo actual del folder)
-    // 7) snapshot para el agente (todo lo actual del folder)
-const snapshot = [];
-for (const f of currManifest.files) {
-  const k = FILE_KEY(f.id, f.etag);
-  let hit = await cacheGet(k);
+      const snapshot = [];
+      for (const f of currManifest.files) {
+        const k = FILE_KEY(f.id, f.etag);
+        let hit = await cacheGet(k);
 
-  if (!hit) {
-    // Fallback: si no está en cache, lo leo ahora mismo
-    try {
-      const loaded = await readFileSmart({
-        id: f.id,
-        etag: f.etag,
-        mimeType: f.mimeType,
-        name: f.name,
-      });
-      hit = loaded;
-      console.log("[smartRead] cache miss → reload", {
-        id: f.id,
-        name: f.name,
-        mimeType: f.mimeType,
-        contentLen: loaded.content?.length ?? 0,
-      });
-    } catch (e) {
-      console.error("[smartRead] error releyendo archivo en fallback", f.id, e);
-    }
-  }
+        if (!hit) {
+          // Fallback: si no está en cache, lo leo ahora mismo
+          try {
+            const loaded = await readFileSmart({
+              id: f.id,
+              etag: f.etag,
+              mimeType: f.mimeType,
+              name: f.name,
+            });
+            hit = loaded;
+            console.log("[smartRead] cache miss → reload", {
+              id: f.id,
+              name: f.name,
+              mimeType: f.mimeType,
+              contentLen: loaded.content?.length ?? 0,
+            });
+          } catch (e) {
+            console.error("[smartRead] error releyendo archivo en fallback", f.id, e);
+          }
+        }
 
-  if (hit) {
-    snapshot.push(hit);
-  } else {
-    console.warn("[smartRead] archivo sin contenido ni cache", {
-      id: f.id,
-      name: f.name,
-      mimeType: f.mimeType,
-    });
-  }
-}
+        if (hit) {
+          snapshot.push(hit);
+        } else {
+          console.warn("[smartRead] archivo sin contenido ni cache", {
+            id: f.id,
+            name: f.name,
+            mimeType: f.mimeType,
+          });
+        }
+      }
 
       // 8) persistir manifest nuevo
       await setCachedManifest(folderId, currManifest);
@@ -749,7 +855,6 @@ for (const f of currManifest.files) {
 
       // 10) incluir metadatos si lo pidieron (sin content)
       if (includeMeta) {
-        // si tu manifest trae estos campos, usalos acá; si no, ajustá al shape real
         response.files = currManifest.files.map((f) => ({
           id: f.id,
           name: f.name,
@@ -760,7 +865,7 @@ for (const f of currManifest.files) {
           folderId,
         }));
       }
-   console.log("[smartRead] OUT", {
+      console.log("[smartRead] OUT", {
         folderId,
         snapshotCount: snapshot.length,
         snapshotFiles: snapshot.map((f) => ({
@@ -880,16 +985,26 @@ async function logMiss({ question, agentId, userId, folderId, conversationId, no
       "~",
       String(MISS_MAXLEN),
       "*",
-      "ts", payload.ts,
-      "ymd", payload.ymd,
-      "agentId", payload.agentId,
-      "userId", payload.userId,
-      "folderId", payload.folderId,
-      "conversationId", payload.conversationId,
-      "question", payload.question,
-      "qhash", payload.qhash,
-      "notes", payload.notes,
-      "context", payload.context
+      "ts",
+      payload.ts,
+      "ymd",
+      payload.ymd,
+      "agentId",
+      payload.agentId,
+      "userId",
+      payload.userId,
+      "folderId",
+      payload.folderId,
+      "conversationId",
+      payload.conversationId,
+      "question",
+      payload.question,
+      "qhash",
+      payload.qhash,
+      "notes",
+      payload.notes,
+      "context",
+      payload.context
     );
 
     const dayKey = `agent:misses:count:${payload.ymd}`;
@@ -928,7 +1043,10 @@ app.get(
     "missStats",
     asyncHandler(async (_req, res) => {
       if (redis) {
-        const [total, today] = await redis.mget("agent:misses:count:total", `agent:misses:count:${ymd()}`);
+        const [total, today] = await redis.mget(
+          "agent:misses:count:total",
+          `agent:misses:count:${ymd()}`
+        );
         return res.status(200).json({
           ok: true,
           total: Number(total || 0),
