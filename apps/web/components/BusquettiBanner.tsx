@@ -12,7 +12,7 @@ export default function BusquettiBanner() {
           {/* Banner azul detrás, más chico */}
           <div className="relative h-56 lg:h-64 rounded-2xl shadow-lg overflow-hidden">
             <Image
-              src="/busquetti/banner-busquetti-desktop.jpeg"
+              src="/busquetti/banner-busquetti-desktop.png"
               alt="Banner Busquetti"
               fill
               priority
