@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Markdown from "@/components/markdown";
 import FooterPolicy from "@/components/FooterPolicy";
-
+import BusquettiBanner from "@/components/BusquettiBanner";
 import React, { useMemo, useEffect, useRef, useState } from "react";
 import {
   Home,
@@ -245,7 +245,7 @@ export default function MultiAgentChat() {
         ...prev,
         {
           role: "assistant",
-          content: "Error generando respuesta. Verificá la configuración del servidor.",
+          content: "El servicio de IA está procesando muchas consultas en este momento. Probá de nuevo en unos segundos.",
           ts: Date.now(),
         },
       ]);
@@ -311,11 +311,12 @@ export default function MultiAgentChat() {
                 </a>
                 .
               </p>
+
             </div>
           </div>
         </header>
-
         <main className="mx-auto max-w-6xl px-4 py-12">
+           <BusquettiBanner />
           <div className="mb-10">
             <h1 className="text-4xl font-bold tracking-tight text-gray-900">Chat Multi-Agente IA</h1>
             <p className="mt-2 text-gray-600">Seleccioná un agente para comenzar</p>
