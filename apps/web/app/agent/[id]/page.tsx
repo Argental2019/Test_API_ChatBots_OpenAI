@@ -96,6 +96,34 @@ function cleanResponse(text: string): string {
   return cleaned;
 }
 
+/* ===== Separar resumen (línea 1) y desarrollo (resto) ===== */
+function splitAgentResponse(text: string): { summary: string; detail: string } {
+  if (!text) {
+    return { summary: "", detail: "" };
+  }
+
+  const lines = text.split("\n");
+
+  const summary = (lines[0] ?? "").trim();
+
+  // buscamos la primera línea NO vacía después del resumen
+  let firstDetailIndex = -1;
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() !== "") {
+      firstDetailIndex = i;
+      break;
+    }
+  }
+
+  const detail =
+    firstDetailIndex === -1
+      ? ""
+      : lines.slice(firstDetailIndex).join("\n").trim();
+
+  return { summary, detail };
+}
+
+
 /* ===== Admin builder: inyecta bloque de depuración con carpetas + archivos ===== */
 function buildSystemPrompt(
   agent: any,
@@ -150,6 +178,56 @@ NOTA: @@MISS y @@META son mutuamente excluyentes. Usá uno u otro, nunca ambos.
 }
 
 /* ====================================================== */
+type AgentMessageProps = {
+  content: string;
+  className?: string;
+};
+
+function AgentMessage({ content, className }: AgentMessageProps) {
+  const [expanded, setExpanded] = useState(false);
+
+  const { summary, detail } = splitAgentResponse(content);
+  const hasDetail = !!detail;
+
+  return (
+    <div>
+      {/* Resumen (línea 1: 📌 Según la documentación...) */}
+      <Markdown className={className}>
+        {summary}
+      </Markdown>
+
+      {/* Botón VER MÁS */}
+      {hasDetail && !expanded && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="mt-2 text-xs font-semibold text-blue-600 hover:underline"
+        >
+          VER MÁS
+        </button>
+      )}
+
+      {/* Detalle + VER MENOS */}
+      {hasDetail && expanded && (
+        <>
+          <button
+            type="button"
+            onClick={() => setExpanded(false)}
+            className="mt-2 text-xs font-semibold text-blue-600 hover:underline"
+          >
+            VER MENOS
+          </button>
+
+          <div className="mt-2">
+            <Markdown className={className}>
+              {detail}
+            </Markdown>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function AgentChatPage({ params }: { params: { id: string } }) {
   const agent = getAgentById(params.id);
@@ -790,46 +868,48 @@ setMessages((prev) => {
               </div>
             )}
 
-            {messages.map((m, i) => {
-              const mine = m.role === "user";
-              return (
-                <div
-                  key={i}
-                  className={`mb-3 flex ${mine ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`w-fit max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-6 ${
-                      mine
-                        ? "bg-gray-900 text-white shadow-md"
-                        : "border bg-white text-gray-900 shadow-sm"
-                    }`}
-                  >
-                    <Markdown
-                      className={
-                        mine
-                          ? "whitespace-pre-wrap leading-relaxed"
-                          : [
-                              "prose prose-sm sm:prose-base max-w-none leading-relaxed",
-                              "[&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5",
-                              "[&_p:has(>strong:only-child)]:mt-4",
-                              "[&_p:has(>strong:only-child)]:mb-1",
-                            ].join(" ")
-                      }
-                    >
-                      {m.content}
-                    </Markdown>
+{messages.map((m, i) => {
+  const mine = m.role === "user";
+  return (
+    <div
+      key={i}
+      className={`mb-3 flex ${mine ? "justify-end" : "justify-start"}`}
+    >
+      <div
+        className={`w-fit max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-6 ${
+          mine
+            ? "bg-gray-900 text-white shadow-md"
+            : "border bg-white text-gray-900 shadow-sm"
+        }`}
+      >
+        {mine ? (
+          <Markdown className="whitespace-pre-wrap leading-relaxed">
+            {m.content}
+          </Markdown>
+        ) : (
+          <AgentMessage
+            content={m.content}
+            className={[
+              "prose prose-sm sm:prose-base max-w-none leading-relaxed",
+              "[&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5",
+              "[&_p:has(>strong:only-child)]:mt-4",
+              "[&_p:has(>strong:only-child)]:mb-1",
+            ].join(" ")}
+          />
+        )}
 
-                    <div
-                      className={`mt-1 text-[11px] ${
-                        mine ? "text-gray-300" : "text-gray-500"
-                      }`}
-                    >
-                      {mine ? "Vos" : agent.name} · {formatTime(m.ts)}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+        <div
+          className={`mt-1 text-[11px] ${
+            mine ? "text-gray-300" : "text-gray-500"
+          }`}
+        >
+          {mine ? "Vos" : agent.name} · {formatTime(m.ts)}
+        </div>
+      </div>
+    </div>
+  );
+})}
+
             <div ref={endRef} />
           </div>
 
