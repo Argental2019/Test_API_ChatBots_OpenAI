@@ -11,15 +11,39 @@ export default function Markdown({ children, className }: Props) {
   return (
     <div className={className}>
       <ReactMarkdown
-        // Soporta **negrita**, _itálica_, listas, tablas, checklists, etc.
         remarkPlugins={[remarkGfm, remarkBreaks]}
-        // Sanitiza HTML por seguridad
         rehypePlugins={[rehypeSanitize]}
-        // Podés personalizar tags si querés (ej: code, links, etc.)
         components={{
-          // Mantener saltos de línea agradables
-          p: ({node, ...props}) => <p {...props} className="mb-3 last:mb-0" />,
-          li: ({node, ...props}) => <li {...props} className="ml-4" />,
+          p: ({ node, className, ...props }) => (
+            <p
+              {...props}
+              className={`mb-3 last:mb-0 ${className || ""}`}
+            />
+          ),
+
+          // 🔹 UL: listas con bullets
+          ul: ({ node, className, ...props }) => (
+            <ul
+              {...props}
+              className={`list-disc pl-5 mb-3 space-y-1 ${className || ""}`}
+            />
+          ),
+
+          // 🔹 OL: listas numeradas
+          ol: ({ node, className, ...props }) => (
+            <ol
+              {...props}
+              className={`list-decimal pl-5 mb-3 space-y-1 ${className || ""}`}
+            />
+          ),
+
+          // 🔹 LI: leve indentación adicional si querés
+          li: ({ node, className, ...props }) => (
+            <li
+              {...props}
+              className={`ml-1 ${className || ""}`}
+            />
+          ),
         }}
       >
         {children || ""}
