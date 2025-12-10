@@ -849,20 +849,23 @@ setMessages((prev) => {
                 className="max-h-[200px] flex-1 resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
               />
 
-              {/* Mic */}
-              <button
-                type="button"
-                onClick={isRecording ? stopRecording : startRecording}
-                disabled={loading || !contextLoaded}
-                className={`mb-1 inline-flex items-center justify-center rounded-full border px-3 py-3 text-sm shadow-sm transition ${
-                  isRecording
-                    ? "bg-red-500 text-white border-red-500"
-                    : "bg-white text-gray-700 hover:bg-gray-50"
-                } disabled:cursor-not-allowed disabled:opacity-50`}
-                title={isRecording ? "Detener grabación" : "Hablar por micrófono"}
-              >
-                <Mic className="size-4" />
-              </button>
+          {/*
+                 // Mic  
+                  <button
+                    type="button"
+                    onClick={isRecording ? stopRecording : startRecording}
+                    disabled={loading || !contextLoaded}
+                    className={`mb-1 inline-flex items-center justify-center rounded-full border px-3 py-3 text-sm shadow-sm transition ${
+                      isRecording
+                        ? "bg-red-500 text-white border-red-500"
+                        : "bg-white text-gray-700 hover:bg-gray-50"
+                    } disabled:cursor-not-allowed disabled:opacity-50`}
+                    title={isRecording ? "Detener grabación" : "Hablar por micrófono"}
+                  >
+                    <Mic className="size-4" />
+                  </button>
+                */} 
+
 
               {/* Enviar */}
               <button
