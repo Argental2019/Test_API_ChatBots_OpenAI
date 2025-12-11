@@ -5,7 +5,7 @@ import Image from "next/image";
 
 export default function BusquettiBanner() {
   return (
-    <section className="w-full mb-12">
+    <section className="w-full mb-4">
       {/* ================= DESKTOP ================= */}
       <div className="relative hidden md:block">
         <div className="mx-auto max-w-5xl relative">
@@ -45,31 +45,34 @@ export default function BusquettiBanner() {
 
      {/* ================= MOBILE ================= */}
 <div className="md:hidden mx-auto max-w-sm">
-  {/* Persona como avatar debajo */}
-  <div className="mt-6 flex items-center gap-4">
-    <div className="relative h-20 w-20 shrink-0 rounded-full overflow-hidden border-2 border-blue-600 shadow">
+  {/* Persona como avatar CENTRADA con texto debajo */}
+  <div className="mt-0.01 flex flex-col items-center gap-1">
+    <div className="relative h-28 w-28 shrink-0 rounded-full overflow-hidden border-2 border-blue-600 shadow">
       <Image
         src="/busquetti/busquetti-persona.png"
         alt="Busquetti"
         fill
         quality={100}
         className="
-          object-contain   /* no recorta la imagen */
-          object-top       /* prioriza la parte de la cabeza */
+               object-cover   /* llena bien el círculo */
+          object-top     /* prioriza la cabeza */
+
+          scale-120       /* ajusta el zoom de la imagen */
         "
       />
     </div>
 
-    <div className="flex flex-col">
-      <span className="text-xs uppercase tracking-wide text-gray-500">
-        Argental · IA
-      </span>
-      <span className="text-base font-semibold text-gray-900">
+    <div className="flex flex-col items-center text-center">
+      <span className="text-lg font-semibold text-gray-1000">
         Busquetti
+      </span>
+      <span className="text-lg uppercase tracking-wide text-gray-600">
+        Argental · IA
       </span>
     </div>
   </div>
 </div>
+
 
     </section>
   );
