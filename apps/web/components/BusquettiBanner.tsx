@@ -9,13 +9,15 @@ export default function BusquettiBanner() {
       {/* ================= DESKTOP ================= */}
       <div className="relative hidden md:block">
         <div className="mx-auto max-w-5xl relative">
-          {/* Banner azul detrás, más chico */}
-          <div className="relative h-56 lg:h-64 rounded-2xl shadow-lg overflow-hidden">
+          {/* Banner con aspect ratio exacto de 2400x364 (6.59:1) */}
+          <div className="relative w-full aspect-[2400/364] rounded-2xl shadow-lg overflow-hidden">
             <Image
               src="/busquetti/banner-busquetti-desktop.png"
               alt="Banner Busquetti"
               fill
               priority
+              quality={100}
+              sizes="(max-width: 1280px) 100vw, 1280px"
               className="object-cover"
             />
           </div>
@@ -28,6 +30,7 @@ export default function BusquettiBanner() {
               width={620}
               height={680}
               priority
+              quality={100}
               className="
                 w-40 lg:w-56   /* ajustá acá el tamaño */
                 h-auto
@@ -49,6 +52,7 @@ export default function BusquettiBanner() {
         src="/busquetti/busquetti-persona.png"
         alt="Busquetti"
         fill
+        quality={100}
         className="
           object-contain   /* no recorta la imagen */
           object-top       /* prioriza la parte de la cabeza */
