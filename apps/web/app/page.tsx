@@ -387,10 +387,7 @@ export default function MultiAgentChat() {
                 className="h-20 md:h-24 w-auto object-contain shrink-0"
                 priority
               />
-              <span className="text-xl md:text-2xl font-semibold tracking-tight text-gray-900 whitespace-nowrap shrink-0">
-                Argental · Agentes IA
-              </span>
-              <p className="basis-full text-[11px] leading-relaxed text-gray-600 mt-1">
+              <p className="text-[11px] leading-relaxed text-gray-600 mt-1">
                 El uso de los Agentes Argental implica la aceptación de la siguiente{" "}
                 <a
                   href="/politicas-de-uso-Argental"
@@ -398,7 +395,7 @@ export default function MultiAgentChat() {
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:underline"
                 >
-                  Política de Uso y Limitación de Responsabilidad de los Agentes Argental
+                  Política de Uso y Limitación de Responsabilidad
                 </a>
                 .
               </p>
@@ -409,7 +406,7 @@ export default function MultiAgentChat() {
         <main className="mx-auto max-w-6xl px-4 py-12">
            <BusquettiBanner />
           <div className="mb-10">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900">Chat Multi-Agente IA</h1>
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900">Busquetti | Multi-Agentes IA</h1>
             <p className="mt-2 text-gray-600">Seleccioná un agente para comenzar</p>
           </div>
 
