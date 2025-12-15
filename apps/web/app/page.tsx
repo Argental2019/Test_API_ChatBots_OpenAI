@@ -96,7 +96,19 @@ export default function MultiAgentChat() {
     return AGENTS.filter((a) => {
       const okFamily = familyFilter ? a.family === familyFilter : true;
       const okSubfamily = subfamilyFilter ? a.subfamily === subfamilyFilter : true;
-      const okName = nf ? norm(a.name).includes(nf) : true;
+        const haystack = norm(
+      [
+        a.id,
+        a.name,
+        a.family,
+        a.subfamily,
+        a.description,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    );
+
+    const okName = !nf || haystack.includes(nf);
       return okFamily && okSubfamily && okName;
     });
   }, [familyFilter, subfamilyFilter, nameFilter]);
@@ -468,18 +480,18 @@ const res = await fetch(`${base}/api/voice-chat`, {
 
             {/* Nombre */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Nombre del agente</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Búsqueda</label>
               <input
                 value={nameFilter}
                 onChange={(e) => setNameFilter(e.target.value)}
-                placeholder="Buscar por nombre…"
+                placeholder="Buscar por Categoría, SubCategoría, Nombre y más..."
                 className="w-full rounded-lg border px-3 py-2 text-sm"
               />
             </div>
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {(filteredAgents.length ? filteredAgents : AGENTS).map((agent) => (
+            {filteredAgents.map((agent) => (
               <Link
                 key={agent.id}
                 href={`/agent/${agent.id}`} // si preferís inline, reemplazá por onClick={() => selectAgent(agent)}
