@@ -2,13 +2,21 @@
 import Markdown from "@/components/markdown";
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Home, Send, Loader2, CheckCircle2, AlertCircle, Mic } from "lucide-react";
+import {
+  Home,
+  Send,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Mic,
+  AudioLines,
+} from "lucide-react";
 import { getAgentById } from "@/lib/agents";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 
-// Estados del sistema de voz continua
-type VoiceState = 'idle' | 'listening' | 'processing' | 'speaking';
+type VoiceState = "idle" | "listening" | "processing" | "speaking";
 type ChatMessage = { role: "user" | "assistant"; content: string; ts?: number };
+
 type ContextFile = {
   id: string;
   name?: string;
@@ -41,7 +49,7 @@ function formatTime(ts?: number) {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-/* ===== helper para registrar misses (same-origin, sin CORS) ===== */
+/* ===== helper para registrar misses ===== */
 async function reportMiss(miss: any) {
   try {
     const url = "/api/agent/log-miss";
@@ -58,20 +66,19 @@ async function reportMiss(miss: any) {
 
 function openWhatsApp() {
   const url = "https://wa.me/5493415470737";
+  const isMobile =
+    /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(
+      navigator.userAgent
+    );
 
-  const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(
-    navigator.userAgent
-  );
-
-  if (isMobile) {
-    window.location.href = url;
-  } else {
-    window.open(url, "_blank", "noopener,noreferrer");
-  }
+  if (isMobile) window.location.href = url;
+  else window.open(url, "_blank", "noopener,noreferrer");
 }
 
 /* ===== Extraer archivos desde @@META (sin mostrarlo) ===== */
-function extractFilesFromMeta(text: string): Array<{ name?: string; id?: string; pages?: string }> {
+function extractFilesFromMeta(
+  text: string
+): Array<{ name?: string; id?: string; pages?: string }> {
   const rx = /@@META\s*(\{[\s\S]*?\})/;
   const m = text.match(rx);
   if (!m) return [];
@@ -91,24 +98,18 @@ function extractFilesFromMeta(text: string): Array<{ name?: string; id?: string;
 
 /* ===== Limpiar @@META y @@MISS de la respuesta visible ===== */
 function cleanResponse(text: string): string {
-  // Eliminar @@META {...}
   let cleaned = text.replace(/@@META\s*\{[\s\S]*?\}/g, "").trim();
-  // Eliminar @@MISS {...} (solo la línea técnica, el mensaje al usuario queda)
   cleaned = cleaned.replace(/^@@MISS\s*\{[^\n]*\}\s*\n?/m, "").trim();
   return cleaned;
 }
 
 /* ===== Separar resumen (línea 1) y desarrollo (resto) ===== */
 function splitAgentResponse(text: string): { summary: string; detail: string } {
-  if (!text) {
-    return { summary: "", detail: "" };
-  }
+  if (!text) return { summary: "", detail: "" };
 
   const lines = text.split("\n");
-
   const summary = (lines[0] ?? "").trim();
 
-  // buscamos la primera línea NO vacía después del resumen
   let firstDetailIndex = -1;
   for (let i = 1; i < lines.length; i++) {
     if (lines[i].trim() !== "") {
@@ -125,7 +126,7 @@ function splitAgentResponse(text: string): { summary: string; detail: string } {
   return { summary, detail };
 }
 
-/* ===== Admin builder: inyecta bloque de depuración con carpetas + archivos ===== */
+/* ===== Admin builder: inyecta bloque de depuración ===== */
 function buildSystemPrompt(
   agent: any,
   adminMode: boolean,
@@ -133,16 +134,8 @@ function buildSystemPrompt(
   files: ContextFile[] | null
 ) {
   let base = String(agent.systemPrompt || "");
-  if (adminMode) {
-    const folderLine = folders?.length ? folders.join(", ") : "no disponible";
-    const filesLine =
-      files?.length
-        ? files
-            .slice(0, 80)
-            .map((f) => `${f.name ?? "(sin nombre)"} (${f.id})`)
-            .join(" | ")
-        : "no disponible";
 
+  if (adminMode) {
     base += `
 
 🔐 ADMIN MODE (activo)
@@ -178,26 +171,17 @@ NOTA: @@MISS y @@META son mutuamente excluyentes. Usá uno u otro, nunca ambos.
   return base;
 }
 
-/* ====================================================== */
-type AgentMessageProps = {
-  content: string;
-  className?: string;
-};
+type AgentMessageProps = { content: string; className?: string };
 
 function AgentMessage({ content, className }: AgentMessageProps) {
   const [expanded, setExpanded] = useState(false);
-
   const { summary, detail } = splitAgentResponse(content);
   const hasDetail = !!detail;
 
   return (
     <div>
-      {/* Resumen (línea 1: 📌 Según la documentación...) */}
-      <Markdown className={className}>
-        {summary}
-      </Markdown>
+      <Markdown className={className}>{summary}</Markdown>
 
-      {/* Botón VER MÁS */}
       {hasDetail && !expanded && (
         <button
           type="button"
@@ -208,7 +192,6 @@ function AgentMessage({ content, className }: AgentMessageProps) {
         </button>
       )}
 
-      {/* Detalle + VER MENOS */}
       {hasDetail && expanded && (
         <>
           <button
@@ -218,215 +201,11 @@ function AgentMessage({ content, className }: AgentMessageProps) {
           >
             VER MENOS
           </button>
-
           <div className="mt-2">
-            <Markdown className={className}>
-              {detail}
-            </Markdown>
+            <Markdown className={className}>{detail}</Markdown>
           </div>
         </>
       )}
-    </div>
-  );
-}
-
-// ==== NUEVO COMPONENTE: Conversación Continua ====
-type ContinuousVoiceUIProps = {
-  voiceState: VoiceState;
-  isActive: boolean;
-  onToggle: () => void;
-  currentTranscript: string;
-  currentResponse: string;
-};
-
-function ContinuousVoiceUI({
-  voiceState,
-  isActive,
-  onToggle,
-  currentTranscript,
-  currentResponse,
-}: ContinuousVoiceUIProps) {
-  const getStateText = () => {
-    switch (voiceState) {
-      case 'listening':
-        return 'Escuchando tu pregunta...';
-      case 'processing':
-        return 'Procesando tu consulta...';
-      case 'speaking':
-        return 'Respondiendo...';
-      default:
-        return 'Presioná el avatar para comenzar';
-    }
-  };
-
-  const getStateColor = () => {
-    switch (voiceState) {
-      case 'listening':
-        return 'from-blue-500 to-blue-600';
-      case 'processing':
-        return 'from-purple-500 to-purple-600';
-      case 'speaking':
-        return 'from-green-500 to-green-600';
-      default:
-        return 'from-gray-400 to-gray-500';
-    }
-  };
-
-  const getEmoji = () => {
-    switch (voiceState) {
-      case 'listening':
-        return '👂';
-      case 'processing':
-        return '🤔';
-      case 'speaking':
-        return '🗣️';
-      default:
-        return '🎤';
-    }
-  };
-
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] py-12 px-4">
-      <div className="text-xs uppercase tracking-wide text-gray-500 mb-4">
-        Modo conversación continua
-      </div>
-
-      <h2 className="text-2xl font-semibold text-gray-900 mb-12 text-center max-w-md">
-        {getStateText()}
-      </h2>
-
-      {/* Avatar con ondas animadas */}
-      <div className="relative mb-12">
-        {isActive && (
-          <>
-            <div 
-              className={`absolute inset-0 rounded-full bg-gradient-to-r ${getStateColor()} opacity-20`}
-              style={{
-                animation: 'pulse-wave 2s ease-in-out infinite',
-                transform: 'scale(1.8)',
-              }}
-            />
-            
-            <div 
-              className={`absolute inset-0 rounded-full bg-gradient-to-r ${getStateColor()} opacity-30`}
-              style={{
-                animation: 'pulse-wave 2s ease-in-out infinite 0.3s',
-                transform: 'scale(1.5)',
-              }}
-            />
-            
-            <div 
-              className={`absolute inset-0 rounded-full bg-gradient-to-r ${getStateColor()} opacity-40`}
-              style={{
-                animation: 'pulse-wave 2s ease-in-out infinite 0.6s',
-                transform: 'scale(1.2)',
-              }}
-            />
-          </>
-        )}
-
-        <button
-          onClick={onToggle}
-          className={`relative z-10 flex items-center justify-center rounded-full w-32 h-32 shadow-2xl border-4 transition-all duration-300 ${
-            isActive
-              ? `bg-gradient-to-r ${getStateColor()} border-white scale-110`
-              : 'bg-gradient-to-r from-gray-400 to-gray-500 border-gray-300 scale-100 hover:scale-105'
-          }`}
-          style={{
-            boxShadow: isActive ? '0 25px 50px -12px rgba(0, 0, 0, 0.25)' : '',
-          }}
-        >
-          <div className="text-5xl">{getEmoji()}</div>
-        </button>
-
-        {voiceState === 'listening' && (
-          <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 flex gap-1">
-            {[...Array(5)].map((_, i) => (
-              <div
-                key={i}
-                className="w-1 bg-blue-500 rounded-full"
-                style={{
-                  height: `${Math.random() * 20 + 10}px`,
-                  animation: `audio-bars 0.5s ease-in-out infinite ${i * 0.1}s`,
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Transcripción y respuesta */}
-      <div className="w-full max-w-2xl space-y-4">
-        {currentTranscript && (
-          <div className="bg-white rounded-2xl shadow-sm border p-6 animate-fade-in">
-            <div className="text-xs text-gray-500 mb-2">Tu pregunta:</div>
-            <p className="text-gray-900 text-lg">{currentTranscript}</p>
-          </div>
-        )}
-
-        {currentResponse && voiceState === 'speaking' && (
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl shadow-sm border border-blue-100 p-6 animate-fade-in">
-            <div className="text-xs text-blue-600 mb-2">Respuesta del agente:</div>
-            <p className="text-gray-900">{currentResponse}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Instrucciones */}
-      <div className="mt-12 text-center max-w-md">
-        <p className="text-sm text-gray-600 mb-2">
-          {isActive
-            ? 'El sistema está escuchando de forma continua. Hablá naturalmente.'
-            : 'Presioná el avatar para activar la conversación continua.'}
-        </p>
-        <p className="text-xs text-gray-400">
-          {isActive
-            ? 'Tocá nuevamente para pausar la conversación.'
-            : 'Una vez activado, el agente escuchará, responderá y volverá a escuchar automáticamente.'}
-        </p>
-      </div>
-
-      {/* Estilos CSS para animaciones */}
-      <style jsx>{`
-        @keyframes pulse-wave {
-          0% {
-            transform: scale(1);
-            opacity: 0.6;
-          }
-          50% {
-            transform: scale(2.2);
-            opacity: 0;
-          }
-          100% {
-            transform: scale(1);
-            opacity: 0;
-          }
-        }
-
-        @keyframes audio-bars {
-          0%, 100% {
-            transform: scaleY(0.5);
-          }
-          50% {
-            transform: scaleY(1);
-          }
-        }
-
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fade-in {
-          animation: fade-in 0.5s ease-out;
-        }
-      `}</style>
     </div>
   );
 }
@@ -435,178 +214,225 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
   const agent = getAgentById(params.id);
 
   const [isAdmin, setIsAdmin] = useState(false);
-  const [isConversationMode, setIsConversationMode] = useState(false);
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+
   const [contextLoaded, setContextLoaded] = useState(false);
   const [contextCache, setContextCache] = useState<string | null>(null);
   const [contextFiles, setContextFiles] = useState<ContextFile[] | null>(null);
-  const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
-  const [voiceState, setVoiceState] = useState<VoiceState>('idle');
-  const [currentTranscript, setCurrentTranscript] = useState("");
-  const [currentResponse, setCurrentResponse] = useState("");
-  const [isVoiceActive, setIsVoiceActive] = useState(false);
+
+  const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(
+    null
+  );
+
+  // ====== MODO VOZ EN EL MISMO CHAT ======
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voiceState, setVoiceState] = useState<VoiceState>("idle");
+
+  const voiceEnabledRef = useRef(false);
+  useEffect(() => {
+    voiceEnabledRef.current = voiceEnabled;
+  }, [voiceEnabled]);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Mantener siempre el último contexto disponible para el micrófono
   const contextRef = useRef<string | null>(null);
   useEffect(() => {
     contextRef.current = contextCache;
   }, [contextCache]);
 
   const backendBase = process.env.NEXT_PUBLIC_BACKEND_URL || "";
-// Función para procesar audio y mantener el ciclo continuo
-const processAudioCycle = async (audioBlob: Blob) => {
-  if (!agent || !contextLoaded || !contextRef.current) {
-    console.error("Contexto no disponible");
-    return;
-  }
 
-  setVoiceState('processing');
-  setCurrentResponse("");
-
-  try {
-    const systemPromptForVoice = buildSystemPrompt(
-      agent,
-      isAdmin,
-      agent.driveFolders,
-      contextFiles
-    );
-
-    const formData = new FormData();
-    formData.append("audio", audioBlob, "audio.webm");
-    formData.append("agentId", agent.id);
-    formData.append("systemPrompt", systemPromptForVoice);
-    formData.append("context", contextRef.current);
-    formData.append("sessionId", `voice-${agent.id}-${Date.now()}`);
-
-    const base = backendBase.replace(/\/$/, "");
-    const res = await fetch(`${base}/api/voice-chat`, {
-      method: "POST",
-      body: formData,
-    });
-
-    const data = await res.json();
-
-    if (!data.ok) {
-      throw new Error("Error en voice-chat");
-    }
-
-    let question: string = data.question || "";
-    let answer: string | null = data.answer || null;
-
-    // Filtrar ruido
-    const qLower = (question || "").toLowerCase();
-    const looksLikeNoise = !question
-      ? true
-      : AUDIO_NOISE_PATTERNS.some((p) => qLower.includes(p));
-    const isVeryShort = (question || "").trim().length < 3;
-
-    if (looksLikeNoise || isVeryShort) {
-      question = "";
-      if (!answer || !answer.trim()) {
-        answer = "No pude escuchar una pregunta clara. Intentá de nuevo.";
-      }
-    }
-
-    let safeAnswer = answer ? cleanResponse(answer) : "";
-    if (!safeAnswer || !safeAnswer.trim()) {
-      safeAnswer = "No encontré información suficiente en la documentación disponible.";
-    }
-
-    // Actualizar UI
-    setCurrentTranscript(question || "📣 (audio no claro)");
-    setCurrentResponse(safeAnswer);
-    setVoiceState('speaking');
-
-    // Reproducir audio
-    if (data.audioBase64) {
-      const mime = data.mimeType || "audio/mpeg";
-      const audio = new Audio(`data:${mime};base64,${data.audioBase64}`);
-      audioRef.current = audio;
-
-      await audio.play();
-
-      // Esperar a que termine de hablar
-      await new Promise<void>((resolve) => {
-        audio.onended = () => resolve();
-      });
-    } else {
-      // Si no hay audio, esperar 3 segundos
-      await new Promise(resolve => setTimeout(resolve, 3000));
-    }
-
-    // Guardar en historial
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: "user",
-        content: question || "📣 (audio no claro)",
-        ts: Date.now(),
-      },
-      {
-        role: "assistant",
-        content: safeAnswer,
-        ts: Date.now(),
-      },
-    ]);
-
-    // Limpiar y volver a escuchar si sigue activo
-    setCurrentTranscript("");
-    setCurrentResponse("");
-
-    if (isVoiceActive) {
-      // Pequeña pausa antes de volver a escuchar
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setVoiceState('listening');
-      startRecording(); // Reiniciar grabación
-    } else {
-      setVoiceState('idle');
-    }
-
-  } catch (e) {
-    console.error("Error en ciclo de voz:", e);
-    setVoiceState('idle');
-    setToast({
-      type: "err",
-      msg: "Error procesando el audio. Intentá de nuevo.",
-    });
-    setTimeout(() => setToast(null), 2500);
-  }
-};
- const { isRecording, startRecording, stopRecording } = useVoiceRecorder(processAudioCycle);
-// Manejar toggle de conversación continua
-const handleVoiceToggle = () => {
-  if (isVoiceActive) {
-    // Desactivar
-    setIsVoiceActive(false);
-    setVoiceState('idle');
-    stopRecording();
+  const stopSpeakingNow = () => {
     if (audioRef.current) {
-      audioRef.current.pause();
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      } catch {}
       audioRef.current = null;
     }
-    setCurrentTranscript("");
-    setCurrentResponse("");
-  } else {
-    // Activar
-    if (!contextLoaded) {
-      setToast({
-        type: "err",
-        msg: "Esperá a que se cargue la documentación del agente.",
+  };
+
+  // ========= PROCESO DE AUDIO (un turno) =========
+  const processAudioOnce = async (audioBlob: Blob) => {
+    if (!agent || !contextLoaded || !contextRef.current) return;
+
+    // Si viene de modo voz, mostramos estados; si viene de PTT, no “ensuciamos” tanto
+    const comingFromVoiceMode = voiceEnabledRef.current;
+    if (comingFromVoiceMode) setVoiceState("processing");
+
+    try {
+      const systemPromptForVoice = buildSystemPrompt(
+        agent,
+        isAdmin,
+        agent.driveFolders,
+        contextFiles
+      );
+
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "audio.webm");
+      formData.append("agentId", agent.id);
+      formData.append("systemPrompt", systemPromptForVoice);
+      formData.append("context", contextRef.current);
+      formData.append("sessionId", `voice-${agent.id}-${Date.now()}`);
+
+      const base = backendBase.replace(/\/$/, "");
+      const res = await fetch(`${base}/api/voice-chat`, {
+        method: "POST",
+        body: formData,
       });
+
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error en voice-chat");
+
+      let question: string = (data.question || "").trim();
+      let answer: string = cleanResponse(String(data.answer || ""));
+
+      // ✅ Si no hay texto (silencio), SOLO en modo voz: NO mostrar nada, volver a escuchar
+      if (!question) {
+        if (voiceEnabledRef.current) {
+          setVoiceState("listening");
+          // volver a escuchar (VAD)
+          setTimeout(() => startRecording({ mode: "vad" }), 150);
+        }
+        return;
+      }
+
+      // filtro ruido / cosas raras (si viene ruido, en modo voz NO queremos loop infinito)
+      const qLower = question.toLowerCase();
+      const looksLikeNoise =
+        AUDIO_NOISE_PATTERNS.some((p) => qLower.includes(p)) ||
+        question.length < 3;
+
+      if (looksLikeNoise) {
+        // En modo voz: no insertes "📣 ..." (solo reescuchar)
+        if (voiceEnabledRef.current) {
+          setVoiceState("listening");
+          setTimeout(() => startRecording({ mode: "vad" }), 200);
+          return;
+        }
+        // En PTT (cuando el usuario apretó el mic), sí avisamos que no se entendió
+        question = "🎙️ (audio no claro)";
+        if (!answer?.trim()) answer = "No pude entender el audio. Probá de nuevo.";
+      }
+
+      if (!answer.trim()) {
+        answer = "No encontré información suficiente en la documentación disponible.";
+      }
+
+      // ✅ todo en el MISMO chat
+      const now = Date.now();
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: question, ts: now },
+        { role: "assistant", content: answer, ts: now },
+      ]);
+
+      // === TTS ===
+      stopSpeakingNow();
+
+      if (voiceEnabledRef.current) setVoiceState("speaking");
+
+      if (data.audioBase64) {
+        const mime = data.mimeType || "audio/mpeg";
+        const a = new Audio(`data:${mime};base64,${data.audioBase64}`);
+        audioRef.current = a;
+
+        a.onended = () => {
+          audioRef.current = null;
+          if (voiceEnabledRef.current) {
+            setVoiceState("listening");
+            setTimeout(() => startRecording({ mode: "vad" }), 150);
+          } else {
+            setVoiceState("idle");
+          }
+        };
+
+        await a.play().catch((e) => {
+          console.warn("[voice] play() failed:", e);
+          audioRef.current = null;
+
+          // si el navegador bloquea autoplay, no lo fuerces: quedate en idle/listening
+          if (voiceEnabledRef.current) {
+            setVoiceState("listening");
+            setTimeout(() => startRecording({ mode: "vad" }), 200);
+          } else {
+            setVoiceState("idle");
+          }
+        });
+      } else {
+        // Sin audio devuelto: seguimos igual
+        if (voiceEnabledRef.current) {
+          setVoiceState("listening");
+          setTimeout(() => startRecording({ mode: "vad" }), 200);
+        } else {
+          setVoiceState("idle");
+        }
+      }
+    } catch (e) {
+      console.error("[voice] error:", e);
+      if (voiceEnabledRef.current) setVoiceState("idle");
+      setToast({ type: "err", msg: "Error en audio/voz. Probá de nuevo." });
+      setTimeout(() => setToast(null), 2500);
+    }
+  };
+
+  // ✅ Hook NUEVO (con modo ptt / vad)
+  const { isRecording, startRecording, stopRecording } = useVoiceRecorder(
+    processAudioOnce,
+    {
+      startThresholdRms: 0.045,
+      startVoiceMs: 180,
+      endThresholdRms: 0.02,
+      endSilenceMs: 900,
+      minRecordMs: 450,
+      maxRecordMs: 6500,
+      minSpeechMsToSend: 220,
+    }
+  );
+
+  const toggleVoice = () => {
+    if (!contextLoaded) {
+      setToast({ type: "err", msg: "Esperá a que se cargue la documentación." });
       setTimeout(() => setToast(null), 2500);
       return;
     }
-    setIsVoiceActive(true);
-    setVoiceState('listening');
-    startRecording();
-  }
-};
-    
+
+    if (voiceEnabledRef.current) {
+      // OFF
+      setVoiceEnabled(false);
+      setVoiceState("idle");
+      try {
+        stopRecording();
+      } catch {}
+      stopSpeakingNow();
+    } else {
+      // ON
+      setVoiceEnabled(true);
+      setVoiceState("listening");
+      stopSpeakingNow();
+      // ✅ VAD: espera voz real
+      startRecording({ mode: "vad" });
+    }
+  };
+
+  const interruptAndListen = () => {
+    stopSpeakingNow();
+    if (!voiceEnabledRef.current) return;
+
+    try {
+      stopRecording();
+    } catch {}
+
+    setVoiceState("listening");
+    setTimeout(() => startRecording({ mode: "vad" }), 120);
+  };
+
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -637,44 +463,42 @@ const handleVoiceToggle = () => {
     );
   }
 
-  // Interceptar links de WhatsApp en el chat
   useEffect(() => {
     const links = document.querySelectorAll<HTMLAnchorElement>("a[href*='wa.me']");
-
     const handler = (e: MouseEvent) => {
       e.preventDefault();
       openWhatsApp();
     };
-
-    links.forEach((a) => {
-      a.addEventListener("click", handler);
-    });
-
-    return () => {
-      links.forEach((a) => {
-        a.removeEventListener("click", handler);
-      });
-    };
+    links.forEach((a) => a.addEventListener("click", handler));
+    return () => links.forEach((a) => a.removeEventListener("click", handler));
   }, [messages]);
 
   const loadContext = async () => {
     if (!agent?.driveFolders) return;
     setLoading(true);
     setToast(null);
+
     try {
       await fetch(`${process.env.NEXT_PUBLIC_BACKEND_HEALTH ?? ""}` || "/api/noop").catch(
         () => {}
       );
+
       const r = await fetch("/api/context", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ driveFolders: agent.driveFolders, admin: CAN_REQUEST_META }),
+        body: JSON.stringify({
+          driveFolders: agent.driveFolders,
+          admin: CAN_REQUEST_META,
+        }),
       });
+
       if (!r.ok) throw new Error(await r.text());
+
       const data = await r.json();
       setContextCache(data.context || "");
       setContextFiles(Array.isArray(data.files) ? data.files : null);
       setContextLoaded(true);
+
       setToast({ type: "ok", msg: "Documentación cargada correctamente." });
       setTimeout(() => setToast(null), 2500);
     } catch (e) {
@@ -707,7 +531,8 @@ const handleVoiceToggle = () => {
         { role: "user", content, ts: Date.now() },
         {
           role: "assistant",
-          content: "🔧 Depuración activada. A partir de ahora puedo incluir metadatos en las respuestas.",
+          content:
+            "🔧 Depuración activada. A partir de ahora puedo incluir metadatos en las respuestas.",
           ts: Date.now(),
         },
       ]);
@@ -722,12 +547,7 @@ const handleVoiceToggle = () => {
     setLoading(true);
 
     try {
-      const systemPrompt = buildSystemPrompt(
-        agent,
-        isAdmin,
-        agent.driveFolders,
-        contextFiles
-      );
+      const systemPrompt = buildSystemPrompt(agent, isAdmin, agent.driveFolders, contextFiles);
 
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -752,7 +572,6 @@ const handleVoiceToggle = () => {
       setMessages((prev) => [...prev, assistantMessage]);
 
       let assistantRaw = "";
-
       let buf = "";
       let missSent = false;
       let metaExtracted = false;
@@ -760,11 +579,9 @@ const handleVoiceToggle = () => {
 
       const tryDetectMiss = () => {
         if (missSent) return;
-
         const rx = /@@MISS\s*(\{[\s\S]*?\})/;
         const m = assistantRaw.match(rx);
         if (!m) return;
-
         const jsonRaw = m[1];
 
         try {
@@ -809,9 +626,7 @@ const handleVoiceToggle = () => {
 
             if (!metaExtracted && assistantRaw.includes("@@META")) {
               extractedFiles = extractFilesFromMeta(assistantRaw);
-              if (extractedFiles.length > 0) {
-                metaExtracted = true;
-              }
+              if (extractedFiles.length > 0) metaExtracted = true;
             }
 
             if (assistantRaw.startsWith("@@MISS") && !assistantRaw.includes("\n")) {
@@ -826,120 +641,21 @@ const handleVoiceToggle = () => {
               return nm;
             });
           } catch {
-            // ignorar líneas no JSON
+            // ignore
           }
         }
       }
 
       decoder.decode();
-
       tryDetectMiss();
 
-      if (!metaExtracted) {
-        extractedFiles = extractFilesFromMeta(assistantRaw);
-      }
+      if (!metaExtracted) extractedFiles = extractFilesFromMeta(assistantRaw);
 
-      // 🔁 Fallbacks según el caso
-      const isEmpty =
-        !assistantMessage.content || !assistantMessage.content.trim();
-
+      const isEmpty = !assistantMessage.content || !assistantMessage.content.trim();
       if (isEmpty) {
-        if (missSent) {
-          // Caso 1: hubo @@MISS pero ninguna explicación útil
-          assistantMessage.content =
-            "No encontré información suficiente en la documentación disponible para responder esa consulta. " +
-            "Podés reformular la pregunta o, si lo necesitás, contactar a un asesor de Argental para más detalles.";
-        } else {
-          // Caso 2: el modelo no devolvió nada útil (stream vacío o error silencioso)
-          assistantMessage.content =
-            "No pude generar una respuesta en base a la información disponible. " +
-            "Probá reformular la consulta o intentá nuevamente en unos segundos.";
-        }
-      }
-
-      if (isAdmin && !missSent) {
-        const alreadyHasBlock = /Depuración y origen de datos \(solo admin\)/i.test(
-          assistantMessage.content
-        );
-
-        if (!alreadyHasBlock) {
-          const folders =
-            Array.isArray(agent?.driveFolders) && agent.driveFolders.length
-              ? agent.driveFolders.join(", ")
-              : agent?.id ?? "no disponible";
-
-          let filesLine = "";
-
-          const metaById = new Map((contextFiles || []).map((f) => [f.id, f]));
-
-          if (extractedFiles.length > 0) {
-            const lines: string[] = [];
-
-            extractedFiles.forEach((f) => {
-              const meta = f.id ? metaById.get(f.id) : undefined;
-              const dt = meta?.modifiedTime
-                ? new Date(meta.modifiedTime).toLocaleString()
-                : undefined;
-
-              const name = f.name ?? meta?.name ?? "(sin nombre)";
-              const parts: string[] = [];
-
-              parts.push(`**${name}**`);
-
-              if (f.id) parts.push(`**ID: **\`${f.id}\``);
-              if (dt) parts.push(`**Modif:** ${dt}`);
-              if (f.pages) parts.push(`**Págs:** ${f.pages}`);
-
-              lines.push(`- ${parts.join(" · ")}`);
-            });
-
-            if (lines.length > 0) {
-              filesLine = "\n" + lines.join("\n");
-            }
-          } else if (contextFiles && contextFiles.length > 0) {
-            const lines: string[] = [];
-
-            contextFiles.slice(0, 15).forEach((f) => {
-              const dt = f.modifiedTime
-                ? new Date(f.modifiedTime).toLocaleString()
-                : undefined;
-
-              const name = f.name ?? "(sin nombre)";
-              const id = f.id ? `**ID:** \`${f.id}\`` : "";
-              const extra = dt ? ` · **Modif:** ${dt}` : "";
-
-              lines.push(`- **${name}** · ${id}${extra}`);
-            });
-
-            if (contextFiles.length > 15) {
-              lines.push(`- _… y ${contextFiles.length - 15} más_`);
-            }
-
-            filesLine = "\n" + lines.join("\n");
-          } else {
-            filesLine = "\n- _(no disponible)_";
-          }
-
-          const folderLines = folders
-            .split(",")
-            .map((f) => f.trim())
-            .filter(Boolean)
-            .map((f) => `- \`${f}\``)
-            .join("\n");
-
-          const adminFooter =
-            `\n\n---\n\n` +
-            `> 🔧 **Depuración y origen de datos (solo admin)**\n\n` +
-            `**📁 Carpetas consultadas**\n` +
-            (folderLines ? `${folderLines}\n\n` : `- _(no disponible)_\n\n`) +
-            `**📄 Archivos fuente utilizados**` +
-            `${filesLine}\n\n` +
-            `> ⚡ Modo: ${
-              extractedFiles.length > 0 ? "Citados en respuesta" : "Contexto completo"
-            }`;
-
-          assistantMessage.content += adminFooter;
-        }
+        assistantMessage.content = missSent
+          ? "No encontré información suficiente en la documentación disponible para responder esa consulta. Podés reformular la pregunta."
+          : "No pude generar una respuesta en base a la información disponible. Probá nuevamente.";
       }
 
       setMessages((prev) => {
@@ -953,7 +669,8 @@ const handleVoiceToggle = () => {
         ...prev,
         {
           role: "assistant",
-          content: "El servicio de IA está procesando muchas consultas en este momento. Probá de nuevo en unos segundos.",
+          content:
+            "El servicio de IA está procesando muchas consultas en este momento. Probá de nuevo en unos segundos.",
           ts: Date.now(),
         },
       ]);
@@ -973,16 +690,16 @@ const handleVoiceToggle = () => {
   return (
     <div className="min-h-screen bg-white">
       <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
-        <div className="relative mx-auto max-w-4xl px-4 py-3 flex items-center gap-3">
+        <div className="relative mx-auto max-w-4xl px-4 py-3 flex items-center">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="absolute left-4 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             <Home className="size-4" />
             Volver
           </Link>
 
-          <div className="flex-1 text-center">
+          <div className="mx-auto text-center pointer-events-none">
             <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-gray-600">
               <span className="relative flex size-2">
                 <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
@@ -999,15 +716,11 @@ const handleVoiceToggle = () => {
             <div className="mt-1 text-[11px] text-gray-500 leading-snug">
               <div>
                 Categoría:{" "}
-                <span className="font-medium text-gray-700">
-                  {agent.family || "-"}
-                </span>
+                <span className="font-medium text-gray-700">{agent.family || "-"}</span>
               </div>
               <div>
                 Subcategoría:{" "}
-                <span className="font-medium text-gray-700">
-                  {agent.subfamily || "-"}
-                </span>
+                <span className="font-medium text-gray-700">{agent.subfamily || "-"}</span>
               </div>
             </div>
 
@@ -1015,25 +728,10 @@ const handleVoiceToggle = () => {
               {agent.name}
             </h2>
           </div>
-
-          {/* Toggle modo conversación */}
-          <button
-            type="button"
-            onClick={() => setIsConversationMode((v) => !v)}
-            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs border transition ${
-              isConversationMode
-                ? "bg-blue-600 text-white border-blue-600"
-                : "bg-white text-gray-700 border-gray-300"
-            }`}
-          >
-            <span className="h-2 w-2 rounded-full bg-current" />
-            {isConversationMode ? "Modo conversación ON" : "Modo conversación OFF"}
-          </button>
         </div>
       </header>
 
       <main className="mx-auto max-w-4xl px-4">
-        {/* Toast */}
         {toast && (
           <div
             className={`mt-4 flex items-center gap-2 rounded-xl border px-4 py-3 text-sm ${
@@ -1042,23 +740,18 @@ const handleVoiceToggle = () => {
                 : "border-rose-200 bg-rose-50 text-rose-700"
             }`}
           >
-            {toast.type === "ok" ? (
-              <CheckCircle2 className="size-4" />
-            ) : (
-              <AlertCircle className="size-4" />
-            )}
+            {toast.type === "ok" ? <CheckCircle2 className="size-4" /> : <AlertCircle className="size-4" />}
             {toast.msg}
           </div>
         )}
 
-        {/* FAQs */}
         {!!agent.faqs?.length && (
           <div className="mt-6 flex flex-wrap gap-2">
             {agent.faqs.map((faq: string, i: number) => (
               <button
                 key={i}
                 onClick={() => sendMessage(faq)}
-                disabled={loading || !contextLoaded}
+                disabled={loading || !contextLoaded || voiceEnabled}
                 className="rounded-full border bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {faq}
@@ -1067,103 +760,110 @@ const handleVoiceToggle = () => {
           </div>
         )}
 
-        {/* Chat / Modo conversación */}
-          {isConversationMode ? (
-      <section className="mt-6 rounded-2xl border bg-white shadow-sm">
-        <ContinuousVoiceUI
-          voiceState={voiceState}
-          isActive={isVoiceActive}
-          onToggle={handleVoiceToggle}
-          currentTranscript={currentTranscript}
-          currentResponse={currentResponse}
-        />
-      </section>
-        ) : (
-          <section className="mt-6 rounded-2xl border bg-white shadow-sm">
-            <div className="max-h-[64vh] overflow-y-auto p-4 sm:p-6">
-              {!contextLoaded && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 text-gray-700">
-                    <Loader2 className="size-5 animate-spin" />
-                    <span>Verificando cambios…</span>
-                  </div>
-                  <div className="flex justify-start">
-                    <div className="h-16 w-3/4 max-w-[520px] animate-pulse rounded-2xl bg-gray-100" />
-                  </div>
-                  <div className="flex justify-end">
-                    <div className="h-12 w-2/3 max-w-[420px] animate-pulse rounded-2xl bg-gray-100" />
-                  </div>
-                  <div className="flex justify-start">
-                    <div className="h-24 w-4/5 max-w-[560px] animate-pulse rounded-2xl bg-gray-100" />
-                  </div>
+        <section className="mt-6 rounded-2xl border bg-white shadow-sm">
+          <div className="max-h-[64vh] overflow-y-auto p-4 sm:p-6">
+            {!contextLoaded && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 text-gray-700">
+                  <Loader2 className="size-5 animate-spin" />
+                  <span>Verificando cambios…</span>
                 </div>
-              )}
 
-              {messages.map((m, i) => {
-                const mine = m.role === "user";
-                return (
+                <div className="flex justify-start">
+                  <div className="h-16 w-3/4 max-w-[520px] animate-pulse rounded-2xl bg-gray-100" />
+                </div>
+                <div className="flex justify-end">
+                  <div className="h-12 w-2/3 max-w-[420px] animate-pulse rounded-2xl bg-gray-100" />
+                </div>
+                <div className="flex justify-start">
+                  <div className="h-24 w-4/5 max-w-[560px] animate-pulse rounded-2xl bg-gray-100" />
+                </div>
+              </div>
+            )}
+
+            {messages.map((m, i) => {
+              const mine = m.role === "user";
+              return (
+                <div
+                  key={i}
+                  className={`mb-3 flex ${mine ? "justify-end" : "justify-start"}`}
+                >
                   <div
-                    key={i}
-                    className={`mb-3 flex ${mine ? "justify-end" : "justify-start"}`}
+                    className={`w-fit max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-6 ${
+                      mine
+                        ? "bg-gray-900 text-white shadow-md"
+                        : "border bg-white text-gray-900 shadow-sm"
+                    }`}
                   >
+                    {mine ? (
+                      <Markdown className="whitespace-pre-wrap leading-relaxed">
+                        {m.content}
+                      </Markdown>
+                    ) : (
+                      <AgentMessage
+                        content={m.content}
+                        className={[
+                          "prose prose-sm sm:prose-base max-w-none leading-relaxed",
+                          "[&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5",
+                          "[&_p:has(>strong:only-child)]:mt-4",
+                          "[&_p:has(>strong:only-child)]:mb-1",
+                        ].join(" ")}
+                      />
+                    )}
+
                     <div
-                      className={`w-fit max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-6 ${
-                        mine
-                          ? "bg-gray-900 text-white shadow-md"
-                          : "border bg-white text-gray-900 shadow-sm"
+                      className={`mt-1 text-[11px] ${
+                        mine ? "text-gray-300" : "text-gray-500"
                       }`}
                     >
-                      {mine ? (
-                        <Markdown className="whitespace-pre-wrap leading-relaxed">
-                          {m.content}
-                        </Markdown>
-                      ) : (
-                        <AgentMessage
-                          content={m.content}
-                          className={[
-                            "prose prose-sm sm:prose-base max-w-none leading-relaxed",
-                            "[&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5",
-                            "[&_p:has(>strong:only-child)]:mt-4",
-                            "[&_p:has(>strong:only-child)]:mb-1",
-                          ].join(" ")}
-                        />
-                      )}
-
-                      <div
-                        className={`mt-1 text-[11px] ${
-                          mine ? "text-gray-300" : "text-gray-500"
-                        }`}
-                      >
-                        {mine ? "Vos" : agent.name} · {formatTime(m.ts)}
-                      </div>
+                      {mine ? "Vos" : agent.name} · {formatTime(m.ts)}
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              );
+            })}
 
-              <div ref={endRef} />
-            </div>
+            <div ref={endRef} />
+          </div>
 
-            {/* Composer */}
-            <div className="sticky bottom-0 border-t bg-white p-3 sm:p-4">
-              <div className="flex items-end gap-3">
-                <textarea
-                  ref={inputRef}
-                  rows={1}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyPress}
-                  disabled={loading || !contextLoaded}
-                  placeholder={
-                    contextLoaded ? "Escribí tu pregunta…" : "Cargando contexto…"
-                  }
-                  className="max-h-[200px] flex-1 resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
-                />
+          {/* Composer */}
+          <div className="sticky bottom-0 border-t bg-white p-3 sm:p-4">
+            <div className="flex items-end gap-3">
+              <textarea
+                ref={inputRef}
+                rows={1}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyPress}
+                disabled={loading || !contextLoaded || voiceEnabled}
+                placeholder={
+                  voiceEnabled
+                    ? voiceState === "listening"
+                      ? "Modo voz: escuchando..."
+                      : voiceState === "processing"
+                      ? "Modo voz: procesando..."
+                      : voiceState === "speaking"
+                      ? "Modo voz: respondiendo..."
+                      : "Modo voz activo..."
+                    : contextLoaded
+                    ? "Escribí tu pregunta…"
+                    : "Cargando contexto…"
+                }
+                className="max-h-[200px] flex-1 resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
+              />
 
-               {/* Mic (texto + voz en modo chat, si querés activarlo más adelante) */}
+              {/* Mic (PTT) - SIEMPRE PTT */}
               <button
                 type="button"
-                onClick={isRecording ? stopRecording : startRecording}
+                onClick={() => {
+                  // si está hablando y el usuario toca el mic: barge-in
+                  if (voiceEnabled && voiceState === "speaking") {
+                    interruptAndListen();
+                    return;
+                  }
+                  if (isRecording) stopRecording();
+                  else startRecording({ mode: "ptt" });
+                }}
                 disabled={loading || !contextLoaded}
                 className={`mb-1 inline-flex items-center justify-center rounded-full border px-3 py-3 text-sm shadow-sm transition ${
                   isRecording
@@ -1175,30 +875,56 @@ const handleVoiceToggle = () => {
                 <Mic className="size-4" />
               </button>
 
+              {/* Botón “Modo voz” */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (voiceEnabled && voiceState === "speaking") {
+                    interruptAndListen();
+                    return;
+                  }
+                  toggleVoice();
+                }}
+                disabled={loading || !contextLoaded}
+                className={`mb-1 inline-flex items-center gap-2 rounded-full border px-4 py-3 text-sm shadow-sm transition ${
+                  voiceEnabled
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white text-gray-700 hover:bg-gray-50"
+                } disabled:cursor-not-allowed disabled:opacity-50`}
+                title={
+                  !voiceEnabled
+                    ? "Activar modo voz"
+                    : voiceState === "listening"
+                    ? "Modo voz: escuchando (click para apagar)"
+                    : voiceState === "processing"
+                    ? "Modo voz: procesando (click para apagar)"
+                    : voiceState === "speaking"
+                    ? "Modo voz: hablando (click para interrumpir)"
+                    : "Modo voz activo (click para apagar)"
+                }
+              >
+                <AudioLines className="size-4" />
+                {voiceEnabled ? "Modo voz ON" : "Modo voz"}
+              </button>
 
-                {/* Enviar */}
-                <button
-                  onClick={() => sendMessage()}
-                  disabled={loading || !contextLoaded || !input.trim()}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {loading ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Send className="size-4" />
-                  )}
-                  {loading ? "Enviando" : "Enviar"}
-                </button>
-              </div>
-
-              {CAN_REQUEST_META && (
-                <div className="mt-2 text-[11px] text-gray-500">
-                  {isAdmin ? "Depuración: ACTIVADA" : ""}
-                </div>
-              )}
+              {/* Enviar */}
+              <button
+                onClick={() => sendMessage()}
+                disabled={loading || !contextLoaded || !input.trim() || voiceEnabled}
+                className="inline-flex items-center gap-2 rounded-2xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {loading ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                {loading ? "Enviando" : "Enviar"}
+              </button>
             </div>
-          </section>
-        )}
+
+            {CAN_REQUEST_META && (
+              <div className="mt-2 text-[11px] text-gray-500">
+                {isAdmin ? "Depuración: ACTIVADA" : ""}
+              </div>
+            )}
+          </div>
+        </section>
 
         <footer className="mx-auto max-w-4xl py-6 mt-6 border-t text-center text-xs text-gray-500 space-y-2">
           <p>© {new Date().getFullYear()} Argental · Asistentes</p>

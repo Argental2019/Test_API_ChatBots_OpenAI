@@ -2,7 +2,7 @@
 import { OpenAI } from "openai";
 import multer from "multer";
 import fetch from "node-fetch";
-import { AGENTS_BASE } from "../../apps/web/lib/agents";
+import { AGENTS_BASE } from "../../apps/web/lib/agents.js"; // ajustá extensión/ruta si aplica
 
 // === Configuración de subida de audio ===
 const upload = multer({ storage: multer.memoryStorage() });
@@ -10,19 +10,35 @@ const upload = multer({ storage: multer.memoryStorage() });
 // Cliente OpenAI
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Helper para parsear el stream SSE de /api/chat (OpenAI streaming)
+/**
+ * Limpia tags técnicos para que no se lean por TTS
+ */
+function cleanForTTS(text) {
+  if (!text) return "";
+  let cleaned = String(text).replace(/@@META\s*\{[\s\S]*?\}/g, "").trim();
+  cleaned = cleaned.replace(/^@@MISS\s*\{[^\n]*\}\s*\n?/m, "").trim();
+  return cleaned;
+}
+
+/**
+ * Helper para parsear stream SSE devuelto por /api/chat (Next)
+ * Espera líneas tipo: "data: {...}\n"
+ */
 async function readSSEStreamToText(stream) {
   if (!stream) return "";
 
-  const decoder = new TextDecoder();
+  const decoder = new TextDecoder("utf-8");
   let full = "";
+  let buf = "";
 
   for await (const chunk of stream) {
-    const textChunk = decoder.decode(chunk, { stream: true });
+    buf += decoder.decode(chunk, { stream: true });
 
-    // /api/chat devuelve SSE tipo "data: {...}\n\n"
-    const lines = textChunk.split("\n");
-    for (const line of lines) {
+    let idx;
+    while ((idx = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, idx);
+      buf = buf.slice(idx + 1);
+
       const trimmed = line.trim();
       if (!trimmed.startsWith("data:")) continue;
 
@@ -34,17 +50,20 @@ async function readSSEStreamToText(stream) {
         const delta = json.choices?.[0]?.delta?.content || "";
         if (delta) full += delta;
       } catch (err) {
-        // si alguna línea no es JSON, la ignoramos
-        console.warn("[voice-chat] No se pudo parsear chunk SSE:", data);
+        // Ignorar líneas no JSON (pueden llegar keep-alive o basura)
+        // console.warn("[voice-chat] SSE chunk no JSON:", data);
       }
     }
   }
+
+  // flush final
+  decoder.decode();
 
   return full;
 }
 
 export default async function handler(req, res) {
-  // CORS
+  // CORS (si tu front y back están separados)
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Session-Id");
@@ -57,18 +76,24 @@ export default async function handler(req, res) {
   try {
     // 1) Procesar multipart (campo "audio")
     await new Promise((resolve, reject) => {
-      upload.single("audio")(req, res, (err) =>
-        err ? reject(err) : resolve()
-      );
+      upload.single("audio")(req, res, (err) => (err ? reject(err) : resolve()));
     });
 
-    const audioFile = req.file;
-    const { agentId, context } = req.body || {};
+    const file = req.file;
+    const body = req.body || {};
+    const agentId = body.agentId;
+    const context = body.context || "";
+    const systemPromptFromFront = body.systemPrompt || "";
+    const sessionId = body.sessionId || "";
 
-    if (!audioFile) {
+    if (!file) {
       return res
         .status(400)
         .json({ ok: false, error: "No se recibió archivo de audio" });
+    }
+
+    if (!agentId) {
+      return res.status(400).json({ ok: false, error: "Falta agentId" });
     }
 
     const agent = AGENTS_BASE.find((a) => a.id === agentId);
@@ -90,50 +115,53 @@ export default async function handler(req, res) {
       });
     }
 
-    /* 2) Transcribir audio con Whisper */
-    console.log("[voice-chat] Transcribiendo audio...");
+    // 2) Transcribir audio con Whisper
+    console.log("[voice-chat] Transcribiendo audio...", {
+      agentId,
+      sessionId,
+      size: file.size,
+      mimetype: file.mimetype,
+    });
 
     const transcription = await openai.audio.transcriptions.create({
-  file: {
-    data: file.buffer,
-    name: file.originalname || "audio.webm",
-  },
-  model: "whisper-1",
-  language: "es",
-});
-
+      file: {
+        data: file.buffer, // ✅ este era el bug en tu código viejo
+        name: file.originalname || "audio.webm",
+      },
+      model: "whisper-1",
+      language: "es",
+    });
 
     const question = (transcription.text || "").trim();
-
     console.log("[voice-chat] ✅ Transcripción:", question);
 
     if (!question) {
-      return res.status(500).json({
-        ok: false,
-        error: "No se pudo obtener texto de la transcripción.",
+      return res.status(200).json({
+        ok: true,
+        question: "",
+        answer: "",
+        audioBase64: "",
+        mimeType: "audio/mpeg",
       });
     }
 
-    /* 3) Preparar payload EXACTO que usa /api/chat */
+    // 3) Preparar payload EXACTO para /api/chat (usa el prompt que le mandás desde el front si existe)
     const payload = {
-      systemPrompt: agent.systemPrompt,
-      context: context || "", // snapshot de smartRead que ya mandás desde el front
-      messages: [
-        {
-          role: "user",
-          content: question,
-        },
-      ],
+      systemPrompt: systemPromptFromFront || agent.systemPrompt || "",
+      context,
+      adminMode: false,
+      messages: [{ role: "user", content: question }],
     };
 
-    /* 4) Llamar a /api/chat del frontend (mismo flujo que texto) */
-    const chatUrl = `${process.env.FRONTEND_URL}/api/chat`;
+    // 4) Llamar a /api/chat del frontend (mismo flujo que texto)
+    const chatUrl = `${process.env.FRONTEND_URL.replace(/\/$/, "")}/api/chat`;
     console.log("[voice-chat] Llamando a", chatUrl);
 
     const r = await fetch(chatUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Accept: "text/event-stream",
       },
       body: JSON.stringify(payload),
     });
@@ -146,18 +174,45 @@ export default async function handler(req, res) {
         .json({ ok: false, error: "Error en /api/chat", detail: txt });
     }
 
-    // 5) /api/chat devuelve un stream SSE → lo convertimos a texto final
-    const answer = await readSSEStreamToText(r.body);
+    // 5) /api/chat devuelve SSE → convertir a texto final
+    let answerRaw = await readSSEStreamToText(r.body);
+    answerRaw = (answerRaw || "").trim();
 
-    console.log("[voice-chat] ✅ Respuesta final (texto):", answer);
+    // Limpieza para mostrar y para TTS
+    const answer = cleanForTTS(answerRaw) || "No encontré información suficiente en la documentación disponible.";
+
+    console.log("[voice-chat] ✅ Respuesta final (texto):", answer.slice(0, 200));
+
+    // 6) TTS (audio)
+    console.log("[voice-chat] Generando TTS...");
+
+    const speech = await openai.audio.speech.create({
+      model: "gpt-4o-mini-tts",
+      voice: "alloy", // podés cambiar: alloy, aria, verse, etc (según disponibilidad)
+      input: answer,
+      // format: "mp3", // si tu SDK lo soporta explícito, opcional
+    });
+
+    const audioBuf = Buffer.from(await speech.arrayBuffer());
+    const audioBase64 = audioBuf.toString("base64");
+
+    console.log("[voice-chat] ✅ Audio generado:", audioBuf.length, "bytes");
 
     return res.status(200).json({
       ok: true,
+      agentId,
+      sessionId,
       question,
       answer,
+      audioBase64,
+      mimeType: "audio/mpeg",
     });
   } catch (e) {
     console.error("❌ Error en voice-chat:", e);
-    return res.status(500).json({ ok: false, error: e.message });
+    return res.status(500).json({
+      ok: false,
+      error: "Error interno en voice-chat",
+      detail: e?.message || String(e),
+    });
   }
 }
