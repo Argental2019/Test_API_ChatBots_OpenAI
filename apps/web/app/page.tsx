@@ -146,10 +146,13 @@ export default function MultiAgentChat() {
       // opcional: para agrupar conversaciones
       formData.append("sessionId", `voice-${selectedAgent.id}-${Date.now()}`);
 
-      const res = await fetch(`${backendBase}/api/voice-chat`, {
-        method: "POST",
-        body: formData,
-      });
+   const base = backendBase.replace(/\/$/, "");
+
+const res = await fetch(`${base}/api/voice-chat`, {
+  method: "POST",
+  body: formData,
+});
+
 
       const data = await res.json();
 
@@ -162,9 +165,25 @@ export default function MultiAgentChat() {
         setTimeout(() => setToast(null), 2500);
         return;
       }
-
-      const question: string = data.question;
-      const answer: string | null = data.answer;
+          if (data.audioBase64) {
+        try {
+          const mime = data.mimeType || "audio/mpeg";
+          const audio = new Audio(`data:${mime};base64,${data.audioBase64}`);
+          console.log(
+            "[voice-front] Reproduciendo audio, bytes:",
+            data.audioBase64.length
+          );
+          audio.play().catch((err) => {
+            console.warn("[voice-front] No se pudo reproducir el audio:", err);
+          });
+        } catch (e) {
+          console.warn("[voice-front] Error creando Audio:", e);
+        }
+      } else {
+        console.warn("[voice-front] Respuesta sin audioBase64, solo texto.");
+      }
+      let question: string = data.question || "";
+      let answer: string | null = data.answer || null;
 
       setMessages((prev) => {
         const now = Date.now();
@@ -387,10 +406,7 @@ export default function MultiAgentChat() {
                 className="h-20 md:h-24 w-auto object-contain shrink-0"
                 priority
               />
-              <span className="text-xl md:text-2xl font-semibold tracking-tight text-gray-900 whitespace-nowrap shrink-0">
-                Argental · Agentes IA
-              </span>
-              <p className="basis-full text-[11px] leading-relaxed text-gray-600 mt-1">
+              <p className="text-[11px] leading-relaxed text-gray-600 mt-1">
                 El uso de los Agentes Argental implica la aceptación de la siguiente{" "}
                 <a
                   href="/politicas-de-uso-Argental"
@@ -398,7 +414,7 @@ export default function MultiAgentChat() {
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:underline"
                 >
-                  Política de Uso y Limitación de Responsabilidad de los Agentes Argental
+                  Política de Uso y Limitación de Responsabilidad
                 </a>
                 .
               </p>
@@ -406,10 +422,10 @@ export default function MultiAgentChat() {
             </div>
           </div>
         </header>
-        <main className="mx-auto max-w-6xl px-4 py-12">
+        <main className="mx-auto max-w-6xl px-4 py-8">
            <BusquettiBanner />
           <div className="mb-10">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900">Chat Multi-Agente IA</h1>
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900">Busquetti | Multi-Agentes IA</h1>
             <p className="mt-2 text-gray-600">Seleccioná un agente para comenzar</p>
           </div>
 

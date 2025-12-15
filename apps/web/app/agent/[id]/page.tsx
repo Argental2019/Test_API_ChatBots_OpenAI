@@ -5,6 +5,9 @@ import Link from "next/link";
 import { Home, Send, Loader2, CheckCircle2, AlertCircle, Mic } from "lucide-react";
 import { getAgentById } from "@/lib/agents";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
+
+// Estados del sistema de voz continua
+type VoiceState = 'idle' | 'listening' | 'processing' | 'speaking';
 type ChatMessage = { role: "user" | "assistant"; content: string; ts?: number };
 type ContextFile = {
   id: string;
@@ -31,7 +34,6 @@ const AUDIO_NOISE_PATTERNS = [
   "dale like y comparte",
   "presionando el boton",
 ];
-
 
 function formatTime(ts?: number) {
   if (!ts) return "";
@@ -122,7 +124,6 @@ function splitAgentResponse(text: string): { summary: string; detail: string } {
 
   return { summary, detail };
 }
-
 
 /* ===== Admin builder: inyecta bloque de depuración con carpetas + archivos ===== */
 function buildSystemPrompt(
@@ -229,10 +230,212 @@ function AgentMessage({ content, className }: AgentMessageProps) {
   );
 }
 
+// ==== NUEVO COMPONENTE: Conversación Continua ====
+type ContinuousVoiceUIProps = {
+  voiceState: VoiceState;
+  isActive: boolean;
+  onToggle: () => void;
+  currentTranscript: string;
+  currentResponse: string;
+};
+
+function ContinuousVoiceUI({
+  voiceState,
+  isActive,
+  onToggle,
+  currentTranscript,
+  currentResponse,
+}: ContinuousVoiceUIProps) {
+  const getStateText = () => {
+    switch (voiceState) {
+      case 'listening':
+        return 'Escuchando tu pregunta...';
+      case 'processing':
+        return 'Procesando tu consulta...';
+      case 'speaking':
+        return 'Respondiendo...';
+      default:
+        return 'Presioná el avatar para comenzar';
+    }
+  };
+
+  const getStateColor = () => {
+    switch (voiceState) {
+      case 'listening':
+        return 'from-blue-500 to-blue-600';
+      case 'processing':
+        return 'from-purple-500 to-purple-600';
+      case 'speaking':
+        return 'from-green-500 to-green-600';
+      default:
+        return 'from-gray-400 to-gray-500';
+    }
+  };
+
+  const getEmoji = () => {
+    switch (voiceState) {
+      case 'listening':
+        return '👂';
+      case 'processing':
+        return '🤔';
+      case 'speaking':
+        return '🗣️';
+      default:
+        return '🎤';
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[70vh] py-12 px-4">
+      <div className="text-xs uppercase tracking-wide text-gray-500 mb-4">
+        Modo conversación continua
+      </div>
+
+      <h2 className="text-2xl font-semibold text-gray-900 mb-12 text-center max-w-md">
+        {getStateText()}
+      </h2>
+
+      {/* Avatar con ondas animadas */}
+      <div className="relative mb-12">
+        {isActive && (
+          <>
+            <div 
+              className={`absolute inset-0 rounded-full bg-gradient-to-r ${getStateColor()} opacity-20`}
+              style={{
+                animation: 'pulse-wave 2s ease-in-out infinite',
+                transform: 'scale(1.8)',
+              }}
+            />
+            
+            <div 
+              className={`absolute inset-0 rounded-full bg-gradient-to-r ${getStateColor()} opacity-30`}
+              style={{
+                animation: 'pulse-wave 2s ease-in-out infinite 0.3s',
+                transform: 'scale(1.5)',
+              }}
+            />
+            
+            <div 
+              className={`absolute inset-0 rounded-full bg-gradient-to-r ${getStateColor()} opacity-40`}
+              style={{
+                animation: 'pulse-wave 2s ease-in-out infinite 0.6s',
+                transform: 'scale(1.2)',
+              }}
+            />
+          </>
+        )}
+
+        <button
+          onClick={onToggle}
+          className={`relative z-10 flex items-center justify-center rounded-full w-32 h-32 shadow-2xl border-4 transition-all duration-300 ${
+            isActive
+              ? `bg-gradient-to-r ${getStateColor()} border-white scale-110`
+              : 'bg-gradient-to-r from-gray-400 to-gray-500 border-gray-300 scale-100 hover:scale-105'
+          }`}
+          style={{
+            boxShadow: isActive ? '0 25px 50px -12px rgba(0, 0, 0, 0.25)' : '',
+          }}
+        >
+          <div className="text-5xl">{getEmoji()}</div>
+        </button>
+
+        {voiceState === 'listening' && (
+          <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 flex gap-1">
+            {[...Array(5)].map((_, i) => (
+              <div
+                key={i}
+                className="w-1 bg-blue-500 rounded-full"
+                style={{
+                  height: `${Math.random() * 20 + 10}px`,
+                  animation: `audio-bars 0.5s ease-in-out infinite ${i * 0.1}s`,
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Transcripción y respuesta */}
+      <div className="w-full max-w-2xl space-y-4">
+        {currentTranscript && (
+          <div className="bg-white rounded-2xl shadow-sm border p-6 animate-fade-in">
+            <div className="text-xs text-gray-500 mb-2">Tu pregunta:</div>
+            <p className="text-gray-900 text-lg">{currentTranscript}</p>
+          </div>
+        )}
+
+        {currentResponse && voiceState === 'speaking' && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl shadow-sm border border-blue-100 p-6 animate-fade-in">
+            <div className="text-xs text-blue-600 mb-2">Respuesta del agente:</div>
+            <p className="text-gray-900">{currentResponse}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Instrucciones */}
+      <div className="mt-12 text-center max-w-md">
+        <p className="text-sm text-gray-600 mb-2">
+          {isActive
+            ? 'El sistema está escuchando de forma continua. Hablá naturalmente.'
+            : 'Presioná el avatar para activar la conversación continua.'}
+        </p>
+        <p className="text-xs text-gray-400">
+          {isActive
+            ? 'Tocá nuevamente para pausar la conversación.'
+            : 'Una vez activado, el agente escuchará, responderá y volverá a escuchar automáticamente.'}
+        </p>
+      </div>
+
+      {/* Estilos CSS para animaciones */}
+      <style jsx>{`
+        @keyframes pulse-wave {
+          0% {
+            transform: scale(1);
+            opacity: 0.6;
+          }
+          50% {
+            transform: scale(2.2);
+            opacity: 0;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 0;
+          }
+        }
+
+        @keyframes audio-bars {
+          0%, 100% {
+            transform: scaleY(0.5);
+          }
+          50% {
+            transform: scaleY(1);
+          }
+        }
+
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-fade-in {
+          animation: fade-in 0.5s ease-out;
+        }
+      `}</style>
+    </div>
+  );
+}
+
 export default function AgentChatPage({ params }: { params: { id: string } }) {
   const agent = getAgentById(params.id);
 
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isConversationMode, setIsConversationMode] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -240,7 +443,11 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
   const [contextCache, setContextCache] = useState<string | null>(null);
   const [contextFiles, setContextFiles] = useState<ContextFile[] | null>(null);
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
-
+  const [voiceState, setVoiceState] = useState<VoiceState>('idle');
+  const [currentTranscript, setCurrentTranscript] = useState("");
+  const [currentResponse, setCurrentResponse] = useState("");
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -251,155 +458,155 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
   }, [contextCache]);
 
   const backendBase = process.env.NEXT_PUBLIC_BACKEND_URL || "";
-
-  const { isRecording, startRecording, stopRecording } = useVoiceRecorder(
-    async (audioBlob) => {
-      if (!agent) {
-        console.error("No hay agente cargado para voice-chat");
-        return;
-      }
-
-      if (!backendBase) {
-        console.error("Falta NEXT_PUBLIC_BACKEND_URL");
-        setToast({
-          type: "err",
-          msg: "No está configurado el backend de audio.",
-        });
-        setTimeout(() => setToast(null), 2500);
-        return;
-      }
-
-      const currentContext = contextRef.current;
-
-      if (!contextLoaded || !currentContext) {
-        console.error("Contexto no cargado aún para voice-chat");
-        setToast({
-          type: "err",
-          msg: "Todavía no se cargó la documentación del agente.",
-        });
-        setTimeout(() => setToast(null), 2500);
-        return;
-      }
-
-      console.log("[voice-front] contextLoaded:", contextLoaded);
-      console.log("[voice-front] context length:", currentContext.length);
-      console.log("[voice-front] context sample:", currentContext.slice(0, 120));
-
-      const systemPromptForVoice = buildSystemPrompt(
-        agent,
-        isAdmin,
-        agent.driveFolders,
-        contextFiles
-      );
-
-      setLoading(true);
-      setToast(null);
-
-      try {
-        const formData = new FormData();
-
-        formData.append("audio", audioBlob, "audio.webm");
-        formData.append("agentId", agent.id);
-        formData.append("systemPrompt", systemPromptForVoice);
-        formData.append("context", currentContext);
-        formData.append("sessionId", `voice-${agent.id}-${Date.now()}`);
-
-        const res = await fetch(
-          `${backendBase.replace(/\/$/, "")}/api/voice-chat`,
-          {
-            method: "POST",
-            body: formData,
-          }
-        );
-
-        const data = await res.json();
-
-        if (!data.ok) {
-          console.error("Error /voice-chat:", data);
-          setToast({
-            type: "err",
-            msg: "No pude procesar el audio. Probá de nuevo.",
-          });
-          setTimeout(() => setToast(null), 2500);
-          return;
-        }
-
-// ================== POST-PROCESO DE RESPUESTA VOZ ==================
-let question: string = data.question || "";
-let answer: string | null = data.answer || null;
-
-// --- Filtro anti-ruido en el FRONT (segunda barrera) ---
-const qLower = (question || "").toLowerCase();
-
-const looksLikeNoise = !question
-  ? true
-  : AUDIO_NOISE_PATTERNS.some((p) => qLower.includes(p));
-
-const isVeryShort = (question || "").trim().length < 3;
-
-// Si detectamos ruido o texto demasiado corto, lo tratamos como "no escuchado"
-if (looksLikeNoise || isVeryShort) {
-  console.warn("[voice-front] Ruido o pregunta vacía, no mostramos transcripción:", {
-    question,
-  });
-
-  question = ""; // así no aparece la frase rara
-
-  if (!answer || !answer.trim()) {
-    answer =
-      "Lo siento, no pude escuchar ninguna pregunta clara en el audio. " +
-      "Podés repetir la consulta o escribirla directamente en el chat.";
+// Función para procesar audio y mantener el ciclo continuo
+const processAudioCycle = async (audioBlob: Blob) => {
+  if (!agent || !contextLoaded || !contextRef.current) {
+    console.error("Contexto no disponible");
+    return;
   }
-}
 
-// Limpiar @@MISS / @@META igual que en el flujo de texto normal
-let safeAnswer = answer ? cleanResponse(answer) : "";
+  setVoiceState('processing');
+  setCurrentResponse("");
 
-// 🧯 Fallback definitivo: si después de limpiar quedó vacío,
-// mostramos SIEMPRE un mensaje estándar al usuario.
-if (!safeAnswer || !safeAnswer.trim()) {
-  safeAnswer =
-    "No encontré información suficiente en la documentación disponible para responder esa consulta. " +
-    "Probá reformular la pregunta o, si lo necesitás, contactar a un asesor de Argental para más detalles.";
-}
+  try {
+    const systemPromptForVoice = buildSystemPrompt(
+      agent,
+      isAdmin,
+      agent.driveFolders,
+      contextFiles
+    );
 
-setMessages((prev) => {
-  const now = Date.now();
-  const updated: ChatMessage[] = [
-    ...prev,
-    {
-      role: "user",
-      // Si no hay pregunta válida → mostramos texto genérico
-      content:
-        question || "📣 (no se detectó una pregunta clara en el audio)",
-      ts: now,
-    },
-  ];
+    const formData = new FormData();
+    formData.append("audio", audioBlob, "audio.webm");
+    formData.append("agentId", agent.id);
+    formData.append("systemPrompt", systemPromptForVoice);
+    formData.append("context", contextRef.current);
+    formData.append("sessionId", `voice-${agent.id}-${Date.now()}`);
 
-  // safeAnswer SIEMPRE tiene texto acá
-  updated.push({
-    role: "assistant",
-    content: safeAnswer,
-    ts: now,
-  });
+    const base = backendBase.replace(/\/$/, "");
+    const res = await fetch(`${base}/api/voice-chat`, {
+      method: "POST",
+      body: formData,
+    });
 
-  return updated;
-});
+    const data = await res.json();
 
+    if (!data.ok) {
+      throw new Error("Error en voice-chat");
+    }
 
-      } catch (e) {
-        console.error("Error enviando audio:", e);
-        setToast({
-          type: "err",
-          msg: "Error enviando audio al servidor.",
-        });
-        setTimeout(() => setToast(null), 2500);
-      } finally {
-        setLoading(false);
+    let question: string = data.question || "";
+    let answer: string | null = data.answer || null;
+
+    // Filtrar ruido
+    const qLower = (question || "").toLowerCase();
+    const looksLikeNoise = !question
+      ? true
+      : AUDIO_NOISE_PATTERNS.some((p) => qLower.includes(p));
+    const isVeryShort = (question || "").trim().length < 3;
+
+    if (looksLikeNoise || isVeryShort) {
+      question = "";
+      if (!answer || !answer.trim()) {
+        answer = "No pude escuchar una pregunta clara. Intentá de nuevo.";
       }
     }
-  );
 
+    let safeAnswer = answer ? cleanResponse(answer) : "";
+    if (!safeAnswer || !safeAnswer.trim()) {
+      safeAnswer = "No encontré información suficiente en la documentación disponible.";
+    }
+
+    // Actualizar UI
+    setCurrentTranscript(question || "📣 (audio no claro)");
+    setCurrentResponse(safeAnswer);
+    setVoiceState('speaking');
+
+    // Reproducir audio
+    if (data.audioBase64) {
+      const mime = data.mimeType || "audio/mpeg";
+      const audio = new Audio(`data:${mime};base64,${data.audioBase64}`);
+      audioRef.current = audio;
+
+      await audio.play();
+
+      // Esperar a que termine de hablar
+      await new Promise<void>((resolve) => {
+        audio.onended = () => resolve();
+      });
+    } else {
+      // Si no hay audio, esperar 3 segundos
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+
+    // Guardar en historial
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "user",
+        content: question || "📣 (audio no claro)",
+        ts: Date.now(),
+      },
+      {
+        role: "assistant",
+        content: safeAnswer,
+        ts: Date.now(),
+      },
+    ]);
+
+    // Limpiar y volver a escuchar si sigue activo
+    setCurrentTranscript("");
+    setCurrentResponse("");
+
+    if (isVoiceActive) {
+      // Pequeña pausa antes de volver a escuchar
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setVoiceState('listening');
+      startRecording(); // Reiniciar grabación
+    } else {
+      setVoiceState('idle');
+    }
+
+  } catch (e) {
+    console.error("Error en ciclo de voz:", e);
+    setVoiceState('idle');
+    setToast({
+      type: "err",
+      msg: "Error procesando el audio. Intentá de nuevo.",
+    });
+    setTimeout(() => setToast(null), 2500);
+  }
+};
+ const { isRecording, startRecording, stopRecording } = useVoiceRecorder(processAudioCycle);
+// Manejar toggle de conversación continua
+const handleVoiceToggle = () => {
+  if (isVoiceActive) {
+    // Desactivar
+    setIsVoiceActive(false);
+    setVoiceState('idle');
+    stopRecording();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setCurrentTranscript("");
+    setCurrentResponse("");
+  } else {
+    // Activar
+    if (!contextLoaded) {
+      setToast({
+        type: "err",
+        msg: "Esperá a que se cargue la documentación del agente.",
+      });
+      setTimeout(() => setToast(null), 2500);
+      return;
+    }
+    setIsVoiceActive(true);
+    setVoiceState('listening');
+    startRecording();
+  }
+};
+    
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -628,7 +835,7 @@ setMessages((prev) => {
 
       tryDetectMiss();
 
-           if (!metaExtracted) {
+      if (!metaExtracted) {
         extractedFiles = extractFilesFromMeta(assistantRaw);
       }
 
@@ -649,7 +856,6 @@ setMessages((prev) => {
             "Probá reformular la consulta o intentá nuevamente en unos segundos.";
         }
       }
-
 
       if (isAdmin && !missSent) {
         const alreadyHasBlock = /Depuración y origen de datos \(solo admin\)/i.test(
@@ -767,16 +973,16 @@ setMessages((prev) => {
   return (
     <div className="min-h-screen bg-white">
       <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
-        <div className="relative mx-auto max-w-4xl px-4 py-3 flex items-center">
+        <div className="relative mx-auto max-w-4xl px-4 py-3 flex items-center gap-3">
           <Link
             href="/"
-            className="absolute left-4 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             <Home className="size-4" />
             Volver
           </Link>
 
-          <div className="mx-auto text-center pointer-events-none">
+          <div className="flex-1 text-center">
             <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-gray-600">
               <span className="relative flex size-2">
                 <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
@@ -809,6 +1015,20 @@ setMessages((prev) => {
               {agent.name}
             </h2>
           </div>
+
+          {/* Toggle modo conversación */}
+          <button
+            type="button"
+            onClick={() => setIsConversationMode((v) => !v)}
+            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs border transition ${
+              isConversationMode
+                ? "bg-blue-600 text-white border-blue-600"
+                : "bg-white text-gray-700 border-gray-300"
+            }`}
+          >
+            <span className="h-2 w-2 rounded-full bg-current" />
+            {isConversationMode ? "Modo conversación ON" : "Modo conversación OFF"}
+          </button>
         </div>
       </header>
 
@@ -847,128 +1067,138 @@ setMessages((prev) => {
           </div>
         )}
 
-        {/* Chat */}
-        <section className="mt-6 rounded-2xl border bg-white shadow-sm">
-          <div className="max-h-[64vh] overflow-y-auto p-4 sm:p-6">
-            {!contextLoaded && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 text-gray-700">
-                  <Loader2 className="size-5 animate-spin" />
-                  <span>Verificando cambios…</span>
-                </div>
-                <div className="flex justify-start">
-                  <div className="h-16 w-3/4 max-w-[520px] animate-pulse rounded-2xl bg-gray-100" />
-                </div>
-                <div className="flex justify-end">
-                  <div className="h-12 w-2/3 max-w-[420px] animate-pulse rounded-2xl bg-gray-100" />
-                </div>
-                <div className="flex justify-start">
-                  <div className="h-24 w-4/5 max-w-[560px] animate-pulse rounded-2xl bg-gray-100" />
-                </div>
-              </div>
-            )}
-
-{messages.map((m, i) => {
-  const mine = m.role === "user";
-  return (
-    <div
-      key={i}
-      className={`mb-3 flex ${mine ? "justify-end" : "justify-start"}`}
-    >
-      <div
-        className={`w-fit max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-6 ${
-          mine
-            ? "bg-gray-900 text-white shadow-md"
-            : "border bg-white text-gray-900 shadow-sm"
-        }`}
-      >
-        {mine ? (
-          <Markdown className="whitespace-pre-wrap leading-relaxed">
-            {m.content}
-          </Markdown>
+        {/* Chat / Modo conversación */}
+          {isConversationMode ? (
+      <section className="mt-6 rounded-2xl border bg-white shadow-sm">
+        <ContinuousVoiceUI
+          voiceState={voiceState}
+          isActive={isVoiceActive}
+          onToggle={handleVoiceToggle}
+          currentTranscript={currentTranscript}
+          currentResponse={currentResponse}
+        />
+      </section>
         ) : (
-          <AgentMessage
-            content={m.content}
-            className={[
-              "prose prose-sm sm:prose-base max-w-none leading-relaxed",
-              "[&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5",
-              "[&_p:has(>strong:only-child)]:mt-4",
-              "[&_p:has(>strong:only-child)]:mb-1",
-            ].join(" ")}
-          />
-        )}
+          <section className="mt-6 rounded-2xl border bg-white shadow-sm">
+            <div className="max-h-[64vh] overflow-y-auto p-4 sm:p-6">
+              {!contextLoaded && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 text-gray-700">
+                    <Loader2 className="size-5 animate-spin" />
+                    <span>Verificando cambios…</span>
+                  </div>
+                  <div className="flex justify-start">
+                    <div className="h-16 w-3/4 max-w-[520px] animate-pulse rounded-2xl bg-gray-100" />
+                  </div>
+                  <div className="flex justify-end">
+                    <div className="h-12 w-2/3 max-w-[420px] animate-pulse rounded-2xl bg-gray-100" />
+                  </div>
+                  <div className="flex justify-start">
+                    <div className="h-24 w-4/5 max-w-[560px] animate-pulse rounded-2xl bg-gray-100" />
+                  </div>
+                </div>
+              )}
 
-        <div
-          className={`mt-1 text-[11px] ${
-            mine ? "text-gray-300" : "text-gray-500"
-          }`}
-        >
-          {mine ? "Vos" : agent.name} · {formatTime(m.ts)}
-        </div>
-      </div>
-    </div>
-  );
-})}
-
-            <div ref={endRef} />
-          </div>
-
-          {/* Composer */}
-          <div className="sticky bottom-0 border-t bg-white p-3 sm:p-4">
-            <div className="flex items-end gap-3">
-              <textarea
-                ref={inputRef}
-                rows={1}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyPress}
-                disabled={loading || !contextLoaded}
-                placeholder={
-                  contextLoaded ? "Escribí tu pregunta…" : "Cargando contexto…"
-                }
-                className="max-h-[200px] flex-1 resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
-              />
-
-          {/*
-                 // Mic  
-                  <button
-                    type="button"
-                    onClick={isRecording ? stopRecording : startRecording}
-                    disabled={loading || !contextLoaded}
-                    className={`mb-1 inline-flex items-center justify-center rounded-full border px-3 py-3 text-sm shadow-sm transition ${
-                      isRecording
-                        ? "bg-red-500 text-white border-red-500"
-                        : "bg-white text-gray-700 hover:bg-gray-50"
-                    } disabled:cursor-not-allowed disabled:opacity-50`}
-                    title={isRecording ? "Detener grabación" : "Hablar por micrófono"}
+              {messages.map((m, i) => {
+                const mine = m.role === "user";
+                return (
+                  <div
+                    key={i}
+                    className={`mb-3 flex ${mine ? "justify-end" : "justify-start"}`}
                   >
-                    <Mic className="size-4" />
-                  </button>
-                */} 
+                    <div
+                      className={`w-fit max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-6 ${
+                        mine
+                          ? "bg-gray-900 text-white shadow-md"
+                          : "border bg-white text-gray-900 shadow-sm"
+                      }`}
+                    >
+                      {mine ? (
+                        <Markdown className="whitespace-pre-wrap leading-relaxed">
+                          {m.content}
+                        </Markdown>
+                      ) : (
+                        <AgentMessage
+                          content={m.content}
+                          className={[
+                            "prose prose-sm sm:prose-base max-w-none leading-relaxed",
+                            "[&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5",
+                            "[&_p:has(>strong:only-child)]:mt-4",
+                            "[&_p:has(>strong:only-child)]:mb-1",
+                          ].join(" ")}
+                        />
+                      )}
 
+                      <div
+                        className={`mt-1 text-[11px] ${
+                          mine ? "text-gray-300" : "text-gray-500"
+                        }`}
+                      >
+                        {mine ? "Vos" : agent.name} · {formatTime(m.ts)}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
 
-              {/* Enviar */}
-              <button
-                onClick={() => sendMessage()}
-                disabled={loading || !contextLoaded || !input.trim()}
-                className="inline-flex items-center gap-2 rounded-2xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {loading ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Send className="size-4" />
-                )}
-                {loading ? "Enviando" : "Enviar"}
-              </button>
+              <div ref={endRef} />
             </div>
 
-            {CAN_REQUEST_META && (
-              <div className="mt-2 text-[11px] text-gray-500">
-                {isAdmin ? "Depuración: ACTIVADA" : ""}
+            {/* Composer */}
+            <div className="sticky bottom-0 border-t bg-white p-3 sm:p-4">
+              <div className="flex items-end gap-3">
+                <textarea
+                  ref={inputRef}
+                  rows={1}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  disabled={loading || !contextLoaded}
+                  placeholder={
+                    contextLoaded ? "Escribí tu pregunta…" : "Cargando contexto…"
+                  }
+                  className="max-h-[200px] flex-1 resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
+                />
+
+               {/* Mic (texto + voz en modo chat, si querés activarlo más adelante) */}
+              <button
+                type="button"
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={loading || !contextLoaded}
+                className={`mb-1 inline-flex items-center justify-center rounded-full border px-3 py-3 text-sm shadow-sm transition ${
+                  isRecording
+                    ? "bg-red-500 text-white border-red-500"
+                    : "bg-white text-gray-700 hover:bg-gray-50"
+                } disabled:cursor-not-allowed disabled:opacity-50`}
+                title={isRecording ? "Detener grabación" : "Hablar por micrófono"}
+              >
+                <Mic className="size-4" />
+              </button>
+
+
+                {/* Enviar */}
+                <button
+                  onClick={() => sendMessage()}
+                  disabled={loading || !contextLoaded || !input.trim()}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loading ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Send className="size-4" />
+                  )}
+                  {loading ? "Enviando" : "Enviar"}
+                </button>
               </div>
-            )}
-          </div>
-        </section>
+
+              {CAN_REQUEST_META && (
+                <div className="mt-2 text-[11px] text-gray-500">
+                  {isAdmin ? "Depuración: ACTIVADA" : ""}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
         <footer className="mx-auto max-w-4xl py-6 mt-6 border-t text-center text-xs text-gray-500 space-y-2">
           <p>© {new Date().getFullYear()} Argental · Asistentes</p>

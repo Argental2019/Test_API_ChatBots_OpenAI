@@ -2,6 +2,7 @@
   "dependencies": {
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
+    "openai": "^6.10.0",
     "papaparse": "^5.5.3",
     "redis": "^5.9.0"
   }

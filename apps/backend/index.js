@@ -11,8 +11,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 console.log("🔥 Backend Express cargado desde:", __filename);
-
+import voiceConversationRouter from "./api/voiceConversation.js";
 import express from "express";
+
 import dotenv from "dotenv";
 import fetch from "node-fetch";
 import crypto from "crypto";
@@ -23,6 +24,8 @@ import { extractTextFromBuffer } from "./utils/extractText.js";
 import cors from "cors";
 import multer from "multer";
 import OpenAI from "openai";
+
+
 // ...
 dotenv.config();
 const app = express();
@@ -483,66 +486,80 @@ app.post(
           });
         }
 
-// 1️⃣ Transcribir audio con OpenAI Whisper
-console.log("[/voice-chat] Transcribiendo audio...");
+        // 1️⃣ Transcribir audio con OpenAI Whisper
+        console.log("[/voice-chat] Transcribiendo audio...");
 
-const transcription = await openai.audio.transcriptions.create({
-  file: new File([file.buffer], file.originalname || "audio.webm", {
-    type: file.mimetype || "audio/webm",
-  }),
-  model: "whisper-1",
-  language: "es",
-});
+        const transcription = await openai.audio.transcriptions.create({
+          file: new File([file.buffer], file.originalname || "audio.webm", {
+            type: file.mimetype || "audio/webm",
+          }),
+          model: "whisper-1",
+          language: "es",
+        });
 
-const rawText = (transcription.text || "").trim();
-const lower = rawText.toLowerCase();
+        const rawText = (transcription.text || "").trim();
+        const lower = rawText.toLowerCase();
 
-console.log("[/voice-chat] ✅ Transcripción:", {
-  textPreview: rawText.substring(0, 120),
-  length: rawText.length,
-});
+        console.log("[/voice-chat] ✅ Transcripción:", {
+          textPreview: rawText.substring(0, 120),
+          length: rawText.length,
+        });
 
-// 🚫 Frases típicas de ruido (YouTube, Amara, etc.)
-const NOISE_PATTERNS = [
-  "subtítulos realizados por la comunidad de amara.org",
-  "subtitulos realizados por la comunidad de amara.org",
-  "gracias por ver el video",
-  "gracias por ver el vídeo",
-  "no olvides suscribirte",
-  "no olvides suscribirte al canal",
-  "suscríbete al canal",
-  "suscribete al canal",
-  "activa la campanita",
-  "dale like y comparte",
-];
+        const NOISE_PATTERNS = [
+          "subtítulos realizados por la comunidad de amara.org",
+          "subtitulos realizados por la comunidad de amara.org",
+          "gracias por ver el video",
+          "gracias por ver el vídeo",
+          "no olvides suscribirte",
+          "no olvides suscribirte al canal",
+          "suscríbete al canal",
+          "suscribete al canal",
+          "activa la campanita",
+          "dale like y comparte",
+        ];
 
-const looksLikeNoise = NOISE_PATTERNS.some((p) => lower.includes(p));
+        const looksLikeNoise = NOISE_PATTERNS.some((p) => lower.includes(p));
+        const isVeryShort = rawText.length < 5;
 
-// Heurística extra: texto muy corto o solo una frase suelta sin pinta de consulta
-const isVeryShort = rawText.length < 5;
+        if (!rawText || isVeryShort || looksLikeNoise) {
+          const friendlyMsg =
+            "Lo siento, no pude escuchar ninguna pregunta clara en el audio. " +
+            "Podés repetir la consulta o escribirla directamente en el chat.";
 
-// ⚠️ Si no hay texto, es muy corto o detectamos ruido conocido:
-// devolvemos mensaje amable y NO llamamos a /api/chat
-if (!rawText || isVeryShort || looksLikeNoise) {
-  const friendlyMsg =
-    "Lo siento, no pude escuchar ninguna pregunta clara en el audio. " +
-    "Podés repetir la consulta o escribirla directamente en el chat.";
+          console.warn(
+            "[/voice-chat] Transcripción vacía / muy corta o ruido conocido, devolviendo mensaje amable."
+          );
 
-  console.warn(
-    "[/voice-chat] Transcripción vacía / muy corta o ruido conocido, devolviendo mensaje amable."
-  );
+          // ‼️ IMPORTANTE: también devolvemos audio TTS para este mensaje
+          let audioBase64 = null;
+          let mimeType = "audio/mpeg";
 
-  return res.status(200).json({
-    ok: true,
-    question: "",
-    answer: friendlyMsg,
-  });
-}
+          try {
+            const speech = await openai.audio.speech.create({
+              model: "gpt-4o-mini-tts",
+              voice: "coral",
+              input: friendlyMsg,
+            });
 
-// Si llegamos acá, la transcripción se considera una pregunta válida
-const question = rawText;
+            const audioBuffer = Buffer.from(await speech.arrayBuffer());
+            audioBase64 = audioBuffer.toString("base64");
+          } catch (e) {
+            console.error("[/voice-chat] Error TTS en mensaje amable:", e);
+          }
+
+          return res.status(200).json({
+            ok: true,
+            question: "",
+            answer: friendlyMsg,
+            audioBase64,
+            mimeType,
+          });
+        }
+
+        // Si llegamos acá, la transcripción se considera una pregunta válida
+        const question = rawText;
+
         // 2️⃣ Armar payload EXACTO que espera /api/chat
-        // Si no te mandan systemPrompt desde el front, usamos uno genérico según agentId
         const fallbackPrompt =
           agentId === "panier-iii-45x70"
             ? "Sos un asistente experto en productos Argental, específicamente en el Panier III 45x70. Respondé de forma clara, breve y profesional."
@@ -551,9 +568,10 @@ const question = rawText;
         const systemPrompt = (systemPromptFromBody || fallbackPrompt).trim();
         console.log("[/voice-chat] SYSTEM PROMPT LEN:", systemPrompt.length);
         console.log("[/voice-chat] CONTEXT LEN:", (contextFromBody || "").length);
+
         const payload = {
           systemPrompt,
-          context: contextFromBody, // snapshot que ya armás con smartRead en el front
+          context: contextFromBody,
           messages: [
             {
               role: "user",
@@ -562,7 +580,7 @@ const question = rawText;
           ],
         };
 
-        const chatUrl = `${FRONTEND_URL}/api/chat`;
+        const chatUrl = `${FRONTEND_URL.replace(/\/$/, "")}/api/chat`;
         console.log("[/voice-chat] Llamando a", chatUrl);
 
         const r = await fetch(chatUrl, {
@@ -591,10 +609,31 @@ const question = rawText;
           preview: answer.substring(0, 120),
         });
 
+        // 4️⃣ Generar audio TTS con OpenAI
+        let audioBase64 = null;
+        let mimeType = "audio/mpeg";
+
+        try {
+          const speech = await openai.audio.speech.create({
+            model: "gpt-4o-mini-tts",
+            voice: "coral",
+            input: answer || "No tengo una respuesta disponible en este momento.",
+          });
+
+          const audioBuffer = Buffer.from(await speech.arrayBuffer());
+          audioBase64 = audioBuffer.toString("base64");
+
+          console.log("[/voice-chat] TTS generado, bytes:", audioBase64.length);
+        } catch (ttsError) {
+          console.error("[/voice-chat] Error generando TTS:", ttsError);
+        }
+
         return res.status(200).json({
           ok: true,
           question,
           answer,
+          audioBase64,
+          mimeType,
         });
       } catch (err) {
         console.error("[/voice-chat] ❌ Error:", err);
@@ -607,6 +646,7 @@ const question = rawText;
     })
   )
 );
+
 
 // Leer archivo con caché (soporta ?force=true)
 app.get(
@@ -1090,6 +1130,7 @@ app.get(
 );
 
 app.get("/stats", (req, res) => res.status(200).json(metricsSnapshot()));
+app.use("/api", voiceConversationRouter);
 
 // ===== Error handler global =====
 app.use((err, req, res, _next) => {
