@@ -1,4 +1,5 @@
 "use client";
+
 import Markdown from "@/components/markdown";
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -227,7 +228,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
     null
   );
 
-  // ====== MODO VOZ EN EL MISMO CHAT ======
+  // ====== VOZ ======
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
 
@@ -236,11 +237,14 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
     voiceEnabledRef.current = voiceEnabled;
   }, [voiceEnabled]);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // ✅ modo actual de captura: PTT o VOZ
+  const captureModeRef = useRef<"ptt" | "voice">("ptt");
 
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Mantener contexto disponible para audio
   const contextRef = useRef<string | null>(null);
   useEffect(() => {
     contextRef.current = contextCache;
@@ -258,131 +262,87 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
     }
   };
 
-  // ========= PROCESO DE AUDIO (un turno) =========
-  const processAudioOnce = async (audioBlob: Blob) => {
-    if (!agent || !contextLoaded || !contextRef.current) return;
+  // ========= PROCESO DE AUDIO (único callback del hook) =========
+const processAudioOnce = async (audioBlob: Blob) => {
+  if (!agent || !contextLoaded || !contextRef.current) return;
 
-    // Si viene de modo voz, mostramos estados; si viene de PTT, no “ensuciamos” tanto
-    const comingFromVoiceMode = voiceEnabledRef.current;
-    if (comingFromVoiceMode) setVoiceState("processing");
+  const mode = captureModeRef.current; // "ptt" | "voice"
+  const wantsTts = mode === "voice";
 
-    try {
-      const systemPromptForVoice = buildSystemPrompt(
-        agent,
-        isAdmin,
-        agent.driveFolders,
-        contextFiles
-      );
+  try {
+    const systemPrompt = buildSystemPrompt(
+      agent,
+      isAdmin,
+      agent.driveFolders,
+      contextFiles
+    );
 
-      const formData = new FormData();
-      formData.append("audio", audioBlob, "audio.webm");
-      formData.append("agentId", agent.id);
-      formData.append("systemPrompt", systemPromptForVoice);
-      formData.append("context", contextRef.current);
-      formData.append("sessionId", `voice-${agent.id}-${Date.now()}`);
+    const formData = new FormData();
+    formData.append("audio", audioBlob, "audio.webm");
+    formData.append("agentId", agent.id);
+    formData.append("systemPrompt", systemPrompt);
+    formData.append("context", contextRef.current);
+    formData.append("tts", wantsTts ? "1" : "0");
+    formData.append("sessionId", `${mode}-${agent.id}-${Date.now()}`);
 
-      const base = backendBase.replace(/\/$/, "");
-      const res = await fetch(`${base}/api/voice-chat`, {
-        method: "POST",
-        body: formData,
-      });
+    const res = await fetch(`${backendBase}/api/voice-chat`, {
+      method: "POST",
+      body: formData,
+    });
 
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error en voice-chat");
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "voice-chat error");
 
-      let question: string = (data.question || "").trim();
-      let answer: string = cleanResponse(String(data.answer || ""));
+    const question = (data.question || "").trim();
+    const answer = cleanResponse(String(data.answer || ""));
 
-      // ✅ Si no hay texto (silencio), SOLO en modo voz: NO mostrar nada, volver a escuchar
-      if (!question) {
-        if (voiceEnabledRef.current) {
-          setVoiceState("listening");
-          // volver a escuchar (VAD)
-          setTimeout(() => startRecording({ mode: "vad" }), 150);
-        }
-        return;
+    // 🔴 SI NO HAY TEXTO
+    if (!question) {
+      if (mode === "voice" && voiceEnabledRef.current) {
+        setVoiceState("listening");
+        setTimeout(() => startRecording({ mode: "vad" }), 150);
       }
+      return;
+    }
 
-      // filtro ruido / cosas raras (si viene ruido, en modo voz NO queremos loop infinito)
-      const qLower = question.toLowerCase();
-      const looksLikeNoise =
-        AUDIO_NOISE_PATTERNS.some((p) => qLower.includes(p)) ||
-        question.length < 3;
+    // ✅ MOSTRAR INMEDIATO EN EL CHAT
+    const ts = Date.now();
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: question, ts },
+      { role: "assistant", content: answer, ts },
+    ]);
 
-      if (looksLikeNoise) {
-        // En modo voz: no insertes "📣 ..." (solo reescuchar)
-        if (voiceEnabledRef.current) {
-          setVoiceState("listening");
-          setTimeout(() => startRecording({ mode: "vad" }), 200);
-          return;
-        }
-        // En PTT (cuando el usuario apretó el mic), sí avisamos que no se entendió
-        question = "🎙️ (audio no claro)";
-        if (!answer?.trim()) answer = "No pude entender el audio. Probá de nuevo.";
-      }
-
-      if (!answer.trim()) {
-        answer = "No encontré información suficiente en la documentación disponible.";
-      }
-
-      // ✅ todo en el MISMO chat
-      const now = Date.now();
-      setMessages((prev) => [
-        ...prev,
-        { role: "user", content: question, ts: now },
-        { role: "assistant", content: answer, ts: now },
-      ]);
-
-      // === TTS ===
+    // 🔊 TTS SOLO EN MODO VOZ
+    if (wantsTts && data.audioBase64) {
+      setVoiceState("speaking");
       stopSpeakingNow();
 
-      if (voiceEnabledRef.current) setVoiceState("speaking");
+      const audio = new Audio(
+        `data:${data.mimeType || "audio/mpeg"};base64,${data.audioBase64}`
+      );
+      audioRef.current = audio;
 
-      if (data.audioBase64) {
-        const mime = data.mimeType || "audio/mpeg";
-        const a = new Audio(`data:${mime};base64,${data.audioBase64}`);
-        audioRef.current = a;
-
-        a.onended = () => {
-          audioRef.current = null;
-          if (voiceEnabledRef.current) {
-            setVoiceState("listening");
-            setTimeout(() => startRecording({ mode: "vad" }), 150);
-          } else {
-            setVoiceState("idle");
-          }
-        };
-
-        await a.play().catch((e) => {
-          console.warn("[voice] play() failed:", e);
-          audioRef.current = null;
-
-          // si el navegador bloquea autoplay, no lo fuerces: quedate en idle/listening
-          if (voiceEnabledRef.current) {
-            setVoiceState("listening");
-            setTimeout(() => startRecording({ mode: "vad" }), 200);
-          } else {
-            setVoiceState("idle");
-          }
-        });
-      } else {
-        // Sin audio devuelto: seguimos igual
+      audio.onended = () => {
+        audioRef.current = null;
         if (voiceEnabledRef.current) {
           setVoiceState("listening");
-          setTimeout(() => startRecording({ mode: "vad" }), 200);
+          setTimeout(() => startRecording({ mode: "vad" }), 150);
         } else {
           setVoiceState("idle");
         }
-      }
-    } catch (e) {
-      console.error("[voice] error:", e);
-      if (voiceEnabledRef.current) setVoiceState("idle");
-      setToast({ type: "err", msg: "Error en audio/voz. Probá de nuevo." });
-      setTimeout(() => setToast(null), 2500);
-    }
-  };
+      };
 
-  // ✅ Hook NUEVO (con modo ptt / vad)
+      await audio.play();
+    }
+  } catch (err) {
+    console.error("[processAudioOnce]", err);
+    setVoiceState("idle");
+  }
+};
+
+
+  // ✅ Hook con startRecording({mode})
   const { isRecording, startRecording, stopRecording } = useVoiceRecorder(
     processAudioOnce,
     {
@@ -390,9 +350,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
       startVoiceMs: 180,
       endThresholdRms: 0.02,
       endSilenceMs: 900,
-      minRecordMs: 450,
       maxRecordMs: 6500,
-      minSpeechMsToSend: 220,
     }
   );
 
@@ -416,8 +374,8 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
       setVoiceEnabled(true);
       setVoiceState("listening");
       stopSpeakingNow();
-      // ✅ VAD: espera voz real
-      startRecording({ mode: "vad" });
+      captureModeRef.current = "voice";
+      startRecording({ mode: "vad" }); // ✅ espera voz real
     }
   };
 
@@ -430,6 +388,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
     } catch {}
 
     setVoiceState("listening");
+    captureModeRef.current = "voice";
     setTimeout(() => startRecording({ mode: "vad" }), 120);
   };
 
@@ -442,6 +401,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agent]);
 
+  // autosize textarea
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
@@ -463,12 +423,17 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
     );
   }
 
+  // Interceptar links de WhatsApp en el chat
   useEffect(() => {
-    const links = document.querySelectorAll<HTMLAnchorElement>("a[href*='wa.me']");
+    const links = document.querySelectorAll<HTMLAnchorElement>(
+      "a[href*='wa.me']"
+    );
+
     const handler = (e: MouseEvent) => {
       e.preventDefault();
       openWhatsApp();
     };
+
     links.forEach((a) => a.addEventListener("click", handler));
     return () => links.forEach((a) => a.removeEventListener("click", handler));
   }, [messages]);
@@ -479,9 +444,9 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
     setToast(null);
 
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_BACKEND_HEALTH ?? ""}` || "/api/noop").catch(
-        () => {}
-      );
+      await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_HEALTH ?? ""}` || "/api/noop"
+      ).catch(() => {});
 
       const r = await fetch("/api/context", {
         method: "POST",
@@ -547,7 +512,12 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
     setLoading(true);
 
     try {
-      const systemPrompt = buildSystemPrompt(agent, isAdmin, agent.driveFolders, contextFiles);
+      const systemPrompt = buildSystemPrompt(
+        agent,
+        isAdmin,
+        agent.driveFolders,
+        contextFiles
+      );
 
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -563,25 +533,30 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
         }),
       });
 
-      if (!response.ok || !response.body) throw new Error("Error en la respuesta");
+      if (!response.ok || !response.body)
+        throw new Error("Error en la respuesta");
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
 
-      let assistantMessage: ChatMessage = { role: "assistant", content: "", ts: Date.now() };
+      let assistantMessage: ChatMessage = {
+        role: "assistant",
+        content: "",
+        ts: Date.now(),
+      };
       setMessages((prev) => [...prev, assistantMessage]);
 
       let assistantRaw = "";
       let buf = "";
       let missSent = false;
-      let metaExtracted = false;
-      let extractedFiles: Array<{ name?: string; id?: string; pages?: string }> = [];
 
       const tryDetectMiss = () => {
         if (missSent) return;
+
         const rx = /@@MISS\s*(\{[\s\S]*?\})/;
         const m = assistantRaw.match(rx);
         if (!m) return;
+
         const jsonRaw = m[1];
 
         try {
@@ -617,17 +592,12 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
 
           try {
             const parsed = JSON.parse(data);
-            const delta: string | undefined = parsed.choices?.[0]?.delta?.content;
+            const delta: string | undefined =
+              parsed.choices?.[0]?.delta?.content;
             if (!delta) continue;
 
             assistantRaw += delta;
-
             tryDetectMiss();
-
-            if (!metaExtracted && assistantRaw.includes("@@META")) {
-              extractedFiles = extractFilesFromMeta(assistantRaw);
-              if (extractedFiles.length > 0) metaExtracted = true;
-            }
 
             if (assistantRaw.startsWith("@@MISS") && !assistantRaw.includes("\n")) {
               continue;
@@ -641,15 +611,13 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
               return nm;
             });
           } catch {
-            // ignore
+            // ignorar
           }
         }
       }
 
       decoder.decode();
       tryDetectMiss();
-
-      if (!metaExtracted) extractedFiles = extractFilesFromMeta(assistantRaw);
 
       const isEmpty = !assistantMessage.content || !assistantMessage.content.trim();
       if (isEmpty) {
@@ -716,11 +684,15 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
             <div className="mt-1 text-[11px] text-gray-500 leading-snug">
               <div>
                 Categoría:{" "}
-                <span className="font-medium text-gray-700">{agent.family || "-"}</span>
+                <span className="font-medium text-gray-700">
+                  {agent.family || "-"}
+                </span>
               </div>
               <div>
                 Subcategoría:{" "}
-                <span className="font-medium text-gray-700">{agent.subfamily || "-"}</span>
+                <span className="font-medium text-gray-700">
+                  {agent.subfamily || "-"}
+                </span>
               </div>
             </div>
 
@@ -740,7 +712,11 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
                 : "border-rose-200 bg-rose-50 text-rose-700"
             }`}
           >
-            {toast.type === "ok" ? <CheckCircle2 className="size-4" /> : <AlertCircle className="size-4" />}
+            {toast.type === "ok" ? (
+              <CheckCircle2 className="size-4" />
+            ) : (
+              <AlertCircle className="size-4" />
+            )}
             {toast.msg}
           </div>
         )}
@@ -852,17 +828,20 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
                 className="max-h-[200px] flex-1 resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
               />
 
-              {/* Mic (PTT) - SIEMPRE PTT */}
+              {/* Mic (PTT) */}
               <button
                 type="button"
-                onClick={() => {
-                  // si está hablando y el usuario toca el mic: barge-in
-                  if (voiceEnabled && voiceState === "speaking") {
-                    interruptAndListen();
-                    return;
+                onClick={async () => {
+                  // En modo voz no se usa PTT
+                  if (voiceEnabled) return;
+
+                  captureModeRef.current = "ptt";
+
+                  if (isRecording) {
+                    stopRecording();
+                  } else {
+                    await startRecording({ mode: "ptt" });
                   }
-                  if (isRecording) stopRecording();
-                  else startRecording({ mode: "ptt" });
                 }}
                 disabled={loading || !contextLoaded}
                 className={`mb-1 inline-flex items-center justify-center rounded-full border px-3 py-3 text-sm shadow-sm transition ${
@@ -875,7 +854,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
                 <Mic className="size-4" />
               </button>
 
-              {/* Botón “Modo voz” */}
+              {/* Modo voz */}
               <button
                 type="button"
                 onClick={() => {
@@ -891,17 +870,6 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
                     ? "bg-blue-600 text-white border-blue-600"
                     : "bg-white text-gray-700 hover:bg-gray-50"
                 } disabled:cursor-not-allowed disabled:opacity-50`}
-                title={
-                  !voiceEnabled
-                    ? "Activar modo voz"
-                    : voiceState === "listening"
-                    ? "Modo voz: escuchando (click para apagar)"
-                    : voiceState === "processing"
-                    ? "Modo voz: procesando (click para apagar)"
-                    : voiceState === "speaking"
-                    ? "Modo voz: hablando (click para interrumpir)"
-                    : "Modo voz activo (click para apagar)"
-                }
               >
                 <AudioLines className="size-4" />
                 {voiceEnabled ? "Modo voz ON" : "Modo voz"}
@@ -910,10 +878,16 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
               {/* Enviar */}
               <button
                 onClick={() => sendMessage()}
-                disabled={loading || !contextLoaded || !input.trim() || voiceEnabled}
+                disabled={
+                  loading || !contextLoaded || !input.trim() || voiceEnabled
+                }
                 className="inline-flex items-center gap-2 rounded-2xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {loading ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                {loading ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Send className="size-4" />
+                )}
                 {loading ? "Enviando" : "Enviar"}
               </button>
             </div>
@@ -936,7 +910,8 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
               rel="noopener noreferrer"
               className="text-blue-600 hover:underline"
             >
-              Política de Uso y Limitación de Responsabilidad de los Agentes Argental
+              Política de Uso y Limitación de Responsabilidad de los Agentes
+              Argental
             </a>
             .
           </p>

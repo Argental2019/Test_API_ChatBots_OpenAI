@@ -115,9 +115,9 @@ router.post(
       // Convertir a voz
       const speech = await openai.audio.speech.create({
         model: "tts-1",
-        voice: "nova", // Opciones: alloy, echo, fable, onyx, nova, shimmer
+        voice: "onyx", // Opciones: alloy, echo, fable, onyx, nova, shimmer
         input: answerText,
-        speed: 1.0,
+        speed: 1.15,
       });
 
       const audioBufferOut = Buffer.from(await speech.arrayBuffer());

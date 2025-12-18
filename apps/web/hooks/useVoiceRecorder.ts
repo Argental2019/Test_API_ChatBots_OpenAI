@@ -1,21 +1,20 @@
 import { useCallback, useRef, useState } from "react";
 
-type StartOpts = {
-  mode: "ptt" | "vad";
-};
+export type StartOpts = { mode: "ptt" | "vad" };
 
 type Options = {
   mimeTypePreferred?: string;
 
-  // VAD (solo para mode:"vad")
-  startThresholdRms?: number;   // umbral para considerar “voz”
-  startVoiceMs?: number;        // ms de voz para arrancar grabación
-  endThresholdRms?: number;     // umbral para considerar “silencio”
-  endSilenceMs?: number;        // ms de silencio para cortar grabación
+  // VAD thresholds
+  startThresholdRms?: number;
+  startVoiceMs?: number;
+  endThresholdRms?: number;
+  endSilenceMs?: number;
 
-  minRecordMs?: number;         // mínimo para mandar
-  maxRecordMs?: number;         // hard stop SIEMPRE (no se cuelga)
-  minSpeechMsToSend?: number;   // si no hubo voz real, NO manda (evita loop)
+  // Anti-vacíos / performance
+  minRecordMs?: number;        // mínimo total de grabación para enviar
+  minSpeechMsToSend?: number;  // mínimo de “voz real” para enviar
+  maxRecordMs?: number;        // hard stop (solo cuando ya grabó)
 };
 
 export function useVoiceRecorder(
@@ -27,14 +26,15 @@ export function useVoiceRecorder(
 
     startThresholdRms = 0.045,
     startVoiceMs = 180,
-    endThresholdRms = 0.020,
+    endThresholdRms = 0.02,
     endSilenceMs = 900,
 
-    minRecordMs = 450,
+    minRecordMs = 350,
+    minSpeechMsToSend = 180,
     maxRecordMs = 6500,
-    minSpeechMsToSend = 220,
   } = opts;
 
+  // “activo” (grabando o escuchando VAD)
   const [isRecording, setIsRecording] = useState(false);
 
   const streamRef = useRef<MediaStream | null>(null);
@@ -45,11 +45,11 @@ export function useVoiceRecorder(
   const analyserRef = useRef<AnalyserNode | null>(null);
   const rafRef = useRef<number | null>(null);
 
-  const modeRef = useRef<"ptt" | "vad">("ptt");
-
   const startedAtRef = useRef(0);
   const speechMsRef = useRef(0);
   const lastTickRef = useRef(0);
+
+  const hardStopTimerRef = useRef<number | null>(null);
 
   const stopRaf = () => {
     if (rafRef.current != null) {
@@ -58,11 +58,21 @@ export function useVoiceRecorder(
     }
   };
 
+  const stopHardTimer = () => {
+    if (hardStopTimerRef.current != null) {
+      window.clearTimeout(hardStopTimerRef.current);
+      hardStopTimerRef.current = null;
+    }
+  };
+
   const cleanup = useCallback(async () => {
     stopRaf();
+    stopHardTimer();
 
     if (audioCtxRef.current) {
-      try { await audioCtxRef.current.close(); } catch {}
+      try {
+        await audioCtxRef.current.close();
+      } catch {}
       audioCtxRef.current = null;
     }
     analyserRef.current = null;
@@ -89,61 +99,21 @@ export function useVoiceRecorder(
 
   const stopRecording = useCallback(() => {
     const mr = mrRef.current;
+
+    // si está grabando: corta y onstop arma blob
     if (mr && mr.state !== "inactive") {
-      try { mr.stop(); } catch {}
-    } else {
-      // si estaba en VAD esperando voz (sin grabar), limpiamos
-      cleanup();
+      try {
+        mr.stop();
+      } catch {}
+      setIsRecording(false);
+      return;
     }
-    setIsRecording(false);
+
+    // si estaba en VAD “escuchando” sin grabar: solo limpiar (NO mandar nada)
+    cleanup();
   }, [cleanup]);
 
-  const startMediaRecorder = useCallback(
-    (stream: MediaStream) => {
-      const mt = pickMime();
-      const mr = new MediaRecorder(stream, mt ? { mimeType: mt } : undefined);
-      mrRef.current = mr;
-      chunksRef.current = [];
-
-      startedAtRef.current = Date.now();
-      speechMsRef.current = 0;
-      lastTickRef.current = Date.now();
-
-      mr.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
-      };
-
-      mr.onstop = async () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-        const elapsed = Date.now() - startedAtRef.current;
-
-        const shouldSend =
-          blob.size > 0 &&
-          elapsed >= minRecordMs &&
-          speechMsRef.current >= minSpeechMsToSend;
-
-        await cleanup();
-
-        if (shouldSend) {
-          await onAudioReady(blob);
-        }
-      };
-
-      mr.start();
-      setIsRecording(true);
-
-      // hard stop (PTT o VAD) para que jamás quede colgado
-      setTimeout(() => {
-        const now = Date.now();
-        if (mrRef.current && mrRef.current.state !== "inactive") {
-          if (now - startedAtRef.current >= maxRecordMs) stopRecording();
-        }
-      }, maxRecordMs + 50);
-    },
-    [cleanup, maxRecordMs, minRecordMs, minSpeechMsToSend, onAudioReady, pickMime, stopRecording]
-  );
-
-  const startVadLoop = useCallback(async (stream: MediaStream) => {
+  const ensureAnalyser = useCallback(async (stream: MediaStream) => {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     const ctx = new AudioCtx();
     const analyser = ctx.createAnalyser();
@@ -155,71 +125,154 @@ export function useVoiceRecorder(
 
     audioCtxRef.current = ctx;
     analyserRef.current = analyser;
+  }, []);
 
-    const data = new Float32Array(analyser.fftSize);
+  const calcRms = (data: Float32Array) => {
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+    return Math.sqrt(sum / data.length);
+  };
 
-    let voiceSince = 0;
-    let silenceSince = 0;
-    let recorderStarted = false;
+  const startMediaRecorder = useCallback(
+    (stream: MediaStream) => {
+      const mt = pickMime();
+      const mr = new MediaRecorder(stream, mt ? { mimeType: mt } : undefined);
+      mrRef.current = mr;
 
-    const tick = () => {
-      const an = analyserRef.current;
-      if (!an) return;
+      chunksRef.current = [];
+      startedAtRef.current = Date.now();
+      speechMsRef.current = 0;
+      lastTickRef.current = Date.now();
 
-      an.getFloatTimeDomainData(data);
+      mr.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+      };
 
-      let sum = 0;
-      for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
-      const rms = Math.sqrt(sum / data.length);
+      mr.onstop = async () => {
+        try {
+          const mime = mr.mimeType || "audio/webm";
+          const blob = new Blob(chunksRef.current, { type: mime });
+          const elapsed = Date.now() - startedAtRef.current;
 
-      const now = Date.now();
-      const dt = now - (lastTickRef.current || now);
-      lastTickRef.current = now;
+          const shouldSend =
+            blob.size > 0 &&
+            elapsed >= minRecordMs &&
+            speechMsRef.current >= minSpeechMsToSend;
 
-      // acumular “voz real” (para decidir si mandamos)
-      if (recorderStarted && rms >= startThresholdRms) {
-        speechMsRef.current += dt;
-      }
+          chunksRef.current = [];
 
-      // 1) todavía no arrancó a grabar: esperar voz (no manda nada si no hablás)
-      if (!recorderStarted) {
-        if (rms >= startThresholdRms) {
-          if (!voiceSince) voiceSince = now;
-          if (now - voiceSince >= startVoiceMs) {
-            recorderStarted = true;
-            startMediaRecorder(stream);
-            silenceSince = 0;
+          await cleanup();
+
+          // ✅ si no hubo “voz real”, NO enviamos (evita loop de silencio)
+          if (shouldSend) {
+            await onAudioReady(blob);
+          }
+        } catch (err) {
+          console.error("[useVoiceRecorder] onstop error:", err);
+          await cleanup();
+        }
+      };
+
+      mr.start();
+      setIsRecording(true);
+
+      // hard stop SOLO cuando está grabando
+      stopHardTimer();
+      hardStopTimerRef.current = window.setTimeout(() => {
+        const cur = mrRef.current;
+        if (cur && cur.state !== "inactive") {
+          if (Date.now() - startedAtRef.current >= maxRecordMs) stopRecording();
+        }
+      }, maxRecordMs + 50);
+    },
+    [
+      cleanup,
+      maxRecordMs,
+      minRecordMs,
+      minSpeechMsToSend,
+      onAudioReady,
+      pickMime,
+      stopRecording,
+    ]
+  );
+
+  const startVadLoop = useCallback(
+    async (stream: MediaStream) => {
+      await ensureAnalyser(stream);
+
+      const an = analyserRef.current!;
+      const data = new Float32Array(an.fftSize);
+
+      let voiceSince = 0;
+      let silenceSince = 0;
+      let recorderStarted = false;
+
+      const tick = () => {
+        const analyser = analyserRef.current;
+        if (!analyser) return;
+
+        analyser.getFloatTimeDomainData(data);
+        const rms = calcRms(data);
+
+        const now = Date.now();
+        const dt = now - (lastTickRef.current || now);
+        lastTickRef.current = now;
+
+        // ✅ acumular voz real (para decidir si mandamos)
+        if (recorderStarted && rms >= startThresholdRms) {
+          speechMsRef.current += dt;
+        }
+
+        // 1) esperar voz (NO corta por silencio si no hablás)
+        if (!recorderStarted) {
+          if (rms >= startThresholdRms) {
+            if (!voiceSince) voiceSince = now;
+            if (now - voiceSince >= startVoiceMs) {
+              recorderStarted = true;
+              silenceSince = 0;
+              startMediaRecorder(stream);
+            }
+          } else {
+            voiceSince = 0;
+          }
+
+          rafRef.current = requestAnimationFrame(tick);
+          return;
+        }
+
+        // 2) grabando: cortar cuando hay silencio REAL
+        if (rms < endThresholdRms) {
+          if (!silenceSince) silenceSince = now;
+          if (now - silenceSince >= endSilenceMs) {
+            stopRecording();
+            return;
           }
         } else {
-          voiceSince = 0;
+          silenceSince = 0;
         }
 
         rafRef.current = requestAnimationFrame(tick);
-        return;
-      }
-
-      // 2) grabando: cortar por silencio real (endThreshold)
-      if (rms < endThresholdRms) {
-        if (!silenceSince) silenceSince = now;
-        if (now - silenceSince >= endSilenceMs) {
-          stopRecording();
-          return;
-        }
-      } else {
-        silenceSince = 0;
-      }
+      };
 
       rafRef.current = requestAnimationFrame(tick);
-    };
+    },
+    [
+      ensureAnalyser,
+      endSilenceMs,
+      endThresholdRms,
+      startMediaRecorder,
+      startThresholdRms,
+      startVoiceMs,
+      stopRecording,
+    ]
+  );
 
-    rafRef.current = requestAnimationFrame(tick);
-  }, [endSilenceMs, endThresholdRms, startMediaRecorder, startThresholdRms, startVoiceMs, stopRecording]);
-
+  // ✅ startRecording() default = PTT (para no romper llamadas viejas)
   const startRecording = useCallback(
-    async (start: StartOpts) => {
+    async (start: StartOpts = { mode: "ptt" }) => {
       try {
         await cleanup();
-        modeRef.current = start.mode;
+        setIsRecording(true);
 
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: {
@@ -232,21 +285,49 @@ export function useVoiceRecorder(
         streamRef.current = stream;
 
         if (start.mode === "ptt") {
-          startMediaRecorder(stream); // graba ya
-        } else {
-          // mode === "vad": espera VOZ para arrancar
-          setIsRecording(true); // “estado” UI: escuchando
-          startedAtRef.current = Date.now();
+          // PTT: graba YA, pero igual medimos “voz real” para no mandar vacíos
+          await ensureAnalyser(stream);
+
+          // arrancar recorder ya
+          startMediaRecorder(stream);
+
+          // loop liviano para acumular speechMsRef mientras se graba
+          const an = analyserRef.current!;
+          const data = new Float32Array(an.fftSize);
+
+          const pttTick = () => {
+            const analyser = analyserRef.current;
+            const mr = mrRef.current;
+            if (!analyser || !mr || mr.state === "inactive") return;
+
+            analyser.getFloatTimeDomainData(data);
+            const rms = calcRms(data);
+
+            const now = Date.now();
+            const dt = now - (lastTickRef.current || now);
+            lastTickRef.current = now;
+
+            if (rms >= startThresholdRms) speechMsRef.current += dt;
+
+            rafRef.current = requestAnimationFrame(pttTick);
+          };
+
           lastTickRef.current = Date.now();
-          speechMsRef.current = 0;
-          await startVadLoop(stream);
+          rafRef.current = requestAnimationFrame(pttTick);
+          return;
         }
+
+        // VAD: espera voz para arrancar (y NO manda nada si no hablás)
+        startedAtRef.current = Date.now();
+        speechMsRef.current = 0;
+        lastTickRef.current = Date.now();
+        await startVadLoop(stream);
       } catch (e) {
         console.error("[useVoiceRecorder] startRecording error:", e);
         await cleanup();
       }
     },
-    [cleanup, startMediaRecorder, startVadLoop]
+    [cleanup, ensureAnalyser, startMediaRecorder, startVadLoop, startThresholdRms]
   );
 
   return { isRecording, startRecording, stopRecording };

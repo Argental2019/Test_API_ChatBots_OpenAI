@@ -699,7 +699,7 @@ const res = await fetch(`${base}/api/voice-chat`, {
               {/* Botón de micrófono */}
               <button
                 type="button"
-                onClick={isRecording ? stopRecording : startRecording}
+                onClick={isRecording ? stopRecording : () => startRecording({ mode: "ptt" })}
                 disabled={loading || !contextLoaded}
                 className={`mb-1 inline-flex items-center justify-center rounded-full border px-3 py-3 text-sm shadow-sm transition ${
                   isRecording
