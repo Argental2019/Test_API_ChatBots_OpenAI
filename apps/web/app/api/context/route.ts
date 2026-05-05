@@ -1,3 +1,4 @@
+//apps\web\app\api\context\route.ts
 import { NextRequest } from "next/server";
 
 // Fuerza Node runtime (más compatible) y aumenta el máximo de duración a 60s (límite Vercel Pro)
