@@ -1,8 +1,8 @@
 // backend/api/voice-chat.js
 import { OpenAI } from "openai";
+import { toFile } from "openai";
 import multer from "multer";
-import fetch from "node-fetch";
-import { AGENTS_BASE } from "../../apps/web/lib/agents";
+import { AGENTS_BASE } from "../../apps/web/lib/agents.js";
 
 // === Configuración de subida de audio ===
 const upload = multer({ storage: multer.memoryStorage() });
@@ -10,38 +10,59 @@ const upload = multer({ storage: multer.memoryStorage() });
 // Cliente OpenAI
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Helper para parsear el stream SSE de /api/chat (OpenAI streaming)
-async function readSSEStreamToText(stream) {
-  if (!stream) return "";
-
-  const decoder = new TextDecoder();
-  let full = "";
-
-  for await (const chunk of stream) {
-    const textChunk = decoder.decode(chunk, { stream: true });
-
-    // /api/chat devuelve SSE tipo "data: {...}\n\n"
-    const lines = textChunk.split("\n");
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith("data:")) continue;
-
-      const data = trimmed.slice(5).trim(); // después de "data:"
-      if (!data || data === "[DONE]") continue;
-
-      try {
-        const json = JSON.parse(data);
-        const delta = json.choices?.[0]?.delta?.content || "";
-        if (delta) full += delta;
-      } catch (err) {
-        // si alguna línea no es JSON, la ignoramos
-        console.warn("[voice-chat] No se pudo parsear chunk SSE:", data);
-      }
-    }
-  }
-
-  return full;
+// === Mismo procesamiento de contexto que usa /api/chat ===
+function sanitizeRaw(txt) {
+  if (!txt) return "";
+  txt = txt.replace(/-\s*\n\s*/g, "");
+  txt = txt.replace(/\r/g, "").replace(/\t/g, " ").replace(/[ \u00A0]{2,}/g, " ");
+  txt = txt.replace(/\n{3,}/g, "\n\n");
+  txt = txt.replace(/\s+([,.;:!?])/g, "$1");
+  txt = txt.replace(/[^\w\sÁÉÍÓÚÜÑáéíóúüñ°%/().,:;+-]{2,}/g, " ");
+  return txt.trim();
 }
+
+function splitSentences(text) {
+  return text
+    .split(/(?<=\.)\s+|\n+/g)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function qualityScore(s) {
+  const len = s.length;
+  const vowels = (s.match(/[aeiouáéíóúü]/gi) || []).length;
+  return len >= 30 && len <= 500 && vowels > 10 ? 1 : 0;
+}
+
+function buildFocusedContext(raw, maxChars = 90000) {
+  const cleaned = sanitizeRaw(raw);
+  const parts = splitSentences(cleaned).filter((s) => qualityScore(s) > 0);
+  return parts.join(" ").slice(0, maxChars);
+}
+
+// === Mismo TEXT_STYLE que usa /api/chat ===
+const TEXT_STYLE = `
+FORMATO DE SALIDA (OBLIGATORIO):
+- No uses símbolos de formato Markdown (#, *, **, ---).
+- Escribí en texto plano con secciones numeradas y subtítulos en mayúsculas.
+- Ejemplo de formato:
+
+El horno rotativo Argental FE 4.0-960 se destaca por su rendimiento, durabilidad y eficiencia energética. A continuación, se detallan las principales características:
+
+1. ALTA VERSATILIDAD Y HOMOGENEIDAD DE COCCIÓN
+Permite cocinar una amplia variedad de productos, asegurando cocciones parejas en todas las bandejas.
+
+2. EFICIENCIA ENERGÉTICA Y DURABILIDAD
+Incluye una aislación térmica que reduce el consumo y prolonga la vida útil del equipo.
+
+3. TECNOLOGÍA Y CONTROL
+Panel táctil programable con múltiples etapas de cocción, conectividad remota y supervisión en tiempo real.
+
+4. SOPORTE Y GARANTÍA
+Repuestos originales garantizados por 10 años y asistencia técnica directa desde fábrica.
+
+Al final, incluí un breve resumen en tono profesional que refuerce los beneficios para el usuario.
+`.trim();
 
 export default async function handler(req, res) {
   // CORS
@@ -55,7 +76,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1) Procesar multipart (campo "audio")
+    // 1) Procesar multipart
     await new Promise((resolve, reject) => {
       upload.single("audio")(req, res, (err) =>
         err ? reject(err) : resolve()
@@ -63,12 +84,23 @@ export default async function handler(req, res) {
     });
 
     const audioFile = req.file;
-    const { agentId, context } = req.body || {};
+    const { agentId, context, systemPrompt } = req.body || {};
+
+    console.log("[/voice-chat] Request recibido:", {
+      hasFile: !!audioFile,
+      agentId,
+      mimetype: audioFile?.mimetype,
+      size: audioFile?.size,
+      contextLen: (context || "").length,
+      systemPromptLen: (systemPrompt || "").length,
+    });
 
     if (!audioFile) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "No se recibió archivo de audio" });
+      return res.status(400).json({ ok: false, error: "No se recibió archivo de audio" });
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ ok: false, error: "OPENAI_API_KEY no configurada" });
     }
 
     const agent = AGENTS_BASE.find((a) => a.id === agentId);
@@ -76,86 +108,70 @@ export default async function handler(req, res) {
       return res.status(400).json({ ok: false, error: "Agente inválido" });
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({
-        ok: false,
-        error: "OPENAI_API_KEY no configurada",
-      });
-    }
-
-    if (!process.env.FRONTEND_URL) {
-      return res.status(500).json({
-        ok: false,
-        error: "FRONTEND_URL no configurada (URL del Next frontend)",
-      });
-    }
-
-    /* 2) Transcribir audio con Whisper */
-    console.log("[voice-chat] Transcribiendo audio...");
+    /* 2) Transcribir con Whisper */
+    console.log("[/voice-chat] Transcribiendo audio...");
 
     const transcription = await openai.audio.transcriptions.create({
-  file: {
-    data: file.buffer,
-    name: file.originalname || "audio.webm",
-  },
-  model: "whisper-1",
-  language: "es",
-});
-
-
-    const question = (transcription.text || "").trim();
-
-    console.log("[voice-chat] ✅ Transcripción:", question);
-
-    if (!question) {
-      return res.status(500).json({
-        ok: false,
-        error: "No se pudo obtener texto de la transcripción.",
-      });
-    }
-
-    /* 3) Preparar payload EXACTO que usa /api/chat */
-    const payload = {
-      systemPrompt: agent.systemPrompt,
-      context: context || "", // snapshot de smartRead que ya mandás desde el front
-      messages: [
-        {
-          role: "user",
-          content: question,
-        },
-      ],
-    };
-
-    /* 4) Llamar a /api/chat del frontend (mismo flujo que texto) */
-    const chatUrl = `${process.env.FRONTEND_URL}/api/chat`;
-    console.log("[voice-chat] Llamando a", chatUrl);
-
-    const r = await fetch(chatUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
+      file: await toFile(audioFile.buffer, audioFile.originalname || "audio.webm", {
+        type: audioFile.mimetype || "audio/webm",
+      }),
+      model: "whisper-1",
+      language: "es",
     });
 
-    if (!r.ok) {
-      const txt = await r.text().catch(() => "");
-      console.error("[voice-chat] Error en /api/chat:", r.status, txt);
-      return res
-        .status(500)
-        .json({ ok: false, error: "Error en /api/chat", detail: txt });
+    const question = (transcription.text || "").trim();
+    console.log("[/voice-chat] ✅ Transcripción:", { textPreview: question.slice(0, 80), length: question.length });
+
+    if (!question) {
+      return res.status(500).json({ ok: false, error: "No se pudo obtener texto de la transcripción." });
     }
 
-    // 5) /api/chat devuelve un stream SSE → lo convertimos a texto final
-    const answer = await readSSEStreamToText(r.body);
+    /* 3) Construir system prompt igual que /api/chat */
+    const finalSystemPrompt = systemPrompt || agent.systemPrompt || "";
+    const focusedContext = buildFocusedContext(context || "");
 
-    console.log("[voice-chat] ✅ Respuesta final (texto):", answer);
+    console.log("[/voice-chat] Contexto procesado:", {
+      contextRawLen: (context || "").length,
+      contextFocusedLen: focusedContext.length,
+    });
+
+    const systemContent = [
+      finalSystemPrompt.trim(),
+      TEXT_STYLE,
+      "Contexto documental relevante:",
+      focusedContext || "(vacío)",
+    ].join("\n\n");
+
+    /* 4) Llamar a OpenAI directamente (sin pasar por /api/chat) */
+    console.log("[/voice-chat] Llamando a OpenAI directamente...");
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4.1",
+      temperature: 0.2,
+      stream: false,
+      messages: [
+        { role: "system", content: systemContent },
+        { role: "user", content: question },
+      ],
+    });
+
+    const answer = completion.choices?.[0]?.message?.content?.trim() || "";
+
+    console.log("[/voice-chat] ✅ Respuesta final:", {
+      preview: answer.slice(0, 120),
+      length: answer.length,
+    });
+
+    if (!answer) {
+      return res.status(500).json({ ok: false, error: "El modelo no devolvió respuesta." });
+    }
 
     return res.status(200).json({
       ok: true,
       question,
       answer,
     });
+
   } catch (e) {
     console.error("❌ Error en voice-chat:", e);
     return res.status(500).json({ ok: false, error: e.message });

@@ -54,13 +54,10 @@ if (!process.env.OPENAI_API_KEY) {
   });
 }
 
-// Opcional: backend de agentes (si querés encadenar voz → agentes directamente)
-// Ej: https://test-chatbots-back.vercel.app/chat
 const AGENT_BACKEND_URL = process.env.AGENT_BACKEND_URL || null;
-const FRONTEND_URL = process.env.FRONTEND_URL || null; // ej: https://tu-frontend.vercel.app
+const FRONTEND_URL = process.env.FRONTEND_URL || null;
 
 // ===== Métricas simples =====
-// TTL configurable (opcional). También podés dejarlo sin expiración si preferís.
 const CACHE_TTL_SECONDS = Number(process.env.CACHE_TTL_SECONDS || 0); // 0 = sin TTL
 
 function fileCacheKey(fileId) {
@@ -330,47 +327,52 @@ const ensureSessionId = (req, res, next) => {
   next();
 };
 
-// Convierte el stream SSE de /api/chat en texto plano
-async function readSSEStreamToText(stream) {
-  if (!stream) return "";
-
-  const decoder = new TextDecoder();
-  let full = "";
-
-  for await (const chunk of stream) {
-    const textChunk = decoder.decode(chunk, { stream: true });
-
-    // /api/chat devuelve SSE tipo "data: {...}\n\n"
-    const lines = textChunk.split("\n");
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith("data:")) continue;
-
-      const data = trimmed.slice(5).trim(); // después de "data:"
-      if (!data || data === "[DONE]") continue;
-
-      try {
-        const json = JSON.parse(data);
-        const delta = json.choices?.[0]?.delta?.content || "";
-        if (delta) full += delta;
-      } catch (err) {
-        console.warn("[voice-chat] No se pudo parsear chunk SSE:", data);
-      }
-    }
-  }
-
-  return full;
-}
-
 // Limpia @@META y @@MISS de la respuesta del modelo
 function cleanLLMResponse(text) {
   if (!text) return "";
-  // Eliminar @@META {...}
   let cleaned = text.replace(/@@META\s*\{[\s\S]*?\}/g, "").trim();
-  // Eliminar @@MISS {...} (solo la línea técnica)
   cleaned = cleaned.replace(/^@@MISS\s*\{[^\n]*\}\s*\n?/m, "").trim();
   return cleaned;
 }
+
+// ===== Helpers para voice-chat (mismo procesamiento que /api/chat del frontend) =====
+function sanitizeRaw(txt) {
+  if (!txt) return "";
+  txt = txt.replace(/-\s*\n\s*/g, "");
+  txt = txt.replace(/\r/g, "").replace(/\t/g, " ").replace(/[ \u00A0]{2,}/g, " ");
+  txt = txt.replace(/\n{3,}/g, "\n\n");
+  txt = txt.replace(/\s+([,.;:!?])/g, "$1");
+  txt = txt.replace(/[^\w\sÁÉÍÓÚÜÑáéíóúüñ°%/().,:;+-]{2,}/g, " ");
+  return txt.trim();
+}
+
+function buildFocusedContext(raw, maxChars = 90000) {
+  const cleaned = sanitizeRaw(raw);
+  const parts = cleaned
+    .split(/(?<=\.)\s+|\n+/g)
+    .map((s) => s.trim())
+    .filter((s) => {
+      const len = s.length;
+      const vowels = (s.match(/[aeiouáéíóúü]/gi) || []).length;
+      return len >= 30 && len <= 500 && vowels > 10;
+    });
+  return parts.join(" ").slice(0, maxChars);
+}
+
+const VOICE_TEXT_STYLE = `FORMATO DE SALIDA (OBLIGATORIO):
+- No uses símbolos de formato Markdown (#, *, **, ---).
+- Escribí en texto plano con secciones numeradas y subtítulos en mayúsculas.
+- Ejemplo de formato:
+
+El horno rotativo Argental FE 4.0-960 se destaca por su rendimiento, durabilidad y eficiencia energética. A continuación, se detallan las principales características:
+
+1. ALTA VERSATILIDAD Y HOMOGENEIDAD DE COCCIÓN
+Permite cocinar una amplia variedad de productos, asegurando cocciones parejas en todas las bandejas.
+
+2. EFICIENCIA ENERGÉTICA Y DURABILIDAD
+Incluye una aislación térmica que reduce el consumo y prolonga la vida útil del equipo.
+
+Al final, incluí un breve resumen en tono profesional que refuerce los beneficios para el usuario.`;
 
 // ===== Endpoints Drive =====
 
@@ -435,8 +437,8 @@ app.get("/health-lite", (req, res) => {
  * - Espera multipart/form-data con:
  *   - campo "audio" (Blob/archivo WebM/OGG/M4A, etc.)
  *   - campo "agentId" (string)
- *   - opcional "systemPrompt" (string) → si querés mandarlo desde el front
- *   - opcional "context" (string) → snapshot de smartRead que ya usás en /api/chat
+ *   - opcional "systemPrompt" (string)
+ *   - opcional "context" (string)
  */
 app.post(
   "/api/voice-chat",
@@ -452,20 +454,12 @@ app.post(
           });
         }
 
-        if (!FRONTEND_URL) {
-          return res.status(500).json({
-            ok: false,
-            error: "FRONTEND_URL no está configurada (URL del Next que expone /api/chat).",
-          });
-        }
-
         const file = req.file;
         const agentId = req.body.agentId;
         const sessionId =
           req.body.sessionId || req.headers["x-session-id"] || `voice-${Date.now()}`;
 
-        // Estos dos los puede mandar el front junto con el audio
-        const systemPromptFromBody = req.body.systemPrompt;
+        const systemPromptFromBody = req.body.systemPrompt || "";
         const contextFromBody = req.body.context || "";
 
         console.log("[/voice-chat] Request recibido:", {
@@ -474,6 +468,8 @@ app.post(
           mimetype: file?.mimetype,
           size: file?.size,
           sessionId,
+          contextLen: contextFromBody.length,
+          systemPromptLen: systemPromptFromBody.length,
         });
 
         if (!file) {
@@ -483,113 +479,93 @@ app.post(
           });
         }
 
-// 1️⃣ Transcribir audio con OpenAI Whisper
-console.log("[/voice-chat] Transcribiendo audio...");
+        // 1️⃣ Transcribir audio con OpenAI Whisper
+        console.log("[/voice-chat] Transcribiendo audio...");
 
-const transcription = await openai.audio.transcriptions.create({
-  file: new File([file.buffer], file.originalname || "audio.webm", {
-    type: file.mimetype || "audio/webm",
-  }),
-  model: "whisper-1",
-  language: "es",
-});
-
-const rawText = (transcription.text || "").trim();
-const lower = rawText.toLowerCase();
-
-console.log("[/voice-chat] ✅ Transcripción:", {
-  textPreview: rawText.substring(0, 120),
-  length: rawText.length,
-});
-
-// 🚫 Frases típicas de ruido (YouTube, Amara, etc.)
-const NOISE_PATTERNS = [
-  "subtítulos realizados por la comunidad de amara.org",
-  "subtitulos realizados por la comunidad de amara.org",
-  "gracias por ver el video",
-  "gracias por ver el vídeo",
-  "no olvides suscribirte",
-  "no olvides suscribirte al canal",
-  "suscríbete al canal",
-  "suscribete al canal",
-  "activa la campanita",
-  "dale like y comparte",
-];
-
-const looksLikeNoise = NOISE_PATTERNS.some((p) => lower.includes(p));
-
-// Heurística extra: texto muy corto o solo una frase suelta sin pinta de consulta
-const isVeryShort = rawText.length < 5;
-
-// ⚠️ Si no hay texto, es muy corto o detectamos ruido conocido:
-// devolvemos mensaje amable y NO llamamos a /api/chat
-if (!rawText || isVeryShort || looksLikeNoise) {
-  const friendlyMsg =
-    "Lo siento, no pude escuchar ninguna pregunta clara en el audio. " +
-    "Podés repetir la consulta o escribirla directamente en el chat.";
-
-  console.warn(
-    "[/voice-chat] Transcripción vacía / muy corta o ruido conocido, devolviendo mensaje amable."
-  );
-
-  return res.status(200).json({
-    ok: true,
-    question: "",
-    answer: friendlyMsg,
-  });
-}
-
-// Si llegamos acá, la transcripción se considera una pregunta válida
-const question = rawText;
-        // 2️⃣ Armar payload EXACTO que espera /api/chat
-        // Si no te mandan systemPrompt desde el front, usamos uno genérico según agentId
-        const fallbackPrompt =
-          agentId === "panier-iii-45x70"
-            ? "Sos un asistente experto en productos Argental, específicamente en el Panier III 45x70. Respondé de forma clara, breve y profesional."
-            : "Sos un asistente de Argental. Respondé de forma clara y profesional usando únicamente la información del contexto documental proporcionado.";
-
-        const systemPrompt = (systemPromptFromBody || fallbackPrompt).trim();
-        console.log("[/voice-chat] SYSTEM PROMPT LEN:", systemPrompt.length);
-        console.log("[/voice-chat] CONTEXT LEN:", (contextFromBody || "").length);
-        const payload = {
-          systemPrompt,
-          context: contextFromBody, // snapshot que ya armás con smartRead en el front
-          messages: [
-            {
-              role: "user",
-              content: question,
-            },
-          ],
-        };
-
-        const chatUrl = `${FRONTEND_URL}/api/chat`;
-        console.log("[/voice-chat] Llamando a", chatUrl);
-
-        const r = await fetch(chatUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
+        const transcription = await openai.audio.transcriptions.create({
+          file: new File([file.buffer], file.originalname || "audio.webm", {
+            type: file.mimetype || "audio/webm",
+          }),
+          model: "whisper-1",
+          language: "es",
         });
 
-        if (!r.ok || !r.body) {
-          const txt = await r.text().catch(() => "");
-          console.error("[/voice-chat] Error en /api/chat:", r.status, txt);
-          return res.status(500).json({
-            ok: false,
-            error: "Error al consultar /api/chat en el frontend.",
-            details: txt,
+        const rawText = (transcription.text || "").trim();
+        const lower = rawText.toLowerCase();
+
+        console.log("[/voice-chat] ✅ Transcripción:", {
+          textPreview: rawText.substring(0, 120),
+          length: rawText.length,
+        });
+
+        // 🚫 Frases típicas de ruido
+        const NOISE_PATTERNS = [
+          "subtítulos realizados por la comunidad de amara.org",
+          "subtitulos realizados por la comunidad de amara.org",
+          "gracias por ver el video",
+          "gracias por ver el vídeo",
+          "no olvides suscribirte",
+          "no olvides suscribirte al canal",
+          "suscríbete al canal",
+          "suscribete al canal",
+          "activa la campanita",
+          "dale like y comparte",
+        ];
+
+        const looksLikeNoise = NOISE_PATTERNS.some((p) => lower.includes(p));
+        const isVeryShort = rawText.length < 5;
+
+        if (!rawText || isVeryShort || looksLikeNoise) {
+          console.warn("[/voice-chat] Transcripción vacía / muy corta o ruido conocido, devolviendo mensaje amable.");
+          return res.status(200).json({
+            ok: true,
+            question: "",
+            answer:
+              "Lo siento, no pude escuchar ninguna pregunta clara en el audio. " +
+              "Podés repetir la consulta o escribirla directamente en el chat.",
           });
         }
 
-        // 3️⃣ /api/chat devuelve un stream SSE → lo convertimos a texto final y lo limpiamos
-        const rawAnswer = await readSSEStreamToText(r.body);
+        const question = rawText;
+
+        // 2️⃣ Construir system prompt igual que /api/chat
+        const finalSystemPrompt = systemPromptFromBody.trim();
+        const focusedContext = buildFocusedContext(contextFromBody);
+
+        console.log("[/voice-chat] SYSTEM PROMPT LEN:", finalSystemPrompt.length);
+        console.log("[/voice-chat] CONTEXT LEN (focused):", focusedContext.length);
+
+        const systemContent = [
+          finalSystemPrompt,
+          VOICE_TEXT_STYLE,
+          "Contexto documental relevante:",
+          focusedContext || "(vacío)",
+        ].join("\n\n");
+
+        // 3️⃣ Llamar a OpenAI directamente (sin round-trip a /api/chat)
+        console.log("[/voice-chat] Llamando a OpenAI directamente...");
+
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4.1",
+          temperature: 0.2,
+          stream: false,
+          messages: [
+            { role: "system", content: systemContent },
+            { role: "user", content: question },
+          ],
+        });
+
+        const rawAnswer = completion.choices?.[0]?.message?.content?.trim() || "";
         const answer = cleanLLMResponse(rawAnswer);
 
         console.log("[/voice-chat] ✅ Respuesta final (limpia):", {
           preview: answer.substring(0, 120),
+          length: answer.length,
         });
+
+        if (!answer) {
+          return res.status(500).json({ ok: false, error: "El modelo no devolvió respuesta." });
+        }
 
         return res.status(200).json({
           ok: true,
@@ -790,7 +766,7 @@ app.post(
               const meta = currManifest.files.find((f) => f.id === id) || (await getFileMeta(id));
               await readFileSmart({
                 id: meta.id,
-                etag: meta.etag, // ojo: en manifest podría llamarse etag
+                etag: meta.etag,
                 mimeType: meta.mimeType,
                 name: meta.name,
               });
@@ -806,7 +782,6 @@ app.post(
         let hit = await cacheGet(k);
 
         if (!hit) {
-          // Fallback: si no está en cache, lo leo ahora mismo
           try {
             const loaded = await readFileSmart({
               id: f.id,
@@ -850,7 +825,7 @@ app.post(
           folderId,
           files: currManifest.files.map((f) => ({ id: f.id, tag: f.etag })),
         },
-        snapshot, // [{ id,name,mimeType,etag,size,content }]
+        snapshot,
       };
 
       // 10) incluir metadatos si lo pidieron (sin content)
@@ -881,8 +856,6 @@ app.post(
 );
 
 // ===== Verificar cambios desde un manifest/knownFiles previo =====
-// POST /drive/checkChanges
-// Body: { folderId: string, knownFiles: [{ id: string, tag: string }] }
 app.post(
   "/drive/checkChanges",
   withTimer(
@@ -934,8 +907,6 @@ app.post(
 );
 
 // ===== Invalidar caché de archivos específicos =====
-// POST /cache/invalidate
-// Body: { fileIds: ["id1","id2", ...] }
 app.post(
   "/cache/invalidate",
   withTimer(
