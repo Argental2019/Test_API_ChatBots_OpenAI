@@ -3,7 +3,7 @@
 
 import React from "react";
 import { X, Loader2 } from "lucide-react";
-import { VoiceState, VoiceMessage } from "@/hooks/useRealtimeVoice";
+import { VoiceState, VoiceMessage } from "@/hooks/useElevenLabsVoice";
 
 type Props = {
   open: boolean;

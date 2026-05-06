@@ -4,8 +4,8 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Home, Send, Loader2, CheckCircle2, AlertCircle, AudioLines } from "lucide-react";
 import { getAgentById } from "@/lib/agents";
-import { useRealtimeVoice } from "@/hooks/useRealtimeVoice";
-import type { VoiceMessage } from "@/hooks/useRealtimeVoice";
+import { useElevenLabsVoice } from "@/hooks/useElevenLabsVoice";
+import type { VoiceMessage } from "@/hooks/useElevenLabsVoice";
 import VoiceModeModal from "@/components/VoiceModeModal";
 
 type ChatMessage = { role: "user" | "assistant"; content: string; ts?: number };
@@ -226,20 +226,19 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
 
   const backendBase = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
-  // ── Hook de conversación por voz ──
-    const {
-    state: voiceState,
-    messages: voiceMessages,
-    error: voiceError,
-    startVoiceMode,
-    stopVoiceMode,
-  } = useRealtimeVoice({
-    systemPrompt: agent
-      ? buildSystemPrompt(agent, isAdmin, agent.driveFolders, contextFiles) +
-        "\n\nContexto documental del producto:\n" + (contextCache ?? "")
-      : "",
-  });
-
+// ── Hook de conversación por voz ──
+const {
+  state: voiceState,
+  messages: voiceMessages,
+  error: voiceError,
+  startVoiceMode,
+  stopVoiceMode,
+} = useElevenLabsVoice({
+  systemPrompt: agent
+    ? buildSystemPrompt(agent, isAdmin, agent.driveFolders, contextFiles) +
+      "\n\nContexto documental del producto:\n" + (contextCache ?? "")
+    : "",
+});
   // ── Handlers de voz ──
   const handleOpenVoice = () => {
     if (!contextLoaded || !agent) return;
