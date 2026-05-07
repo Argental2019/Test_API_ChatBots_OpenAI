@@ -12,13 +12,38 @@ export async function POST(req: NextRequest) {
 
     const { systemPrompt } = await req.json();
 
-    // Extraer contexto documental del producto
+    // Extraer contexto documental completo
     const ctxIndex = (systemPrompt || "").indexOf("Contexto documental del producto:");
-    const contextPart = ctxIndex > -1
-      ? (systemPrompt || "").slice(ctxIndex).slice(0, 20000)
-      : "";
+    const fullCtx = ctxIndex > -1 ? (systemPrompt || "").slice(ctxIndex) : "";
+    const ctxLength = fullCtx.length;
 
-    // Extraer nombre del producto del contexto (primera línea suele tener el nombre)
+    let contextPart = "";
+
+    if (ctxLength <= 45000) {
+      // Contexto corto — mandamos todo
+      contextPart = fullCtx;
+    } else {
+      // Contexto largo — inicio (25k) + sección con datos de producción (20k)
+      const start = fullCtx.slice(0, 25000);
+
+      const keywords = ["pan francés", "producción", "kg/h", "kg por hora", "capacidad productiva", "por ciclo", "bandejas", "carro"];
+      let bestIdx = Math.floor(ctxLength * 0.4);
+
+      for (const kw of keywords) {
+        const idx = fullCtx.toLowerCase().indexOf(kw, 15000);
+        if (idx > 0 && idx < ctxLength * 0.95) {
+          bestIdx = Math.max(15000, idx - 2000);
+          break;
+        }
+      }
+
+      const middle = fullCtx.slice(bestIdx, bestIdx + 20000);
+      contextPart = `${start}\n\n[...]\n\n${middle}`;
+    }
+
+    console.log("[ElevenLabs] ctx total:", ctxLength, "chars — enviando:", contextPart.length, "chars");
+
+    // Extraer nombre del producto
     const firstLine = contextPart.split("\n")[0].slice(0, 200);
 
     // Prompt optimizado para voz
@@ -30,9 +55,10 @@ IDENTIDAD DEL AGENTE:
 Sos un asesor técnico de Argental especializado EXCLUSIVAMENTE en el siguiente producto: ${firstLine}
 Tu única fuente de información es el contexto documental provisto al final de este prompt.
 PROHIBIDO hacer preguntas al usuario para identificar el modelo — ya sabés qué producto es.
-Si el usuario pregunta por contacto, comercial, compra, posventa o repuestos, siempre respondé EXACTAMENTE:
-"Si necesitás asistencia comercial, posventa o repuestos, nuestro número es +5493415470737" — este número SIEMPRE está disponible y NUNCA debés decir que no tenés esa información.
-Al pronunciar el número +5493415470737 decilo EXACTAMENTE así: "más cinco cuatro nueve tres cuatro uno cinco cuatro siete cero siete tres siete".
+Si el usuario pregunta por contacto, comercial, compra, posventa o repuestos, respondé SIEMPRE con esta frase exacta y nada más:
+"Si necesitás asistencia comercial, posventa o repuestos, contactanos por WhatsApp al más cinco cuatro nueve tres cuatro uno cinco cuatro siete cero siete tres siete."
+PROHIBIDO cambiar esa frase. PROHIBIDO agregar explicaciones. PROHIBIDO decir el número de otra forma.
+Al escribirlo en texto usá siempre: +5493415470737
 PROHIBIDO referirte a otros modelos o productos que no sean el indicado.
 Si el usuario pregunta por dimensiones, capacidades u otros datos técnicos, respondé DIRECTAMENTE con los datos del producto asignado.
 
@@ -137,9 +163,11 @@ REGLAS PARA CONVERSACIÓN POR VOZ:
 - Si no escuchaste una pregunta clara, respondé ÚNICAMENTE: "No entendí, ¿podés repetir la pregunta?"
 - Si el audio es ruido, silencio o eco, simplemente ignoralo sin decir nada.
 
-${contextPart}`.slice(0, 24000);
+${contextPart}`.slice(0, 50000);
 
-    // 1. Obtener URL firmada de ElevenLabs
+    console.log("[ElevenLabs] prompt final length:", voicePrompt.length);
+
+    // Obtener URL firmada de ElevenLabs
     const response = await fetch(
       `https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${AGENT_ID}`,
       {
@@ -155,11 +183,11 @@ ${contextPart}`.slice(0, 24000);
     }
 
     const data = await response.json();
-    console.log("[ElevenLabs] Sesión creada OK");
+    console.log("[ElevenLabs] Sesión creada OK — prompt:", voicePrompt.length, "chars");
 
     return NextResponse.json({
       signed_url: data.signed_url,
-      system_prompt: voicePrompt, // prompt procesado para voz
+      system_prompt: voicePrompt,
     });
 
   } catch (e: any) {
