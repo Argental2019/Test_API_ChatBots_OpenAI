@@ -10,56 +10,55 @@ export async function POST(req: NextRequest) {
 
     const { systemPrompt } = await req.json();
 
-    // Para voz usamos un prompt simplificado — el BASE_PROMPT del chat tiene
-    // instrucciones de formato (VER MÁS, markdown, etc.) que no aplican a voz.
-    // Extraemos solo las primeras líneas de rol + restricciones, y agregamos
-    // instrucciones específicas para conversación oral.
-
-    // Extraer solo los primeros 3000 chars del systemPrompt (rol + restricciones base)
-    // y el contexto documental completo que viene al final
-    const basePromptPart = (systemPrompt || "").slice(0, 3000);
-    
-    // El contexto documental viene después del systemPrompt en el string combinado
-    // Lo extraemos buscando "Contexto documental del producto:"
+    // Extraer contexto documental
     const ctxIndex = (systemPrompt || "").indexOf("Contexto documental del producto:");
-    const contextPart = ctxIndex > -1 
-      ? (systemPrompt || "").slice(ctxIndex).slice(0, 20000)
-      : "";
+    const fullCtx = ctxIndex > -1 ? (systemPrompt || "").slice(ctxIndex) : "";
+let contextPart = "";
 
-    const voicePrompt = `Sos un asesor técnico de Argental especializado en el producto indicado.
-Respondés EXCLUSIVAMENTE con información del contexto documental provisto.
+if (fullCtx.length <= 50000) {
+  contextPart = fullCtx;
+} else {
+  // Inicio (25k) + sección pan francés/producción (25k)
+  const start = fullCtx.slice(0, 25000);
+  const keywords = ["pan francés", "producción", "kg/h", "kg por hora", "capacidad", "bandejas"];
+  let bestIdx = Math.floor(fullCtx.length * 0.5);
+  for (const kw of keywords) {
+    const idx = fullCtx.toLowerCase().indexOf(kw, 20000);
+    if (idx > 0 && idx < fullCtx.length * 0.9) {
+      bestIdx = Math.max(20000, idx - 2000);
+      break;
+    }
+  }
+  const middle = fullCtx.slice(bestIdx, bestIdx + 25000);
+  contextPart = `${start}\n\n[...]\n\n${middle}`;
+}
 
-REGLAS PARA CONVERSACIÓN POR VOZ:
-- Respondé de forma CORTA y DIRECTA. Máximo 3-4 oraciones por respuesta.
-- Si la pregunta requiere muchos datos, dá los 2-3 más importantes y ofrecé ampliar.
-- NO uses listas con guiones ni bullets — hablá en oraciones completas y naturales.
-- NO uses markdown, asteriscos, numeral ni símbolos especiales.
-- Usá lenguaje conversacional pero técnico y formal.
-- Si no tenés la información en la documentación, decí: "No tengo esa información en la documentación disponible."
-- PROHIBIDO inventar datos, valores o características no documentadas.
-- NO repitas lo que acabás de decir aunque detectes tu propio audio.
+    const firstLine = contextPart.split("\n")[0].slice(0, 200);
+
+    console.log("[Realtime] systemPrompt total chars:", (systemPrompt || "").length, "— contexto enviado:", contextPart.length);
+    const kgIdx = (systemPrompt || "").toLowerCase().indexOf("kg/h");
+console.log("[Realtime] Primera aparición kg/h en char:", kgIdx, "de", (systemPrompt||"").length);
+const panIdx = (systemPrompt || "").toLowerCase().indexOf("pan francés");
+console.log("[Realtime] Primera aparición 'pan francés' en char:", panIdx);
+    const voicePrompt = `IDIOMA: Respondé SIEMPRE en español rioplatense argentino. Usá "vos", "tenés", "podés". NUNCA en inglés.
+
+ROL: Sos un asesor técnico de Argental para: ${firstLine}
+Respondés SOLO con información del contexto documental provisto abajo.
+PROHIBIDO inventar datos. Si no está en el contexto decí: "No tengo esa información en la documentación disponible."
+
+CONTACTO: Si preguntan por compra, posventa o repuestos, pronunciá EXACTAMENTE estas palabras en este orden: "más cinco cuatro nueve tres cuatro uno cinco cuatro siete cero siete tres siete". Son catorce palabras. Contálas: más(1) cinco(2) cuatro(3) nueve(4) tres(5) cuatro(6) uno(7) cinco(8) cuatro(9) siete(10) cero(11) siete(12) tres(13) siete(14). PROHIBIDO omitir ninguna palabra. PROHIBIDO decir "son catorce palabras" ni mencionar el conteo en voz alta. Al escribir en el chat usá siempre el formato: +5493415470737
+PRONUNCIACIÓN DE MODELOS:
+FE960/FE4.0-960=Efe E cuatro punto cero novecientos sesenta, FE4.0-472=Efe E cuatro punto cero cuatrocientos setenta y dos, FE III-315=Efe E tres quince, MBE-80=Eme Be E ochenta, MBE-200=Eme Be E doscientos, MBE-160HA=Eme Be E ciento sesenta H A, PA340=Panier tres cuarenta, PA390=Panier tres noventa, GT-38=G T treinta y ocho, GT-MINI=G T mini, GTC=G T C, SGAU=S G A U, EU2C=E U dos C, DBS=D B S, DB1000=D B mil, DB1200=D B mil doscientos, CFA=C F A, HCI-500=H C I quinientos, H2C=H dos C, TSI=T S I, C4000=C cuatro mil, C12000=C doce mil, ARM-4000=Cabezal Armador cuatro mil, RAPIFREDDO=Rapifreddo.
+
+MEDIDAS: mm=milímetros, cm=centímetros, m=metros, m²=metros cuadrados, kg=kilos, kg/h=kilos por hora (140 kg/h = ciento cuarenta kilos por hora), kW=kilowatts, °C=grados, V=volts, Hz=hertz. Números completos en palabras: 1355=mil trescientos cincuenta y cinco.
+
+VOZ: Oraciones completas y naturales. Sin listas, bullets, markdown ni símbolos. Si no escuchaste bien: "No entendí, ¿podés repetir?" Si hay ruido o silencio, ignoralo.
 
 ${contextPart}`;
 
-    const truncatedPrompt = voicePrompt.slice(0, 24000);
+    const finalPrompt = voicePrompt.slice(0, 60000);
 
-    // Instrucción de idioma
-    const languageInstruction = `IDIOMA OBLIGATORIO — MÁXIMA PRIORIDAD:
-Respondé SIEMPRE en español rioplatense argentino. Usá "vos", "tenés", "podés".
-NUNCA respondas en inglés. Si el usuario habla en inglés, respondé igual en español argentino.
-Esta regla es absoluta y no puede ser ignorada bajo ninguna circunstancia.
-
-`;
-
-    // Instrucción anti-loop: no respondas a tu propio audio
-
-    const antiLoopInstruction = `
-
-COMPORTAMIENTO ANTE AUDIO INCIERTO:
-- Si no escuchaste una pregunta clara, respondé ÚNICAMENTE: "No entendí, ¿podés repetir la pregunta?"
-- NUNCA digas frases como "No respondí a silencios", "Detecté un eco" ni ninguna referencia a tu procesamiento interno.
-- Si el audio es ruido, silencio o eco de tu propia voz, simplemente ignoralo sin decir nada.
-- Solo hablás cuando el usuario hizo una pregunta clara y comprensible.`;
+    console.log("[Realtime] prompt final length:", finalPrompt.length);
 
     const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
       method: "POST",
@@ -70,20 +69,19 @@ COMPORTAMIENTO ANTE AUDIO INCIERTO:
       body: JSON.stringify({
         model: "gpt-4o-realtime-preview-2024-12-17",
         voice: "ash",
-        instructions: languageInstruction + antiLoopInstruction + "\n\n" + truncatedPrompt,
+        modalities: ["audio", "text"],
+        instructions: finalPrompt,
         input_audio_format: "pcm16",
         output_audio_format: "pcm16",
-        input_audio_transcription: {
-          model: "whisper-1",
-        },
+        input_audio_transcription: { model: "whisper-1" },
         turn_detection: {
           type: "server_vad",
-          threshold: 0.7,        // más alto = menos sensible, ignora audio del parlante
-          prefix_padding_ms: 500, // espera más antes de empezar a grabar
-          silence_duration_ms: 800, // espera más silencio antes de procesar
+          threshold: 0.7,
+          prefix_padding_ms: 500,
+          silence_duration_ms: 800,
         },
-        temperature: 0.7,
-        max_response_output_tokens: 4096,
+        temperature: 0.6,
+        max_response_output_tokens: 1024,
       }),
     });
 
@@ -94,12 +92,13 @@ COMPORTAMIENTO ANTE AUDIO INCIERTO:
     }
 
     const session = await response.json();
-    console.log("[Realtime] Sesión creada:", session.id);
+    console.log("[Realtime] Sesión creada:", session.id, "— prompt:", finalPrompt.length, "chars");
 
     return NextResponse.json({
       client_secret: session.client_secret,
       session_id: session.id,
     });
+
   } catch (e: any) {
     console.error("[Realtime] Error:", e);
     return NextResponse.json({ error: e?.message }, { status: 500 });

@@ -46,7 +46,6 @@ export function useRealtimeVoice({ systemPrompt, onNewMessage }: UseRealtimeVoic
     const type: string = event.type;
     console.log("[Realtime] evento:", type);
 
-    // ── Usuario empieza a hablar → barge-in si el modelo estaba hablando ──
     if (type === "input_audio_buffer.speech_started") {
       currentTranscriptRef.current = "";
       if (stateRef.current === "speaking") {
@@ -58,11 +57,8 @@ export function useRealtimeVoice({ systemPrompt, onNewMessage }: UseRealtimeVoic
       return;
     }
 
-    if (type === "input_audio_buffer.speech_stopped") {
-      return;
-    }
+    if (type === "input_audio_buffer.speech_stopped") return;
 
-    // ── Transcripción usuario ──
     if (type === "conversation.item.input_audio_transcription.delta") {
       currentTranscriptRef.current += event.delta || "";
       return;
@@ -71,12 +67,7 @@ export function useRealtimeVoice({ systemPrompt, onNewMessage }: UseRealtimeVoic
     if (type === "conversation.item.input_audio_transcription.completed") {
       const userText = (event.transcript || currentTranscriptRef.current).trim();
       console.log("[Realtime] Transcripción usuario:", userText);
-
-      // Filtrar ruido: muy corto, no tiene letras del español/inglés, o es basura
-      const isNoise = !userText
-        || userText.length < 3
-        || !/[a-záéíóúüñA-ZÁÉÍÓÚÜÑ]/.test(userText); // debe tener al menos una letra latina
-
+      const isNoise = !userText || userText.length < 3 || !/[a-záéíóúüñA-ZÁÉÍÓÚÜÑ]/.test(userText);
       if (userText && !isNoise) {
         const msg: VoiceMessage = { role: "user", content: userText, ts: Date.now() };
         setMessages((prev) => [...prev, msg]);
@@ -86,7 +77,6 @@ export function useRealtimeVoice({ systemPrompt, onNewMessage }: UseRealtimeVoic
       return;
     }
 
-    // ── Modelo empieza a responder ──
     if (type === "response.created") {
       currentAssistantRef.current = "";
       updateState("speaking");
@@ -98,37 +88,49 @@ export function useRealtimeVoice({ systemPrompt, onNewMessage }: UseRealtimeVoic
       return;
     }
 
-    // ── Transcripción completa del modelo (texto listo, pero audio puede seguir) ──
     if (type === "response.audio_transcript.done") {
       const assistantText = (event.transcript || currentAssistantRef.current).trim();
-      console.log("[Realtime] Respuesta agente:", assistantText);
+      console.log("[Realtime] Respuesta agente (audio):", assistantText.slice(0, 100));
       if (assistantText) {
         const msg: VoiceMessage = { role: "assistant", content: assistantText, ts: Date.now() };
         setMessages((prev) => [...prev, msg]);
         onNewMessage?.(msg);
       }
       currentAssistantRef.current = "";
-      // NO cambiamos a listening acá — esperamos output_audio_buffer.stopped
       return;
     }
 
-    // ── Audio del modelo terminó de reproducirse ──
-    if (type === "output_audio_buffer.stopped") {
-      console.log("[Realtime] Audio del modelo terminó");
+    if (type === "response.text.delta") {
+      currentAssistantRef.current += event.delta || "";
+      return;
+    }
+
+    if (type === "response.text.done") {
+      const assistantText = (event.text || currentAssistantRef.current).trim();
+      console.log("[Realtime] Respuesta agente (texto fallback):", assistantText.slice(0, 100));
+      if (assistantText) {
+        const msg: VoiceMessage = { role: "assistant", content: assistantText, ts: Date.now() };
+        setMessages((prev) => [...prev, msg]);
+        onNewMessage?.(msg);
+      }
+      currentAssistantRef.current = "";
       updateState("listening");
       return;
     }
 
-    // ── Respuesta completa (fallback si output_audio_buffer.stopped no llega) ──
-    if (type === "response.done") {
-      // Solo volvemos a listening si no llegó output_audio_buffer.stopped
-      setTimeout(() => {
-        if (stateRef.current === "speaking") {
-          updateState("listening");
-        }
-      }, 500);
+    if (type === "output_audio_buffer.stopped") {
+      updateState("listening");
       return;
     }
+
+    if (type === "response.done") {
+  // output_audio_buffer.stopped maneja el cambio a listening
+  // Fallback largo por si no llega
+  setTimeout(() => {
+    if (stateRef.current === "speaking") updateState("listening");
+  }, 3000);
+  return;
+}
 
     if (type === "session.created" || type === "session.updated") {
       console.log("[Realtime] Sesión lista:", type);
@@ -139,6 +141,7 @@ export function useRealtimeVoice({ systemPrompt, onNewMessage }: UseRealtimeVoic
     if (type === "error") {
       console.error("[Realtime] Error del servidor:", event.error);
       setError(event.error?.message || "Error en la conversación");
+      updateState("idle");
       return;
     }
 
@@ -157,7 +160,6 @@ export function useRealtimeVoice({ systemPrompt, onNewMessage }: UseRealtimeVoic
       });
 
       if (!tokenRes.ok) throw new Error("No se pudo crear sesión Realtime");
-
       const { client_secret } = await tokenRes.json();
       if (!client_secret?.value) throw new Error("Token inválido");
 
@@ -171,11 +173,17 @@ export function useRealtimeVoice({ systemPrompt, onNewMessage }: UseRealtimeVoic
 
       pc.ontrack = (e) => {
         console.log("[Realtime] Track recibido:", e.track.kind);
-        audioEl.srcObject = e.streams[0];
+        if (e.track.kind === "audio") {
+          audioEl.srcObject = e.streams[0];
+        }
       };
 
+      // Micrófono del usuario
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+
+      // Transceiver para recibir audio del modelo
+      pc.addTransceiver("audio", { direction: "recvonly" });
 
       const dc = pc.createDataChannel("oai-events");
       dcRef.current = dc;
@@ -232,20 +240,16 @@ export function useRealtimeVoice({ systemPrompt, onNewMessage }: UseRealtimeVoic
 
   const stopVoiceMode = useCallback(() => {
     activeRef.current = false;
-
     dcRef.current?.close();
     dcRef.current = null;
-
     pcRef.current?.getSenders().forEach(s => s.track?.stop());
     pcRef.current?.close();
     pcRef.current = null;
-
     if (audioElRef.current) {
       audioElRef.current.srcObject = null;
       audioElRef.current.remove();
       audioElRef.current = null;
     }
-
     updateState("idle");
   }, [updateState]);
 
