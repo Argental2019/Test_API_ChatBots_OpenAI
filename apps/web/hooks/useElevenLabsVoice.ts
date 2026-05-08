@@ -160,8 +160,7 @@ export function useElevenLabsVoice({ systemPrompt, onNewMessage }: UseElevenLabs
     ].join("|");
 
     const unitNames = Object.keys(unitMap).sort((a,b) => b.length - a.length).join("|");
-    const pattern = new RegExp(`((?:(?:${numWords})\\s*)+(?:punto\\s*(?:${numWords})\\s*)?)\\s*(${unitNames})`, "gi");
-
+const pattern = new RegExp(`\\b((?:(?:${numWords})\\s*)+(?:punto\\s*(?:${numWords})\\s*)?)\\s*(${unitNames})\\b`, "gi");
     return text.replace(pattern, (match, numPart, unitPart) => {
       const unitKey = unitPart.toLowerCase().trim();
       const unit = unitMap[unitKey];
