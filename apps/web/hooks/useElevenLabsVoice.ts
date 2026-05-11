@@ -270,18 +270,22 @@ const pattern = new RegExp(`\\b((?:(?:${numWords})\\s*)+(?:punto\\s*(?:${numWord
         return;
       }
 
-      if (type === "interruption") {
-        // ✅ Cortar audio inmediatamente — recrear AudioContext de salida
-        if (outputContextRef.current) {
-          outputContextRef.current.close().catch(() => {});
-          const newCtx = new AudioContext({ sampleRate: 16000 });
-          outputContextRef.current = newCtx;
-          nextPlayTimeRef.current = 0;
-        }
-        updateState("interrupted");
-        setTimeout(() => updateState("listening"), 200);
-        return;
-      }
+     if (type === "interruption") {
+  if (outputContextRef.current) {
+    // Desconectar inmediato — corta el audio en ese mismo sample
+    try {
+      outputContextRef.current.destination.disconnect();
+    } catch {}
+    outputContextRef.current.close().catch(() => {});
+  }
+  const newCtx = new AudioContext({ sampleRate: 16000 });
+  outputContextRef.current = newCtx;
+  nextPlayTimeRef.current = 0;
+
+  updateState("interrupted");
+  setTimeout(() => updateState("listening"), 100);
+  return;
+}
 
       if (type === "ping") {
         wsRef.current?.send(JSON.stringify({
@@ -335,43 +339,48 @@ const pattern = new RegExp(`\\b((?:(?:${numWords})\\s*)+(?:punto\\s*(?:${numWord
       ws.binaryType = "arraybuffer";
 
       ws.onopen = () => {
-        console.log("[ElevenLabs] WebSocket conectado ✅");
+      console.log("[ElevenLabs] WebSocket conectado ✅");
 
-        // Inyectar system prompt
-        ws.send(JSON.stringify({
-          type: "conversation_initiation_client_data",
-          conversation_config_override: {
-            agent: {
-              prompt: { prompt: system_prompt },
-              language: "es",
-            },
+      // Inyectar system prompt
+      ws.send(JSON.stringify({
+        type: "conversation_initiation_client_data",
+        conversation_config_override: {
+          agent: {
+            prompt: { prompt: system_prompt },
+            language: "es",
           },
-        }));
+        },
+      }));
 
-        // 6. ScriptProcessor para enviar audio PCM16
-        const processor = inCtx.createScriptProcessor(4096, 1, 1);
-        processor.onaudioprocess = (e) => {
-          if (ws.readyState !== WebSocket.OPEN) return;
+      // 6. ScriptProcessor para enviar audio PCM16
+      const processor = inCtx.createScriptProcessor(4096, 1, 1);
+      processor.onaudioprocess = (e) => {
+        if (ws.readyState !== WebSocket.OPEN) return;
 
-          const float32 = e.inputBuffer.getChannelData(0);
-          const int16 = new Int16Array(float32.length);
-          for (let i = 0; i < float32.length; i++) {
-            int16[i] = Math.max(-32768, Math.min(32767, float32[i] * 32768));
-          }
+        const float32 = e.inputBuffer.getChannelData(0);
 
-          const bytes = new Uint8Array(int16.buffer);
-          let binary = "";
-          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        // Si el agente está hablando, solo enviar si hay voz real del usuario
+        if (stateRef.current === "speaking") {
+          const rms = Math.sqrt(float32.reduce((sum, v) => sum + v * v, 0) / float32.length);
+          if (rms < 0.08) return; // umbral — silencio o eco → ignorar
+        }
 
-          ws.send(JSON.stringify({
-            user_audio_chunk: btoa(binary)
-          }));
-        };
+        const int16 = new Int16Array(float32.length);
+        for (let i = 0; i < float32.length; i++) {
+          int16[i] = Math.max(-32768, Math.min(32767, float32[i] * 32768));
+        }
 
-        source.connect(processor);
-        processor.connect(inCtx.destination);
-        workletNodeRef.current = processor as any;
+        const bytes = new Uint8Array(int16.buffer);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+
+        ws.send(JSON.stringify({ user_audio_chunk: btoa(binary) }));
       };
+
+      source.connect(processor);
+      processor.connect(inCtx.destination);
+      workletNodeRef.current = processor as any;
+    };
 
       ws.onmessage = handleMessage;
       ws.onerror = (e) => { console.error("[ElevenLabs] WS error:", e); setError("Error de conexión"); };
