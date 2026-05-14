@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   AlertCircle,
   MessageSquareText,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -33,7 +34,6 @@ type ContextFile = {
 };
 
 const IS_ADMIN = process.env.NEXT_PUBLIC_ADMIN === "1";
-
 function formatTime(ts?: number) {
   if (!ts) return "";
   const d = new Date(ts);
@@ -71,9 +71,11 @@ export default function MultiAgentChat() {
   const [contextLoaded, setContextLoaded] = useState(false);
   const [contextCache, setContextCache] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
-
-  // 👉 NUEVO: archivos del contexto (para MODO ADMIN)
   const [contextFiles, setContextFiles] = useState<ContextFile[] | null>(null);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc"); // ← ACÁ, fuera del componente
+
+  // ── Lightbox ──
+  const [lightboxImg, setLightboxImg] = useState<string | null>(null);
 
   // filtros (solo afectan la vista de lista)
   const [familyFilter, setFamilyFilter] = useState<string>("");
@@ -91,131 +93,106 @@ export default function MultiAgentChat() {
   }, [familyFilter]);
 
   // lista filtrada para la grilla
-  const filteredAgents = useMemo(() => {
-    const nf = norm(nameFilter);
-    return AGENTS.filter((a) => {
-      const okFamily = familyFilter ? a.family === familyFilter : true;
-      const okSubfamily = subfamilyFilter ? a.subfamily === subfamilyFilter : true;
-          const haystack = norm(
-      [
-        a.id,
-        a.name,
-        a.family,
-        a.subfamily,
-        a.description,
-      ]
-        .filter(Boolean)
-        .join(" ")
-    );
-
+const filteredAgents = useMemo(() => {
+  const nf = norm(nameFilter);
+  return AGENTS.filter((a) => {
+    const okFamily = familyFilter ? a.family === familyFilter : true;
+    const okSubfamily = subfamilyFilter ? a.subfamily === subfamilyFilter : true;
+    const haystack = norm([a.id, a.name, a.family, a.subfamily, a.description].filter(Boolean).join(" "));
     const okName = !nf || haystack.includes(nf);
-      return okFamily && okSubfamily && okName;
-    });
-  }, [familyFilter, subfamilyFilter, nameFilter]);
+    return okFamily && okSubfamily && okName;
+  }).sort((a, b) => {
+    const cmp = norm(a.name).localeCompare(norm(b.name));
+    return sortOrder === "asc" ? cmp : -cmp;
+  });
+}, [familyFilter, subfamilyFilter, nameFilter, sortOrder]);
 
   // resetear subfamilia cuando cambia familia
   useEffect(() => setSubfamilyFilter(""), [familyFilter]);
+
+  // cerrar lightbox con Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxImg(null);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const backendBase = (process.env.NEXT_PUBLIC_BACKEND_URL || "").replace(/\/$/, "");
 
   const { isRecording, startRecording, stopRecording } = useVoiceRecorder(
-  async (audioBlob) => {
-    if (!backendBase) {
-      console.error("Falta NEXT_PUBLIC_BACKEND_URL");
-      setToast({
-        type: "err",
-        msg: "No está configurado el backend de audio.",
-      });
-      setTimeout(() => setToast(null), 2500);
-      return;
-    }
-
-    if (!selectedAgent) {
-      console.error("No hay agente seleccionado para enviar el audio.");
-      return;
-    }
-
-    if (!contextLoaded || !contextCache) {
-      setToast({
-        type: "err",
-        msg: "Todavía no se cargó la documentación del agente.",
-      });
-      setTimeout(() => setToast(null), 2500);
-      return;
-    }
-
-    setLoading(true);
-    setToast(null);
-
-    try {
-      const formData = new FormData();
-      formData.append("audio", audioBlob, "audio.webm");
-      formData.append("agentId", selectedAgent.id);
-      formData.append("systemPrompt", selectedAgent.systemPrompt); // 👈 CLAVE
-      formData.append("context", contextCache);                    // 👈 snapshot de smartRead
-      // opcional: para agrupar conversaciones
-      formData.append("sessionId", `voice-${selectedAgent.id}-${Date.now()}`);
-
-      const res = await fetch(`${backendBase}/api/voice-chat`, {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (!data.ok) {
-        console.error("Error /voice-chat:", data);
-        setToast({
-          type: "err",
-          msg: "No pude procesar el audio. Probá de nuevo.",
-        });
+    async (audioBlob) => {
+      if (!backendBase) {
+        console.error("Falta NEXT_PUBLIC_BACKEND_URL");
+        setToast({ type: "err", msg: "No está configurado el backend de audio." });
         setTimeout(() => setToast(null), 2500);
         return;
       }
 
-      const question: string = data.question;
-      const answer: string | null = data.answer;
+      if (!selectedAgent) {
+        console.error("No hay agente seleccionado para enviar el audio.");
+        return;
+      }
 
-      setMessages((prev) => {
-        const now = Date.now();
-        const updated: ChatMessage[] = [
-          ...prev,
-          { role: "user", content: question, ts: now },
-        ];
-        if (answer) {
-          updated.push({
-            role: "assistant",
-            content: answer,
-            ts: now,
-          });
+      if (!contextLoaded || !contextCache) {
+        setToast({ type: "err", msg: "Todavía no se cargó la documentación del agente." });
+        setTimeout(() => setToast(null), 2500);
+        return;
+      }
+
+      setLoading(true);
+      setToast(null);
+
+      try {
+        const formData = new FormData();
+        formData.append("audio", audioBlob, "audio.webm");
+        formData.append("agentId", selectedAgent.id);
+        formData.append("systemPrompt", selectedAgent.systemPrompt);
+        formData.append("context", contextCache);
+        formData.append("sessionId", `voice-${selectedAgent.id}-${Date.now()}`);
+
+        const res = await fetch(`${backendBase}/api/voice-chat`, {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json();
+
+        if (!data.ok) {
+          console.error("Error /voice-chat:", data);
+          setToast({ type: "err", msg: "No pude procesar el audio. Probá de nuevo." });
+          setTimeout(() => setToast(null), 2500);
+          return;
         }
-        return updated;
-      });
-    } catch (e) {
-      console.error("Error enviando audio:", e);
-      setToast({
-        type: "err",
-        msg: "Error enviando audio al servidor.",
-      });
-      setTimeout(() => setToast(null), 2500);
-    } finally {
-      setLoading(false);
+
+        const question: string = data.question;
+        const answer: string | null = data.answer;
+
+        setMessages((prev) => {
+          const now = Date.now();
+          const updated: ChatMessage[] = [...prev, { role: "user", content: question, ts: now }];
+          if (answer) updated.push({ role: "assistant", content: answer, ts: now });
+          return updated;
+        });
+      } catch (e) {
+        console.error("Error enviando audio:", e);
+        setToast({ type: "err", msg: "Error enviando audio al servidor." });
+        setTimeout(() => setToast(null), 2500);
+      } finally {
+        setLoading(false);
+      }
     }
-  }
-);
-
-
+  );
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   useEffect(() => {
-    if (selectedAgent && !contextLoaded) {
-      loadContext();
-    }
+    if (selectedAgent && !contextLoaded) loadContext();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAgent]);
 
@@ -232,7 +209,6 @@ export default function MultiAgentChat() {
     setLoading(true);
     setToast(null);
     try {
-      // “wake up” opcional
       await fetch(`${process.env.NEXT_PUBLIC_BACKEND_HEALTH ?? ""}` || "/api/noop").catch(() => {});
 
       const r = await fetch("/api/context", {
@@ -240,7 +216,6 @@ export default function MultiAgentChat() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           driveFolders: selectedAgent.driveFolders,
-          // sólo pedimos metadatos si es admin
           admin: IS_ADMIN,
         }),
       });
@@ -280,10 +255,7 @@ export default function MultiAgentChat() {
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "text/event-stream",
-        },
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
         body: JSON.stringify({
           messages: [...messages, userMessage],
           systemPrompt: selectedAgent.systemPrompt,
@@ -293,7 +265,6 @@ export default function MultiAgentChat() {
 
       if (!response.ok || !response.body) throw new Error("Error en la respuesta");
 
-      // Streaming SSE robusto (UTF-8)
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
 
@@ -327,7 +298,6 @@ export default function MultiAgentChat() {
                 return nm;
               });
 
-              // Detectar @@MISS y loguear (opcional)
               const maybeMiss = assistantMessage.content.trim();
               if (maybeMiss.startsWith("@@MISS{") && maybeMiss.endsWith("}")) {
                 try {
@@ -389,7 +359,6 @@ export default function MultiAgentChat() {
       <div className="min-h-screen bg-white">
         <header className="border-b bg-white/70 backdrop-blur">
           <div className="mx-auto max-w-6xl px-4 py-5 flex items-center justify-between">
-            {/* IZQUIERDA: logo + título en una fila, párrafo debajo */}
             <div className="flex items-center gap-4 flex-wrap">
               <Image
                 src="/logo-ai.jpg"
@@ -411,20 +380,19 @@ export default function MultiAgentChat() {
                 </a>
                 .
               </p>
-
             </div>
           </div>
         </header>
+
         <main className="mx-auto max-w-6xl px-4 py-8">
-           <BusquettiBanner />
+          <BusquettiBanner />
           <div className="mb-10">
             <h1 className="text-4xl font-bold tracking-tight text-gray-900">Busquetti | Multi-Agentes IA</h1>
             <p className="mt-2 text-gray-600">Seleccioná un agente para comenzar</p>
           </div>
 
           {/* 🔎 Barra de filtros */}
-          <div className="mb-6 grid gap-3 sm:grid-cols-3">
-            {/* Categoría */}
+          <div className="mb-6 grid gap-3 sm:grid-cols-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Categoría</label>
               <select
@@ -434,14 +402,11 @@ export default function MultiAgentChat() {
               >
                 <option value="">Todas</option>
                 {families.map((f) => (
-                  <option key={f} value={f}>
-                    {f}
-                  </option>
+                  <option key={f} value={f}>{f}</option>
                 ))}
               </select>
             </div>
 
-            {/* Sub-Categoría (dependiente) */}
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Subcategoría</label>
               <select
@@ -452,14 +417,11 @@ export default function MultiAgentChat() {
               >
                 <option value="">Todas</option>
                 {subfamilies.map((sf) => (
-                  <option key={sf} value={sf}>
-                    {sf}
-                  </option>
+                  <option key={sf} value={sf}>{sf}</option>
                 ))}
               </select>
             </div>
 
-            {/* Nombre */}
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Búsqueda</label>
               <input
@@ -469,19 +431,46 @@ export default function MultiAgentChat() {
                 className="w-full rounded-lg border px-3 py-2 text-sm"
               />
             </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Ordenar</label>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+            >
+              <option value="asc">A → Z</option>
+              <option value="desc">Z → A</option>
+            </select>
           </div>
+        </div>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {filteredAgents.map((agent) => (
               <Link
                 key={agent.id}
-                href={`/agent/${agent.id}`} // si preferís inline, reemplazá por onClick={() => selectAgent(agent)}
+                href={`/agent/${agent.id}`}
                 className="group relative overflow-hidden rounded-2xl border bg-white p-6 text-left shadow-sm transition-all hover:shadow-xl"
               >
                 <div
                   className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${agent.accent} opacity-0 transition-opacity group-hover:opacity-10`}
                 />
                 <div className="relative">
+                  {/* ── Imagen del producto ── */}
+                  {(agent as any).image && (
+                    <div className="mb-3 flex justify-center h-28">
+                      <img
+                        src={(agent as any).image}
+                        alt={agent.name}
+                        className="h-full w-auto object-contain cursor-zoom-in hover:scale-105 transition-transform duration-200"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setLightboxImg((agent as any).imageFull ?? (agent as any).image);
+                        }}
+                      />
+                    </div>
+                  )}
+
                   <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium text-gray-600">
                     <MessageSquareText className="size-3.5" />
                     Público
@@ -489,7 +478,6 @@ export default function MultiAgentChat() {
                   <h3 className="mt-3 text-xl font-semibold text-gray-900">{agent.name}</h3>
                   <p className="mt-1 text-sm leading-6 text-gray-600">{agent.description}</p>
 
-                  {/* chips de familia/subfamilia */}
                   <div className="mt-3 flex flex-wrap gap-2 text-xs">
                     <span className="rounded-full border px-2 py-0.5 text-gray-600">{agent.family}</span>
                     <span className="rounded-full border px-2 py-0.5 text-gray-600">{agent.subfamily}</span>
@@ -526,6 +514,31 @@ export default function MultiAgentChat() {
             </p>
           </footer>
         </main>
+
+        {/* ── Lightbox ── */}
+        {lightboxImg && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm"
+            onClick={() => setLightboxImg(null)}
+          >
+            <div
+              className="relative max-w-xl w-full mx-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setLightboxImg(null)}
+                className="absolute -top-10 right-0 inline-flex items-center justify-center rounded-full bg-white/10 p-1.5 text-white hover:bg-white/20 transition"
+              >
+                <X className="size-5" />
+              </button>
+              <img
+                src={lightboxImg}
+                alt="Producto"
+                className="w-full h-auto rounded-2xl shadow-2xl"
+              />
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -561,7 +574,6 @@ export default function MultiAgentChat() {
       </header>
 
       <main className="mx-auto max-w-4xl px-4 pb-24">
-        {/* Toast */}
         {toast && (
           <div
             className={`mt-4 flex items-center gap-2 rounded-xl border px-4 py-3 text-sm ${
@@ -575,7 +587,6 @@ export default function MultiAgentChat() {
           </div>
         )}
 
-        {/* 👉 UI (solo si admin): lista de archivos usados en el contexto */}
         {IS_ADMIN && contextFiles && contextFiles.length > 0 && (
           <div className="mt-4 rounded-xl border bg-white p-4 text-sm">
             <div className="mb-2 font-semibold">📂 Documentos cargados ({contextFiles.length})</div>
@@ -606,7 +617,6 @@ export default function MultiAgentChat() {
           </div>
         )}
 
-        {/* FAQs */}
         {!!selectedAgent.faqs?.length && (
           <div className="mt-6 flex flex-wrap gap-2">
             {selectedAgent.faqs.map((faq: string, i: number) => (
@@ -622,7 +632,6 @@ export default function MultiAgentChat() {
           </div>
         )}
 
-        {/* Chat */}
         <section className="mt-6 rounded-2xl border bg-white shadow-sm">
           <div className="max-h-[64vh] overflow-y-auto p-4 sm:p-6">
             {!contextLoaded && (
@@ -631,8 +640,6 @@ export default function MultiAgentChat() {
                   <Loader2 className="size-5 animate-spin" />
                   <span>Verificando cambios…</span>
                 </div>
-
-                {/* Skeleton bubbles */}
                 <div className="flex justify-start">
                   <div className="h-16 w-3/4 max-w-[520px] animate-pulse rounded-2xl bg-gray-100" />
                 </div>
@@ -674,10 +681,8 @@ export default function MultiAgentChat() {
             <div ref={endRef} />
           </div>
 
-          {/* Composer */}
           <div className="sticky bottom-0 border-t bg-white p-3 sm:p-4">
             <div className="flex items-end gap-3">
-              {/* Botón de micrófono */}
               <button
                 type="button"
                 onClick={isRecording ? stopRecording : startRecording}

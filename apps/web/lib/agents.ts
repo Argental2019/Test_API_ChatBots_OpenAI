@@ -2,18 +2,19 @@
 export type ChatMessage = { role: "user" | "assistant"; content: string; ts?: number };
 
 export type Agent = {
-  id: string;         // único, ej: "fe960"
+  id: string;
   name: string;
   family: string;
   subfamily: string;
   description: string;
-  accent: string;           // gradiente UI
-  driveFolders: string[];   // IDs exactos de Drive
+  accent: string;
+  driveFolders: string[];
   faqs: string[];
   systemPrompt: string;
-       // se genera desde plantilla
-};
+  image?: string; 
+  imageFull?: string;
 
+};
 // ===================== BASE PROMPT =====================
 const BASE_PROMPT = ({
   agentId,
@@ -596,8 +597,9 @@ const faqsDefault =   [
     ];
 
 const AGENTS_BASE: Agent[] = [
-  {
-    id: "FE960",
+  { id: "FE960", 
+    image: "/images/agents/Fte_HORNO_FE_III-960.webp", 
+    imageFull: "/images/agents/full/Fte_HORNO_FE_III-960.png",
     name: "Horno rotativo FE 4.0-960",
     family: "Horno",
     subfamily: "Rotativo",
@@ -607,8 +609,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "fe960", agentName: "Horno rotativo FE 4.0-960", primaryFolderLabel: "Info pública" }),
   },
-  {
-    id: "MBE-80U-S",
+  { id: "MBE-80U-S", 
+    image: "/images/agents/AMASADORA 80.webp",
+     imageFull: "/images/agents/full/AMASADORA 80.png",
     name: "Amasadora MBE-80U-S",
     family:"Amasadoras",
     subfamily:"80",
@@ -621,8 +624,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "MBE-80U-S", agentName: "Amasadora MBE-80U-S", primaryFolderLabel: "Info pública" }),
   },
-   {
-    id: "GALILEO",
+{ id: "GALILEO",
+   image: "/images/agents/GALILEO -SIN FONDO.webp", 
+  imageFull: "/images/agents/full/GALILEO -SIN FONDO.png",
     name: "Sistema GALILEO SGAUIG PF y PM",
     family:"Galileo",
     subfamily:"Línea",
@@ -635,8 +639,9 @@ const AGENTS_BASE: Agent[] = [
     faqs:faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "GALILEO", agentName: "Sistema GALILEO SGAUIG PF y PM", primaryFolderLabel: "Info pública" }),
   },
-    {
-    id: "MBE-200U-S",
+    { id: "MBE-200U-S", 
+      image: "/images/agents/MBE-200- SIN FONDO-2.webp",
+       imageFull: "/images/agents/full/MBE-200- SIN FONDO-2.png",
     name: "Amasadora MBE-200U-S",
     family:"Amasadoras",
     subfamily:"A definir",
@@ -649,8 +654,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "MBE-200U-S", agentName: "Amasadora MBE-200U-S", primaryFolderLabel: "Info pública" }),
   },
-    {
-    id: "PA340",
+    { id: "PA340",
+      image: "/images/agents/PA-340-1 SIN FONDO.webp", 
+      imageFull: "/images/agents/full/PA-340-1 SIN FONDO.png",
     name: "HORNO PANIER-III-4570 GN-IN-GAS-VM-PROG-T380/50",
     family:"Hornos",
     subfamily:"A definir",
@@ -663,8 +669,9 @@ const AGENTS_BASE: Agent[] = [
     faqs:faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "PA340", agentName: "HORNO PANIER-III-4570 GN-IN-GAS-VM-PROG-T380/50", primaryFolderLabel: "Info pública" }),
   },
-     {
-    id: "C4000-19",
+    { id: "C4000-19", 
+      image: "/images/agents/C4000 SIN FONDO IA.webp",
+       imageFull: "/images/agents/full/C4000 SIN FONDO IA.png",
     name: "AMBRO - Elaboradora de Croissants C4000",
     family:"Equipos para croissants",
     subfamily:"A definir",
@@ -677,8 +684,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "C4000-19", agentName: "AMBRO - Elaboradora de Croissants C4000", primaryFolderLabel: "Info pública" }),
   },
-     {
-    id: "M-6130-17",
+     { id: "M-6130-17", 
+      image: "/images/agents/LAMINADORA RENDER IA 1-SIN FONDO.webp", 
+      imageFull: "/images/agents/full/LAMINADORA RENDER IA 1-SIN FONDO.png",
     name: "AMBRO - Refinadora M-600",
     family:"Equipos para croissants",
     subfamily:"A definir",
@@ -691,8 +699,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "M-6130-17", agentName: "AMBRO - Refinadora M-600", primaryFolderLabel: "Info pública" }),
   },
-    {
-    id: "TORNADO-PL",
+    { id: "TORNADO-PL", 
+      image: "/images/agents/TORNADO PLUE E SIN FONDO IA-1.webp", 
+      imageFull: "/images/agents/full/TORNADO PLUE E SIN FONDO IA-1.png",
     name: "AMBRO - Mesa Tornado Plus E",
     family:"Mesas de trabajo",
     subfamily:"A definir",
@@ -705,8 +714,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "TORNADO-PL", agentName: "AMBRO - Mesa Tornado Plus E", primaryFolderLabel: "Info pública" }),
   },
-   {
-    id: "BLIND-LI-FULL",
+   { id: "BLIND-LI-FULL", 
+    image: "/images/agents/Sobadora_Blind_BL_001_Sin_Fondo.webp", 
+    imageFull: "/images/agents/full/Sobadora_Blind_BL_001_Sin_Fondo.png",
     name: "Sobadora BLIND LI FULL INOX",
     family:"Sobadoras",
     subfamily:"A definir",
@@ -719,8 +729,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "BLIND-LI-FULL", agentName: "Sobadora BLIND LI FULL INOX", primaryFolderLabel: "Info pública" }),
   },
-  {
-    id: "GALILEO-ARTESAN",
+{ id: "GALILEO-ARTESAN", 
+  image: "/images/agents/GALILEO ARTESANO - 3-SIN FONDO.webp", 
+  imageFull: "/images/agents/full/GALILEO ARTESANO - 3-SIN FONDO.png",
     name: "Sistema GALILEO ARTESANO",
     family:"Sistemas de panificación",
     subfamily:"A definir",
@@ -733,8 +744,9 @@ const AGENTS_BASE: Agent[] = [
     faqs:faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "GALILEO-ARTESAN", agentName: "Sistema GALILEO ARTESANO", primaryFolderLabel: "Info pública" }),
   },
-   {
-    id: "COMPRESSLINE",
+  { id: "COMPRESSLINE", 
+    image: "/images/agents/Compress1.webp", 
+    imageFull: "/images/agents/full/Compress1.png",
     name: "AMBRO - Mesa modular COMPRESSLINE",
     family:"Líneas Modulares",
     subfamily:"A definir",
@@ -747,8 +759,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "COMPRESSLINE", agentName: "AMBRO - Mesa modular COMPRESSLINE", primaryFolderLabel: "Info pública" }),
   },
- {
-    id: "LINEA-CIABATTA",
+ { id: "LINEA-CIABATTA",
+   image: "/images/agents/CIABATTA RENDER IA - 1.webp",
+   imageFull: "/images/agents/full/CIABATTA RENDER IA - 1.png",
     name: "AMBRO - LINEA CIABATTA",
     family:"Sistemas de panificación",
     subfamily:"A definir",
@@ -761,8 +774,10 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "LINEA-CIABATTA", agentName: "AMBRO - LINEA CIABATTA", primaryFolderLabel: "Info pública" }),
   },
- {
-    id: "FOGLIA",
+ { id: "FOGLIA", 
+  image: "/images/agents/FOGLIA RENDER IA -1-SIN FONDO.webp", 
+  imageFull: "/images/agents/full/FOGLIA RENDER IA -1-SIN FONDO.png",
+
     name: "AMBRO - Laminadora Automática FOGLIA",
     family:"Laminadoras",
     subfamily:"A definir",
@@ -775,8 +790,9 @@ const AGENTS_BASE: Agent[] = [
     faqs:faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "FOGLIA", agentName: "AMBRO - Laminadora Automática FOGLIA", primaryFolderLabel: "Info pública" }),
   },
- {
-    id: "TORNADO-PL-II",
+{ id: "TORNADO-PL-II",
+   image: "/images/agents/TORNADO PLUS II.webp",
+   imageFull: "/images/agents/full/TORNADO PLUS II.png",
     name: "AMBRO - Mesa Tornado Plus II",
     family:"Mesas de trabajo",
     subfamily:"A definir",
@@ -790,8 +806,9 @@ const AGENTS_BASE: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "TORNADO-PL-II", agentName: "AMBRO - Mesa Tornado Plus II", primaryFolderLabel: "Info pública" }),
   },
 
- {
-    id: "GT-38",
+{ id: "GT-38",
+   image: "/images/agents/GT-38-SIN FONDO.webp", 
+  imageFull: "/images/agents/full/GT-38-SIN FONDO.png",
     name: "Grupo trinchador GT38-I Mod.",
     family:"Trinchadoras",
     subfamily:"A definir",
@@ -804,8 +821,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "GT-38", agentName: "Grupo trinchador GT38-I Mod.", primaryFolderLabel: "Info pública" }),
   },
- {
-    id: "FE-III-315-ROTATIVO",
+ { id: "FE-III-315-ROTATIVO", 
+    image: "/images/agents/HORNO 315-SIN FONDO.webp", 
+    imageFull: "/images/agents/full/HORNO 315-SIN FONDO.png",
     name: "Horno rotativo FE III-315",
     family:"Horno",
     subfamily:"A definir",
@@ -819,8 +837,9 @@ const AGENTS_BASE: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "FE-III-315-ROTATIVO", agentName: "Horno rotativo FE III-315", primaryFolderLabel: "Info pública" }),
   },
 
- {
-    id: "360-BE",
+ { id: "360-BE", 
+  image: "/images/agents/sob360-sin fondo.webp",
+   imageFull: "/images/agents/full/sob360-sin fondo.png",
     name: "SOBADORA AUTOMATICA 360 BE",
     family:"Sobadoras",
     subfamily:"A definir",
@@ -864,8 +883,9 @@ const AGENTS_BASE: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "MBE-160HA", agentName: "Amasadora MBE-160HA", primaryFolderLabel: "Info pública" }),
   },
 
- {
-    id: "DB",
+{ id: "DB", 
+  image: "/images/agents/db1000-sin fondo.webp", 
+  imageFull: "/images/agents/full/db1000-sin fondo.png",
     name: "Divisora Argental DB1000",
     family:"Divisoras",
     subfamily:"A definir",
@@ -880,7 +900,9 @@ const AGENTS_BASE: Agent[] = [
   },
 
  {
-    id: "FE4-0-472",
+    id: "FE4-0-472", 
+    image: "/images/agents/Fte_Horno_FE_472.webp", 
+    imageFull: "/images/agents/full/Fte_Horno_FE_472.png",
     name: "Horno rotativo FE 4.0-472",
     family:"Hornos",
     subfamily:"A definir",
@@ -894,8 +916,9 @@ const AGENTS_BASE: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "FE4-0-472", agentName: "Horno rotativo FE 4.0-472", primaryFolderLabel: "Info pública" }),
   },
 
- {
-    id: "FE-BIO-960",
+{   id: "FE-BIO-960", 
+    image: "/images/agents/HORNO BIO 960 - SIN FONDO.webp", 
+    imageFull: "/images/agents/full/HORNO BIO 960 - SIN FONDO.png",
     name: "Horno rotativo FE 4.0-960 BIO",
     family:"Hornos",
     subfamily:"A definir",
@@ -908,8 +931,7 @@ const AGENTS_BASE: Agent[] = [
     faqs:faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "FE-BIO-960", agentName: "Horno rotativo FE 4.0-960 BIO", primaryFolderLabel: "Info pública" }),
   },
-   {
-    id: "FE-BIO-472",
+   { id: "FE-BIO-472", image: "/images/agents/HORNO BIO 472-SIN FONDO.webp", imageFull: "/images/agents/full/HORNO BIO 472-SIN FONDO.png",
     name: "Horno rotativo FE 4.0-472 BIO",
     family:"Hornos",
     subfamily:"A definir",
@@ -922,8 +944,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "FE-BIO-472", agentName: "Horno rotativo FE 4.0-472 BIO", primaryFolderLabel: "Info pública" }),
   },
-   {
-    id: "ARM-4000",
+  { id: "ARM-4000", 
+    image: "/images/agents/AMBRO- ARMADOR C4000.webp",
+     imageFull: "/images/agents/full/AMBRO- ARMADOR C4000.png",
     name: "AMBRO - Cabezal Armador C4000",
     family:"Equipos para croissants",
     subfamily:"A definir",
@@ -936,8 +959,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "ARM-4000", agentName: "AMBRO - Cabezal Armador C4000", primaryFolderLabel: "Info pública" }),
   },
-   {
-    id: "RAPIFREDDO-T5",
+   { id: "RAPIFREDDO-T5", 
+    image: "/images/agents/RAPIFREDDO 70X90 T2C-T3C-T4C-T5C- SIN FONDO.webp",
+     imageFull: "/images/agents/full/RAPIFREDDO 70X90 T2C-T3C-T4C-T5C- SIN FONDO.png",
     name: "Túnel Ultracongelador RAPIFREDDO 70X90 T2C-T3C-T4C-T5C",
     family:"Ultracongeladores",
     subfamily:"A definir",
@@ -950,8 +974,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "RAPIFREDDO-T5", agentName: "Túnel Ultracongelador RAPIFREDDO 70X90 T2C-T3C-T4C-T5C", primaryFolderLabel: "Info pública" }),
   },
-  {
-    id: "GTC-MODULAR",
+  { id: "GTC-MODULAR", 
+    image: "/images/agents/ARGENTAL- GTC MODULAR.webp",
+     imageFull: "/images/agents/full/ARGENTAL- GTC MODULAR.png",
     name: "Grupo trinchador GTC-I Mod.",
     family:"Trinchadoras",
     subfamily:"A definir",
@@ -964,8 +989,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "GTC-MODULAR", agentName: "Grupo trinchador GTC-I Mod.", primaryFolderLabel: "Info pública" }),
   },
-   {
-    id: "H2C",
+   { id: "H2C", 
+    image: "/images/agents/HORNO H2C - SIN FONDO.webp",
+     imageFull: "/images/agents/full/HORNO H2C - SIN FONDO.png",
     name: "Horno de piso H2C",
     family:"Horno",
     subfamily:"A definir",
@@ -978,8 +1004,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "H2C", agentName: "Horno de piso H2C", primaryFolderLabel: "Info pública" }),
   },
-   {
-    id: "DBS",
+   { id: "DBS", 
+    image: "/images/agents/DBS PANIER.-SINFONDO.webp", 
+    imageFull: "/images/agents/full/DBS PANIER.-SINFONDO.png",
     name: "DIVISORA-BOLLERA SEMI. PANIER DBS30-100-30 T380/50",
     family:"Divisoras",
     subfamily:"A definir",
@@ -992,8 +1019,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "DBS", agentName: "DIVISORA-BOLLERA SEMI. PANIER DBS30-100-30 T380/50", primaryFolderLabel: "Info pública" }),
   },
-   {
-    id: "CFA",
+{ id: "CFA", 
+  image: "/images/agents/CFA.webp", 
+  imageFull: "/images/agents/full/CFA.png",
     name: "Cámara Fermentación CFA INOX. 2C/4C/6C",
     family:"Cámaras de fermentacíón",
     subfamily:"A definir",
@@ -1020,8 +1048,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "EU2C-MODULAR", agentName: "Equipo Unific. Mod. INOX.EU2C-I", primaryFolderLabel: "Info pública" }),
   },
-   {
-    id: "ELEVA",
+   { id: "ELEVA",
+     image: "/images/agents/ELEVA-SIN FONDO.webp",
+     imageFull: "/images/agents/full/ELEVA-SIN FONDO.png",
     name: "Elevador ELEVA-T160H",
     family:"Amasadoras",
     subfamily:"A definir",
@@ -1034,8 +1063,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "ELEVA", agentName: "Elevador ELEVA-T160H", primaryFolderLabel: "Info pública" }),
   },
-  {
-    id: "MBE-40T",
+{ id: "MBE-40T", 
+  image: "/images/agents/AMASADORA MBE-40T-SIN FONDO.webp", 
+  imageFull: "/images/agents/full/AMASADORA MBE-40T-SIN FONDO.png",
     name: "Amasadora MBE-40T",
     family:"Amasadoras",
     subfamily:"A definir",
@@ -1049,7 +1079,9 @@ const AGENTS_BASE: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "MBE-40T", agentName: "Amasadora MBE-40T", primaryFolderLabel: "Info pública" }),
   },
   {
-    id: "SGAU-MODULAR",
+    id: "SGAU-MODULAR", 
+    image: "/images/agents/R61 ARGENTAL rendering-SW.webp", 
+    imageFull: "/images/agents/full/R61 ARGENTAL rendering-SW.png",
     name: "Grupo Automático Universal SGAUI",
     family:"Trinchadoras",
     subfamily:"A definir",
@@ -1062,8 +1094,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "SGAU-MODULAR", agentName: "Grupo Automático Universal SGAUI", primaryFolderLabel: "Info pública" }),
   },
-  {
-    id: "HORECA",
+  { id: "HORECA",
+     image: "/images/agents/HORECA SIN FONDO.webp",
+     imageFull: "/images/agents/full/HORECA SIN FONDO.png",
     name: "HORNO RÁPIDO ARGENTAL HORECA ",
     family:"A definir",
     subfamily:"A definir",
@@ -1076,8 +1109,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "HORECA", agentName: "HORNO RÁPIDO ARGENTAL HORECA ", primaryFolderLabel: "Info pública" }),
   },
-  {
-    id: "NATO",
+  { id: "NATO", 
+    image: "/images/agents/PANIER NATO- SIN FONDO.webp", 
+    imageFull: "/images/agents/full/PANIER NATO- SIN FONDO.png",
     name: "HORNO CONVECTOR PANIER MANUAL HCP NATO",
     family:"A definir",
     subfamily:"A definir",
@@ -1090,8 +1124,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "NATO", agentName: "HORNO CONVECTOR PANIER MANUAL HCP NATO", primaryFolderLabel: "Info pública" }),
   },
-  {
-    id: "MINICONV",
+  { id: "MINICONV", 
+    image: "/images/agents/miniconv panier.webp", 
+    imageFull: "/images/agents/full/miniconv panier.png",
     name: "HORNO CONVECTOR PANIER MANUAL MINICONV",
     family:"A definir",
     subfamily:"A definir",
@@ -1105,8 +1140,9 @@ const AGENTS_BASE: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "MINICONV", agentName: "HORNO CONVECTOR PANIER MANUAL MINICONV", primaryFolderLabel: "Info pública" }),
   },
   //Amarillos
-   {
-    id: "DOS-AR",
+  { id: "DOS-AR", 
+    image: "/images/agents/DOS-AR-sin fondo.webp",
+     imageFull: "/images/agents/full/DOS-AR-sin fondo.png",
     name: "Dosificador de Agua DOS-AR",
     family:"Dosificador de agua",
     subfamily:"A definir",
@@ -1120,8 +1156,9 @@ const AGENTS_BASE: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "DOS-AR", agentName: "Dosificador de Agua DOS-AR", primaryFolderLabel: "Info pública" }),
   },
 
- {
-    id: "PA390",
+ { id: "PA390", 
+  image: "/images/agents/PANIER III-7090-1-SIN FONDO.webp",
+   imageFull: "/images/agents/full/PANIER III-7090-1-SIN FONDO.png",
     name: "HORNO PANIER-III-7090 GN-IN-GAS-VM-PROG-T380/50",
     family:"Hornos",
     subfamily:"A definir",
@@ -1134,8 +1171,9 @@ const AGENTS_BASE: Agent[] = [
     faqs:faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "PA390", agentName: "HORNO PANIER-III-7090 GN-IN-GAS-VM-PROG-T380/50", primaryFolderLabel: "Info pública" }),
   },
- {
-    id: "RAPIFREDDO-15",
+ { id: "RAPIFREDDO-15", 
+  image: "/images/agents/RAPIFREDDO v15-SIN FONDO.webp", 
+  imageFull: "/images/agents/full/RAPIFREDDO v15-SIN FONDO.png",
     name: "Ultracongelador RAPIFREDDO-V15 45X70",
     family:"Ultracongeladores",
     subfamily:"A definir",
@@ -1148,8 +1186,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "RAPIFREDDO-15", agentName: "Ultracongelador RAPIFREDDO-V15 45X70", primaryFolderLabel: "Info pública" }),
   },
- {
-    id: "HCI-500",
+{ id: "HCI-500",
+   image: "/images/agents/HCI-500-SIN FONDO.webp",
+   imageFull: "/images/agents/full/HCI-500-SIN FONDO.png",
     name: "Enfriador de Agua HCI-500 INOX.",
     family:"Enfriador",
     subfamily:"A definir",
@@ -1163,8 +1202,9 @@ const AGENTS_BASE: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "HCI-500", agentName: "Enfriador de Agua HCI-500 INOX.", primaryFolderLabel: "Info pública" }),
   },
 
- {
-    id: "DBSA",
+{ id: "DBSA",
+   image: "/images/agents/DBSA-SIN FONDO.webp",
+   imageFull: "/images/agents/full/DBSA-SIN FONDO.png",
     name: "Divisora - Bollera Semi. Ambro DBSA30-40-135",
     family:"Divisoras",
     subfamily:"A definir",
@@ -1178,8 +1218,9 @@ const AGENTS_BASE: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "DBSA", agentName: "Divisora - Bollera Semi. Ambro DBSA30-40-135", primaryFolderLabel: "Info pública" }),
   },
 
- {
-    id: "A-60",
+ { id: "A-60", 
+  image: "/images/agents/BATIDORA AMBRO A60-sinfondo.webp", 
+  imageFull: "/images/agents/full/BATIDORA AMBRO A60-sinfondo.png",
     name: "Batidora Ambro A-60",
     family:"Batidoras",
     subfamily:"A definir",
@@ -1192,8 +1233,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "A-60", agentName: "Batidora Ambro A-60", primaryFolderLabel: "Info pública" }),
   },
- {
-    id: "CFC-40b",
+{ id: "CFC-40b", 
+  image: "/images/agents/CFC 40b-RENDER IA -1 SIN FONDO.webp", 
+  imageFull: "/images/agents/full/CFC 40b-RENDER IA -1 SIN FONDO.png",
     name: "Cámara de Fermentción Controlada 40b Panier",
     family:"Cámaras de fermentacíón",
     subfamily:"A definir",
@@ -1206,8 +1248,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "CFC-40b", agentName: "Cámara de Fermentción Controlada 40b Panier", primaryFolderLabel: "Info pública" }),
   },
- {
-    id: "DB4B",
+{ id: "DB4B", 
+  image: "/images/agents/DB4B- SIN FONDO.webp",
+   imageFull: "/images/agents/full/DB4B- SIN FONDO.png",
     name: "Divisora Volumétrica 4B30-200/4B30-200",
     family:"A definir",
     subfamily:"A definir",
@@ -1220,8 +1263,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "DB4B", agentName: "Divisora Volumétrica 4B30-200/4B30-200", primaryFolderLabel: "Info pública" }),
   },
- {
-    id: "DB2B",
+{ id: "DB2B", 
+  image: "/images/agents/DIVISORA VOL-2B-SIN FONDO.webp", 
+  imageFull: "/images/agents/full/DIVISORA VOL-2B-SIN FONDO.png",
     name: "Divisora Volumétrica 2B25-200/4B25-200",
     family:"Divisoras",
     subfamily:"A definir",
@@ -1235,8 +1279,9 @@ const AGENTS_BASE: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "DB2B", agentName: "Divisora Volumétrica 2B25-200/4B25-200", primaryFolderLabel: "Info pública" }),
   },
 
- {
-    id: "BPNS-20L",
+ { id: "BPNS-20L", 
+  image: "/images/agents/BPNS 20 - PANIER.webp",
+   imageFull: "/images/agents/full/BPNS 20 - PANIER.png",
     name: "BATIDORA BPNS-20L",
     family:"A definir",
     subfamily:"A definir",
@@ -1250,8 +1295,9 @@ const AGENTS_BASE: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "BPNS-20L", agentName: "BATIDORA BPNS-20L", primaryFolderLabel: "Info pública" }),
   },
 
- {
-    id: "GP-70I-MOD",
+{ id: "GP-70I-MOD",
+   image: "/images/agents/GP-70 SIN FONDO-Photoroom.webp",
+   imageFull: "/images/agents/full/GP-70 SIN FONDO-Photoroom.png",
     name: "Grissinera Panchera GP70-I",
     family:"Grissinera",
     subfamily:"A definir",
@@ -1280,8 +1326,9 @@ const AGENTS_BASE: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "RAPIFREDDO-30", agentName: "Ultracongelador RAPIFREDDO-30 1C 70X90", primaryFolderLabel: "Info pública" }),
   },
 
- {
-    id: "BRISEELINE",
+ { id: "BRISEELINE", 
+  image: "/images/agents/BRISEELINE- SIN FONDO.webp",
+   imageFull: "/images/agents/full/BRISEELINE- SIN FONDO.png",
     name: "AMBRO - Depositadora BRISEELINE",
     family:"Depositadora",
     subfamily:"A definir",
@@ -1294,8 +1341,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "BRISEELINE", agentName: "AMBRO - Depositadora BRISEELINE", primaryFolderLabel: "Info pública" }),
   },
- {
-    id: "GT-MINI",
+ { id: "GT-MINI", 
+  image: "/images/agents/GT MINI PANIER- SIN FONDO.webp",
+   imageFull: "/images/agents/full/GT MINI PANIER- SIN FONDO.png",
     name: "Grupo trinchador GTMINI ARGENTAL",
     family:"Trinchadoras",
     subfamily:"A definir",
@@ -1322,8 +1370,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "GT-PANIER", agentName: "Grupo trinchador GT- PANIER", primaryFolderLabel: "Info pública" }),
   },
- {
-    id: "BPNS-40L",
+ { id: "BPNS-40L", 
+  image: "/images/agents/BPNS-40L - PANIER-SIN FONDO.webp", 
+  imageFull: "/images/agents/full/BPNS-40L - PANIER-SIN FONDO.png",
     name: "BATIDORA BPNS-40L",
     family:"A definir",
     subfamily:"A definir",
@@ -1336,8 +1385,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "BPNS-40L", agentName: "BATIDORA BPNS-40L", primaryFolderLabel: "Info pública" }),
   },
- {
-    id: "DOSIF-RELLENO",
+ { id: "DOSIF-RELLENO", 
+  image: "/images/agents/DOSIFICADOR DE RELLENO- SIN FONDO.webp", 
+  imageFull: "/images/agents/full/DOSIFICADOR DE RELLENO- SIN FONDO.png",
     name: "AMBRO - Dosificador de Rellenos con PEDESTAL / de MESA",
     family:"Dosificador de rellenos",
     subfamily:"A definir",
@@ -1350,8 +1400,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "DOSIF-RELLENO", agentName: "AMBRO - Dosificador de Rellenos con PEDESTAL / de MESA", primaryFolderLabel: "Info pública" }),
   },
- {
-    id: "A-160",
+ { id: "A-160", 
+  image: "/images/agents/BATIDORA AMBRO A 160 - SIN FONDO.webp", 
+  imageFull: "/images/agents/full/BATIDORA AMBRO A 160 - SIN FONDO.png",
     name: "Batidora Ambro A-160",
     family:"Batidoras",
     subfamily:"A definir",
@@ -1364,8 +1415,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "A-160", agentName: "Batidora Ambro A-160", primaryFolderLabel: "Info pública" }),
   },
- {
-    id: "MINI-LINEA-COORD",
+{ id: "MINI-LINEA-COORD", 
+  image: "/images/agents/MINI LINEA EC- SIN FONDO.webp", 
+  imageFull: "/images/agents/full/MINI LINEA EC- SIN FONDO.png",
     name: "AMBRO - Mesa modular MINI-LINEA con ESTIBADOR COORDINADO",
     family:"Líneas Modulares",
     subfamily:"A definir",
@@ -1393,8 +1445,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "MINI-LINEA-RETRAC", agentName: "AMBRO - Mesa modular MINI-LINEA con ESTIBADOR RETRACTIL", primaryFolderLabel: "Info pública" }),
   },
- {
-    id: "C12000",
+ { id: "C12000", 
+  image: "/images/agents/AMBRO -C12000 - SIN FONDO.webp",
+   imageFull: "/images/agents/full/AMBRO -C12000 - SIN FONDO.png",
     name: "AMBRO - Elaboradora de Croissants C12000",
     family:"Equipos para croissants",
     subfamily:"A definir",
@@ -1407,8 +1460,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "C12000", agentName: "AMBRO - Elaboradora de Croissants C12000", primaryFolderLabel: "Info pública" }),
   },
- {
-    id: "ARTESAN",
+{ id: "ARTESAN",
+   image: "/images/agents/ARTESAN - SIN FONDO.webp", 
+  imageFull: "/images/agents/full/ARTESAN - SIN FONDO.png",
     name: "Divisora Masa Hidratada ARTESAN",
     family:"Divisoras",
     subfamily:"A definir",
@@ -1421,8 +1475,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "ARTESAN", agentName: "Divisora Masa Hidratada ARTESAN", primaryFolderLabel: "Info pública" }),
   },
- {
-    id: "CHOPRA-III",
+ { id: "CHOPRA-III", 
+  image: "/images/agents/Chopra_III - SIN FONDO.webp", 
+  imageFull: "/images/agents/full/Chopra_III - SIN FONDO.png",
     name: "AMBRO - Dosificadora Cortadora CHOPRA III",
     family:"Depositadora",
     subfamily:"A definir",
@@ -1451,8 +1506,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "LINEA-PIZZAS", agentName: "AMBRO - Línea Pizza 2.0", primaryFolderLabel: "Info pública" }),
   },
- {
-    id: "LINEA-EMPANADAS",
+ { id: "LINEA-EMPANADAS", 
+  image: "/images/agents/LINEA EMPANADA-SIN FONDO.webp", 
+  imageFull: "/images/agents/full/LINEA EMPANADA-SIN FONDO.png",
     name: "LINEA EMPANADAS COMPAC",
     family:"A definir",
     subfamily:"A definir",
@@ -1481,8 +1537,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "M-66", agentName: "CORTADO M66I MODULAR ", primaryFolderLabel: "Info pública" }),
   },
-    {
-    id: "LPN-520S",
+   { id: "LPN-520S", 
+    image: "/images/agents/LPN-520S-SIN FONDO.webp", 
+    imageFull: "/images/agents/full/LPN-520S-SIN FONDO.png",
     name: "LAMINADORA DE MESA LPN+520S",
     family:"A definir",
     subfamily:"A definir",
@@ -1495,8 +1552,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "LPN-520S", agentName: "LAMINADORA DE MESA LPN+520S ", primaryFolderLabel: "Info pública" }),
   },
-    {
-    id: "LIDO",
+    { id: "LIDO", 
+      image: "/images/agents/HORNOLIDO- SIN FONDO.webp", 
+      imageFull: "/images/agents/full/HORNOLIDO- SIN FONDO.png",
     name: "HORNO ROTATIVO LIDO 960",
     family:"A definir",
     subfamily:"A definir",
@@ -1509,8 +1567,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "LIDO", agentName: "HORNO ROTATIVO LIDO 960", primaryFolderLabel: "Info pública" }),
   },
-    {
-    id: "SPNI-500",
+    { id: "SPNI-500", 
+      image: "/images/agents/SPNI-500- SIN FONDO.webp",
+       imageFull: "/images/agents/full/SPNI-500- SIN FONDO.png",
     name: "SOBADORA PASTELERA SPNI-500",
     family:"A definir",
     subfamily:"A definir",
@@ -1523,8 +1582,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "SPNI-500", agentName: "SOBADORA PASTELERA SPNI-500", primaryFolderLabel: "Info pública" }),
   },
-    {
-    id: "BC1200I",
+    { id: "BC1200I", 
+      image: "/images/agents/BOLLERA CONICA BC 1200I- SIN FONDO.webp", 
+      imageFull: "/images/agents/full/BOLLERA CONICA BC 1200I- SIN FONDO.png",
     name: "Bollera Cónica BC1200I",
     family:"Bolleras",
     subfamily:"A definir",
@@ -1565,8 +1625,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "FDPM", agentName: "Formadora de pizzas FDP", primaryFolderLabel: "Info pública" }),
   },
-    {
-    id: "DB1200",
+   { id: "DB1200", 
+    image: "/images/agents/DB1200-SIN FONDO.webp", 
+    imageFull: "/images/agents/full/DB1200-SIN FONDO.png",
     name: "DIVISORA VOLUMÉTRICA DE MASA DB1200",
     family:"A definir",
     subfamily:"A definir",
@@ -1593,8 +1654,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "TRANSP-BARRAS", agentName: "TRANSPORTADOR DE BARRAS", primaryFolderLabel: "Info pública" }),
   },
-    {
-    id: "INSIGNIA",
+    { id: "INSIGNIA", 
+      image: "/images/agents/INSIGNIA- SIN FONDO.webp", 
+      imageFull: "/images/agents/full/INSIGNIA- SIN FONDO.png",
     name: "ARGENTAL - INSIGNIA",
     family:"Sistemas de panificación",
     subfamily:"A definir",
@@ -1607,8 +1669,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "INSIGNIA", agentName: "ARGENTAL - INSIGNIA", primaryFolderLabel: "Info pública" }),
   },
-   {
-    id: "AMBRO-PRESS",
+   { id: "AMBRO-PRESS", 
+    image: "/images/agents/AMBRO - Prensagrasa AmbroPress-Photoroom.webp", 
+    imageFull: "/images/agents/full/AMBRO - Prensagrasa AmbroPress-Photoroom.png",
     name: "AMBRO - Prensagrasa AmbroPress",
     family:"Prensagrasa",
     subfamily:"A definir",
@@ -1649,8 +1712,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "FMI-10-12", agentName: "FORMADORA DE MASA FMI-10", primaryFolderLabel: "Info pública" }),
   },
-   {
-    id: "BPNV-300",
+   { id: "BPNV-300", 
+    image: "/images/agents/BPNV 300-sin fondo.webp",
+     imageFull: "/images/agents/full/BPNV 300-sin fondo.png",
     name: "BIZCOMATICA BPNV-300 PANIER",
     family:"A definir",
     subfamily:"A definir",
@@ -1677,8 +1741,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "MP-1I", agentName: "MOLINO RALLADOR MP-1I PANIER ", primaryFolderLabel: "Info pública" }),
   },
-  {
-    id: "DPN-2232",
+ { id: "DPN-2232",
+   image: "/images/agents/DESCORTEZADORA DPN-2232- SIN FONDO.webp",
+   imageFull: "/images/agents/full/DESCORTEZADORA DPN-2232- SIN FONDO.png",
     name: "DESCORTEZADORA DPN-2232 PANIER",
     family:"A definir",
     subfamily:"A definir",
@@ -1691,8 +1756,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "DPN-2232", agentName: "DESCORTEZADORA DPN-2232 PANIER ", primaryFolderLabel: "Info pública" }),
   },
-  {
-    id: "MIX-60",
+ { id: "MIX-60", 
+  image: "/images/agents/MIX 60 - SIN FONDO.webp",
+   imageFull: "/images/agents/full/MIX 60 - SIN FONDO.png",
     name: "Batidora Argental MIX-60",
     family:"Batidoras",
     subfamily:"A definir",
@@ -1733,8 +1799,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "M-6130-17CORTE", agentName: "AMBRO - Laminadora M-600 con estación de corte ", primaryFolderLabel: "Info pública" }),
   },
-    {
-    id: "CFC-Vision-40B",
+ { id: "CFC-Vision-40B", 
+  image: "/images/agents/camara315-sinfondo.webp",
+   imageFull: "/images/agents/full/camara315-sinfondo.png",
     name: "CAMARA FERM. CONT. ARGENTAL CFC40B VISION M220/50   ",
     family:"Camara de fermentacion",
     subfamily:"A definir",
@@ -1747,8 +1814,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "CFC-Vision-40B", agentName: "CAMARA FERM. CONT. ARGENTAL CFC40B VISION M220/50", primaryFolderLabel: "Info pública" }),
   },
-      {
-    id: "TSI",
+  { id: "TSI", 
+   image: "/images/agents/TSI 10 BANDEJAS- SIN FONDO.webp", 
+    imageFull: "/images/agents/full/TSI 10 BANDEJAS- SIN FONDO.png",
     name: "HORNO COMBINADO ELECTRICO TSI",
     family:"Horno Combinado",
     subfamily:"A definir",
@@ -1761,8 +1829,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "TSI", agentName: "HORNO COMBINADO ELECTRICO TSI", primaryFolderLabel: "Info pública" }),
   },
-        {
-    id: "Venecia",
+    { id: "Venecia",
+       image: "/images/agents/VENECIA- SIN FONDO.webp", 
+       imageFull: "/images/agents/full/VENECIA- SIN FONDO.png",
     name: "HORNO RAPIDO ELECTRICO VENECIA",
     family:"Horno Rapido",
     subfamily:"A definir",
@@ -1789,8 +1858,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "Horeca-XL", agentName: "HORNO RAPIDO ELECTRICO HORECA XL", primaryFolderLabel: "Info pública" }),
   },
-         {
-    id: "MT-MODULAR",
+{ id: "MT-MODULAR", 
+  image: "/images/agents/MESA MODULAR- SIN FONDO.webp", 
+  imageFull: "/images/agents/full/MESA MODULAR- SIN FONDO.png",
     name: "MESA DE TRABAJO MODULAR",
     family:"Mesa de trabajo",
     subfamily:"A definir",
@@ -1803,8 +1873,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "MT-MODULAR", agentName: "MESA DE TRABAJO MODULAR", primaryFolderLabel: "Info pública" }),
   },
-         {
-    id: "PORTO-20",
+       { id: "PORTO-20", 
+        image: "/images/agents/PORTO-20 RENDER IA SIN FONDO.webp", 
+        imageFull: "/images/agents/full/PORTO-20 RENDER IA SIN FONDO.png",
     name: "AMASADORA PANIER PA20",
     family:"A definir",
     subfamily:"A definir",
@@ -1817,8 +1888,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "PORTO-20", agentName: "AMASADORA PANIER PA20", primaryFolderLabel: "Info pública" }),
   },
-  {
-    id: "PORTO-40",
+{ id: "PORTO-40", 
+  image: "/images/agents/Porto 40 frente sin fondo.webp", 
+  imageFull: "/images/agents/full/Porto 40 frente sin fondo.png",
     name: "AMASADORA PANIER PA40",
     family:"A definir",
     subfamily:"A definir",
@@ -1859,8 +1931,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "LPN-600", agentName: "LPN-600", primaryFolderLabel: "Info pública" }),
   },
-    {
-    id: "RA12-PACK",
+    { id: "RA12-PACK",
+       image: "/images/agents/RA-PACK RENDER IA-1 SIN FONDO.webp", 
+      imageFull: "/images/agents/full/RA-PACK RENDER IA-1 SIN FONDO.png",
     name: "RA12-Pack",
     family:"Maquina",
     subfamily:"Rebanadora Pan Molde",
@@ -1873,8 +1946,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "RA12-PACK", agentName: "RA12-Pack", primaryFolderLabel: "Info pública" }),
   },
-      {
-    id: "ESCAMA-1-0",
+ { id: "ESCAMA-1-0",
+   image: "/images/agents/ESCAMADORA RENDER IA SIN FONDO.webp",
+   imageFull: "/images/agents/full/ESCAMADORA RENDER IA SIN FONDO.png",
     name: "ESCAMA-1.0",
     family:"Maquina",
     subfamily:"Escamadora de Hielo",
@@ -1887,8 +1961,9 @@ const AGENTS_BASE: Agent[] = [
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "ESCAMA-1-0", agentName: "ESCAMA-1.0", primaryFolderLabel: "Info pública" }),
   },
-        {
-    id: "DOSIF-RELLENO-X5",
+        { id: "DOSIF-RELLENO-X5", 
+          image: "/images/agents/DOSIFICADOR MULTIPLE X5- sin fondo.webp",
+           imageFull: "/images/agents/full/DOSIFICADOR MULTIPLE X5- sin fondo.png",
     name: "Dosificadora Multiple X5",
     family:"Maquina",
     subfamily:"Dosificadora",
