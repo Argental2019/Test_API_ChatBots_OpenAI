@@ -445,53 +445,49 @@ const filteredAgents = useMemo(() => {
         </div>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredAgents.map((agent) => (
-              <Link
-                key={agent.id}
-                href={`/agent/${agent.id}`}
-                className="group relative overflow-hidden rounded-2xl border bg-white p-6 text-left shadow-sm transition-all hover:shadow-xl"
-              >
-                <div
-                  className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${agent.accent} opacity-0 transition-opacity group-hover:opacity-10`}
-                />
-                <div className="relative">
-                  {/* ── Imagen del producto ── */}
-                  {(agent as any).image && (
-                    <div className="mb-3 flex justify-center h-28">
-                      <img
-                        src={(agent as any).image}
-                        alt={agent.name}
-                        className="h-full w-auto object-contain cursor-zoom-in hover:scale-105 transition-transform duration-200"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setLightboxImg((agent as any).imageFull ?? (agent as any).image);
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium text-gray-600">
-                    <MessageSquareText className="size-3.5" />
-                    Público
-                  </div>
-                  <h3 className="mt-3 text-xl font-semibold text-gray-900">{agent.name}</h3>
-                  <p className="mt-1 text-sm leading-6 text-gray-600">{agent.description}</p>
-
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                    <span className="rounded-full border px-2 py-0.5 text-gray-600">{agent.family}</span>
-                    <span className="rounded-full border px-2 py-0.5 text-gray-600">{agent.subfamily}</span>
-                  </div>
-
-                  <div className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <Sparkles className="size-4" />
-                    <span>Iniciar chat</span>
-                  </div>
-                </div>
-              </Link>
-            ))}
+  {filteredAgents.map((agent) => (
+    <div
+      key={agent.id}
+      className="group relative overflow-hidden rounded-2xl border bg-white p-6 text-left shadow-sm transition-all hover:shadow-xl"
+    >
+      <div
+        className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${agent.accent} opacity-0 transition-opacity group-hover:opacity-10`}
+      />
+      <div className="relative">
+        {(agent as any).image && (
+          <div className="mb-3 flex justify-center h-28">
+            <img
+              src={(agent as any).image}
+              alt={agent.name}
+              className="h-full w-auto object-contain cursor-zoom-in hover:scale-105 transition-transform duration-200"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setLightboxImg((agent as any).imageFull ?? (agent as any).image);
+              }}
+            />
           </div>
+        )}
 
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full border px-2 py-0.5 text-gray-600">{agent.family}</span>
+          <span className="rounded-full border px-2 py-0.5 text-gray-600">{agent.subfamily}</span>
+        </div>
+
+        <h3 className="mt-3 text-xl font-semibold text-gray-900">{agent.name}</h3>
+
+        <div className="mt-6 flex justify-center">
+          <Link
+  href={`/agent/${agent.id}`}
+  className="inline-flex items-center rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-black hover:shadow-md hover:scale-105 active:scale-95"
+>
+  Iniciar chat
+</Link>
+        </div>
+      </div>
+    </div>
+  ))}
+</div>
           {filteredAgents.length === 0 && (
             <div className="mt-6 rounded-xl border bg-gray-50 p-6 text-sm text-gray-600">
               No se encontraron agentes con esos filtros.
