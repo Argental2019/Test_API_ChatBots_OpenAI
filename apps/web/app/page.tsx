@@ -361,7 +361,7 @@ const filteredAgents = useMemo(() => {
           <div className="mx-auto max-w-6xl px-4 py-5 flex items-center justify-between">
             <div className="flex items-center gap-4 flex-wrap">
               <Image
-                src="/logo-ai.jpg"
+                src="/LOGO.png"
                 alt="Argental Avanza"
                 width={260}
                 height={84}
