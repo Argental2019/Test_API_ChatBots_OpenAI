@@ -565,13 +565,24 @@ const {
     <div className="min-h-screen bg-white">
       <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
         <div className="relative mx-auto max-w-4xl px-4 py-3 flex items-center">
-          <Link
-            href="/"
-            className="absolute left-4 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <Home className="size-4" />
-            Volver
-          </Link>
+  <Link
+    href="/"
+    className="absolute left-4 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+  >
+    <Home className="size-4" />
+    Volver
+  </Link>
+
+  {/* Imagen del producto — arriba a la derecha */}
+  {(agent as any).image && (
+    <div className="absolute right-4">
+      <img
+  src={(agent as any).image}
+  alt={agent.name}
+  className="h-24 w-24 object-contain"
+/>
+    </div>
+  )}
 
           <div className="mx-auto text-center pointer-events-none">
             <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-gray-600">

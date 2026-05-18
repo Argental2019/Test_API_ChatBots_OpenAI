@@ -524,7 +524,11 @@ PORTO-40,Máquina,Amasadora Rapida Espiral,Porto-40,¿Por qué debería comprar 
 PORTO-80,Máquina,Amasadora Rapida Espiral,Porto-80,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 LPN-600,Máquina,Laminadora,LPN-600,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 RA12-PACK,Máquina,Rebanadora Pan Molde,RA12-Pack,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
-ESCAMA-1-0,Máquina,Escamadora de Hielo,Escama-1.0,¿Por qué debería comprar este equipo?,¿En qué mejoran mis procesos?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+ESCAMA-1-0,Máquina,Escamadora de Hielo,Escama-1.0,¿Por qué debería comprar este equipo?,¿En qué mejoran mis procesos?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?,DBT40-140,Máquina,Divisora,DBT40-140,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+FORZA-240,Máquina,Amasadora Rapida Espiral,FORZA 240,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+H3C3.7,Horno,Horno de piso - 3 cámaras,H3C3.7,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+SPN-600,Máquina,Sobadora,SPN-600,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
+RAPIFREDDO-V15.2,Máquina,Ultracongelador 15 bandejas,RAPIFREDDO-V15.2,¿Por qué debería comprar este equipo?,¿Qué productos puede hacer?,¿Cuál es la capacidad de producción?,¿Mantenimiento requerido?,¿Cuáles son las dimensiones del equipo?
 `.trim();
 
 // ===================== 2) PARSER CSV SIMPLE =====================
@@ -856,6 +860,8 @@ const AGENTS_BASE: Agent[] = [
 
  {
     id: "CORBOLI",
+      image: "/images/agents/CORBOLI.webp",
+   imageFull: "/images/agents/full/CORBOLI.png",
     name: "Cortadora-Bollera Corboli",
     family:"Sobadoras",
     subfamily:"A definir",
@@ -1036,6 +1042,8 @@ const AGENTS_BASE: Agent[] = [
   },
    {
     id: "EU2C-MODULAR",
+    image: "/images/agents/EU2C-modular.webp", 
+    imageFull: "/images/agents/full/EU2C-modular.png",
     name: "Equipo Unific. Mod. INOX.EU2C-I",
     family:"Trinchadoras",
     subfamily:"A definir",
@@ -1525,6 +1533,8 @@ const AGENTS_BASE: Agent[] = [
   //Amarillos
    {
     id: "M-66",
+    image: "/images/agents/M66.webp", 
+  imageFull: "/images/agents/full/M66.png",
     name: "CORTADO M66I MODULAR",
     family:"A definir",
     subfamily:"A definir",
@@ -1599,6 +1609,8 @@ const AGENTS_BASE: Agent[] = [
   },
     {
     id: "ARD6I-MOD",
+    image: "/images/agents/ARGENTAL- ARD6I MOD.webp", 
+    imageFull: "/images/agents/full/ARGENTAL- ARD6I MOD.png",
     name: "ARMADORA MODULAR ARD6-I MOD",
     family:"A definir",
     subfamily:"A definir",
@@ -1686,6 +1698,8 @@ const AGENTS_BASE: Agent[] = [
   },
    {
     id: "RPNM-RPN",
+    image: "/images/agents/PANIER- RPNM.webp", 
+    imageFull: "/images/agents/full/PANIER- RPNM.png",
     name: "REBANADORA RPNM PANIER",
     family:"A definir",
     subfamily:"A definir",
@@ -1700,6 +1714,8 @@ const AGENTS_BASE: Agent[] = [
   },
    {
     id: "FMI-10-12",
+    image: "/images/agents/PANIER- FMI.webp", 
+    imageFull: "/images/agents/full/PANIER- FMI.png",
     name: "FORMADORA DE MASA FMI-10",
     family:"A definir",
     subfamily:"A definir",
@@ -1729,6 +1745,8 @@ const AGENTS_BASE: Agent[] = [
   },
   {
     id: "MP-1I",
+     image: "/images/agents/MOLINO RALLADOR MP-1I -SIN FONDO.webp",
+     imageFull: "/images/agents/full/MOLINO RALLADOR MP-1I -SIN FONDO.png",
     name: "MOLINO RALLADOR MP-1I PANIER",
     family:"A definir",
     subfamily:"A definir",
@@ -1773,6 +1791,8 @@ const AGENTS_BASE: Agent[] = [
   },
   {
     id: "BHC",
+    image: "/images/agents/ARGENTAL- Bollera Horizontal BHC.webp",
+    imageFull: "/images/agents/full/ARGENTAL- Bollera Horizontal BHC.png",
     name: "Bollera Horizontal BHC",
     family:"Bolleras",
     subfamily:"A definir",
@@ -1975,6 +1995,71 @@ const AGENTS_BASE: Agent[] = [
     ],
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "DOSIF-RELLENO-X5", agentName: "Dosificadora Multiple X5", primaryFolderLabel: "Info pública" }),
+  },
+  { id: "DBT40-140",
+    name: "DIVISORA BOLLERA ARGENTAL DBT40-140 CAT380/50",
+    family: "Máquina",
+    subfamily: "Divisora",
+    description: "Especialista en DIVISORA BOLLERA ARGENTAL DBT40-140 CAT380/50 de Argental",
+    accent: "from-blue-500 to-cyan-500",
+    driveFolders: [
+      "1Zq-xI88l69zaPQTapA_J_iZqTMomDKys",
+      "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
+    ],
+    faqs: faqsDefault,
+    systemPrompt: BASE_PROMPT({ agentId: "DBT40-140", agentName: "DIVISORA BOLLERA ARGENTAL DBT40-140 CAT380/50", primaryFolderLabel: "Info pública" }),
+  },
+  { id: "FORZA-240",
+    name: "FORZA 240",
+    family: "Máquina",
+    subfamily: "Amasadora Rapida Espiral",
+    description: "Especialista en FORZA 240 de Argental",
+    accent: "from-blue-500 to-cyan-500",
+    driveFolders: [
+      "1enegpczJeT7CKhel31zAhlN4CK3_OyJr",
+      "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
+    ],
+    faqs: faqsDefault,
+    systemPrompt: BASE_PROMPT({ agentId: "FORZA-240", agentName: "FORZA 240", primaryFolderLabel: "Info pública" }),
+  },
+  { id: "H3C3.7",
+    name: "H3C3.7",
+    family: "Horno",
+    subfamily: "Horno de piso - 3 cámaras",
+    description: "Especialista en H3C3.7 de Argental",
+    accent: "from-blue-500 to-cyan-500",
+    driveFolders: [
+      "1ARrXGSPRynw1UYv6qmKVN2YRcaJh_lBE",
+      "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
+    ],
+    faqs: faqsDefault,
+    systemPrompt: BASE_PROMPT({ agentId: "H3C3.7", agentName: "H3C3.7", primaryFolderLabel: "Info pública" }),
+  },
+  { id: "SPN-600",
+    name: "SPN-600",
+    family: "Máquina",
+    subfamily: "Sobadora",
+    description: "Especialista en SPN-600 de Argental",
+    accent: "from-blue-500 to-cyan-500",
+    driveFolders: [
+      "1Cq921QJOXNpDHUp3Vo0c6SRIP8s_Af1M",
+      "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
+    ],
+    faqs: faqsDefault,
+    systemPrompt: BASE_PROMPT({ agentId: "SPN-600", agentName: "SPN-600", primaryFolderLabel: "Info pública" }),
+  },
+  { id: "RAPIFREDDO-V15.2",
+    name: "RAPIFREDDO-V15.2",
+    family: "Máquina",
+    subfamily: "Ultracongelador 15 bandejas",
+    description: "Especialista en RAPIFREDDO-V15.2 de Argental",
+    accent: "from-blue-500 to-cyan-500",
+    driveFolders: [
+      "1OHG4C9kvTa-LJFkE179kLmEIsN3gQx6r",
+      "1fuxxbhU_0__-YtpezDHaSa_6D9C2LEjo",
+    ],
+    faqs: faqsDefault,
+    systemPrompt: BASE_PROMPT({ agentId: "RAPIFREDDO-V15.2", agentName: "RAPIFREDDO-V15.2", primaryFolderLabel: "Info pública" }),
   },
 ];
 
