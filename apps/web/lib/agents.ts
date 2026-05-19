@@ -876,6 +876,8 @@ const AGENTS_BASE: Agent[] = [
   },
  {
     id: "MBE-160HA",
+      image: "/images/agents/160HA.webp",
+   imageFull: "/images/agents/full/160HA.png",
     name: "Amasadora MBE-160HA",
     family:"Amasadoras",
     subfamily:"A definir",
@@ -1321,6 +1323,8 @@ const AGENTS_BASE: Agent[] = [
 
  {
     id: "RAPIFREDDO-30",
+    image: "/images/agents/RAPIFREDDO-30.webp",
+   imageFull: "/images/agents/full/RAPIFREDDO-30.png",
     name: "Ultracongelador RAPIFREDDO-30 1C 70X90",
     family:"Ultracongeladores",
     subfamily:"A definir",
@@ -1350,8 +1354,8 @@ const AGENTS_BASE: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "BRISEELINE", agentName: "AMBRO - Depositadora BRISEELINE", primaryFolderLabel: "Info pública" }),
   },
  { id: "GT-MINI", 
-  image: "/images/agents/GT MINI PANIER- SIN FONDO.webp",
-   imageFull: "/images/agents/full/GT MINI PANIER- SIN FONDO.png",
+   image: "/images/agents/GT Mini.webp",
+   imageFull: "/images/agents/full/GT Mini.png",
     name: "Grupo trinchador GTMINI ARGENTAL",
     family:"Trinchadoras",
     subfamily:"A definir",
@@ -1366,6 +1370,8 @@ const AGENTS_BASE: Agent[] = [
   },
  {
     id: "GT-PANIER",
+    image: "/images/agents/GT PANIER- SIN FONDO.webp",
+   imageFull: "/images/agents/full/GT PANIER- SIN FONDO.png",
     name: "Grupo trinchador GT- PANIER",
     family:"A definir",
     subfamily:"A definir",
@@ -1441,6 +1447,8 @@ const AGENTS_BASE: Agent[] = [
 
  {
     id: "MINI-LINEA-RETRAC",
+    image: "/images/agents/AMBRO- MINI-LINEA-RETRAC.webp", 
+    imageFull: "/images/agents/full/AMBRO- MINI-LINEA-RETRAC.png",
     name: "AMBRO - Mesa modular MINI-LINEA con ESTIBADOR RETRACTIL",
     family:"A definir",
     subfamily:"A definir",
@@ -1502,6 +1510,8 @@ const AGENTS_BASE: Agent[] = [
 
  {
     id: "LINEA-PIZZAS",
+    image: "/images/agents/Linea pizza.webp", 
+  imageFull: "/images/agents/full/Linea pizza.png",
     name: "AMBRO - Línea Pizza 2.0",
     family:"Líneas Modulares",
     subfamily:"A definir",
@@ -1625,6 +1635,8 @@ const AGENTS_BASE: Agent[] = [
   },
     {
     id: "FDPM",
+    image: "/images/agents/FDPM.webp", 
+    imageFull: "/images/agents/full/FDPM.png",
     name: "Formadora de pizzas FDP",
     family:"Formador de Pizza",
     subfamily:"A definir",
@@ -1654,6 +1666,8 @@ const AGENTS_BASE: Agent[] = [
   },
     {
     id: "TRANSP-BARRAS",
+     image: "/images/agents/Transportador de Barras.webp", 
+    imageFull: "/images/agents/full/Transportador de Barras.png",
     name: "TRANSPORTADOR DE BARRAS",
     family:"A definir",
     subfamily:"A definir",
@@ -1807,6 +1821,8 @@ const AGENTS_BASE: Agent[] = [
   },
   {
     id: "M-6130-17CORTE",
+    image: "/images/agents/REFINADORA M-600 - IA SIN FONDO.webp",
+    imageFull: "/images/agents/full/REFINADORA M-600 - IA SIN FONDO.png",
     name: "AMBRO - Laminadora M-600 con estación de corte",
     family:"Laminadoras",
     subfamily:"A definir",
@@ -1821,7 +1837,7 @@ const AGENTS_BASE: Agent[] = [
   },
  { id: "CFC-Vision-40B", 
   image: "/images/agents/camara315-sinfondo.webp",
-   imageFull: "/images/agents/full/camara315-sinfondo.png",
+   imageFull: "/images/agents/full/camara315-sinfondo3.png",
     name: "CAMARA FERM. CONT. ARGENTAL CFC40B VISION M220/50   ",
     family:"Camara de fermentacion",
     subfamily:"A definir",
@@ -1866,6 +1882,8 @@ const AGENTS_BASE: Agent[] = [
   },
        {
     id: "Horeca-XL",
+     image: "/images/agents/RENDER - HORECA XL.webp", 
+       imageFull: "/images/agents/full/RENDER - HORECA XL.png",
     name: "HORNO RAPIDO ELECTRICO HORECA XL",
     family:"Horno Rapido",
     subfamily:"A definir",
@@ -1925,6 +1943,8 @@ const AGENTS_BASE: Agent[] = [
   },
    {
     id: "PORTO-80",
+     image: "/images/agents/PORTO80-RENDER ISOMETRICO.webp", 
+  imageFull: "/images/agents/full/PORTO80-RENDER ISOMETRICO.png",
     name: "AMASADORA PANIER PA80",
     family:"A definir",
     subfamily:"A definir",
@@ -1939,6 +1959,8 @@ const AGENTS_BASE: Agent[] = [
   },
   {
     id: "LPN-600",
+      image: "/images/agents/PANIER - LAMINADORA LPN-600.webp", 
+  imageFull: "/images/agents/full/PANIER - LAMINADORA LPN-600.png",
     name: "LPN-600",
     family:"Maquina",
     subfamily:"Laminadora",
@@ -1997,6 +2019,8 @@ const AGENTS_BASE: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "DOSIF-RELLENO-X5", agentName: "Dosificadora Multiple X5", primaryFolderLabel: "Info pública" }),
   },
   { id: "DBT40-140",
+    image: "/images/agents/ARGENTAL- DBT40-140.webp",
+    imageFull: "/images/agents/full/ARGENTAL- DBT40-140.png",
     name: "DIVISORA BOLLERA ARGENTAL DBT40-140 CAT380/50",
     family: "Máquina",
     subfamily: "Divisora",
@@ -2010,6 +2034,8 @@ const AGENTS_BASE: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "DBT40-140", agentName: "DIVISORA BOLLERA ARGENTAL DBT40-140 CAT380/50", primaryFolderLabel: "Info pública" }),
   },
   { id: "FORZA-240",
+    image: "/images/agents/ARGENTAL- AMASADORA FORZA 240.webp",
+    imageFull: "/images/agents/full/ARGENTAL- AMASADORA FORZA 240.png",
     name: "FORZA 240",
     family: "Máquina",
     subfamily: "Amasadora Rapida Espiral",
@@ -2023,6 +2049,8 @@ const AGENTS_BASE: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "FORZA-240", agentName: "FORZA 240", primaryFolderLabel: "Info pública" }),
   },
   { id: "H3C3.7",
+    image: "/images/agents/ARGENTAL- HORNO H3C3.7.webp",
+    imageFull: "/images/agents/full/ARGENTAL- HORNO H3C3.7.png",
     name: "H3C3.7",
     family: "Horno",
     subfamily: "Horno de piso - 3 cámaras",
@@ -2036,6 +2064,8 @@ const AGENTS_BASE: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "H3C3.7", agentName: "H3C3.7", primaryFolderLabel: "Info pública" }),
   },
   { id: "SPN-600",
+    image: "/images/agents/ARGENTAL- SPN-600.webp",
+    imageFull: "/images/agents/full/ARGENTAL- SPN-600.png",
     name: "SPN-600",
     family: "Máquina",
     subfamily: "Sobadora",
@@ -2049,6 +2079,8 @@ const AGENTS_BASE: Agent[] = [
     systemPrompt: BASE_PROMPT({ agentId: "SPN-600", agentName: "SPN-600", primaryFolderLabel: "Info pública" }),
   },
   { id: "RAPIFREDDO-V15.2",
+    image: "/images/agents/RAPIFREDDO V15.2.webp",
+    imageFull: "/images/agents/full/RAPIFREDDO V15.2.png",
     name: "RAPIFREDDO-V15.2",
     family: "Máquina",
     subfamily: "Ultracongelador 15 bandejas",
