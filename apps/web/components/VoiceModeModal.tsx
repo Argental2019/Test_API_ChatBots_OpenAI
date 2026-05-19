@@ -31,17 +31,13 @@ export default function VoiceModeModal({
 }: Props) {
   if (!open) return null;
 
-  const isListening  = state === "listening" || state === "interrupted";
-  const isSpeaking   = state === "speaking";
-  const isIdle       = state === "idle";
+  const isListening = state === "listening" || state === "interrupted";
+  const isSpeaking  = state === "speaking";
+  const isIdle      = state === "idle";
 
-  // Colores según estado
-  const barColor = isSpeaking ? "bg-blue-400" : isListening ? "bg-emerald-400" : "bg-gray-600";
-  const dotColor = isSpeaking
-    ? "bg-blue-400 animate-pulse"
-    : isListening
-    ? "bg-emerald-400 animate-pulse"
-    : "bg-gray-600";
+  const videoSrc = isSpeaking
+    ? "/busquetti/BusquettiHablando.mp4"
+    : "/busquetti/BusquettiEsperando.mp4";
 
   const hint = isSpeaking
     ? "Hablá para interrumpir"
@@ -49,98 +45,77 @@ export default function VoiceModeModal({
     ? "Te estoy escuchando…"
     : "";
 
-  // Alturas de barras
-  const listeningHeights = ["h-4", "h-8", "h-14", "h-8", "h-4"];
-  const speakingHeights  = ["h-6", "h-12", "h-20", "h-12", "h-6"];
+  const accentColor = isSpeaking ? "#3b82f6" : isListening ? "#10b981" : "#6b7280";
+  const accentLabel = isSpeaking ? "text-blue-500" : isListening ? "text-emerald-500" : "text-gray-400";
+  const dotColor    = isSpeaking ? "bg-blue-500 animate-pulse" : isListening ? "bg-emerald-500 animate-pulse" : "bg-gray-400";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/75 backdrop-blur-lg" />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
 
       {/* Card */}
-      <div
-        className="relative z-10 flex flex-col items-center w-full max-w-xs mx-4 rounded-3xl bg-gray-950 shadow-2xl"
-        style={{ height: "400px" }}
-      >
-        {/* Cerrar */}
-        <div className="w-full flex justify-end px-5 pt-5">
+      <div className="relative z-10 flex flex-col items-center w-full max-w-sm mx-4 rounded-3xl bg-white shadow-2xl overflow-hidden">
+
+        {/* Header con color de acento */}
+        <div
+          className="w-full flex items-center justify-between px-5 py-4"
+          style={{ backgroundColor: accentColor + "15", borderBottom: `1px solid ${accentColor}25` }}
+        >
+          <div className="flex items-center gap-2">
+            <span className={`inline-block size-2 rounded-full ${dotColor}`} />
+            <p className={`text-sm font-semibold ${accentLabel}`}>{STATE_LABELS[state]}</p>
+          </div>
           <button
             onClick={onClose}
-            className="flex items-center justify-center size-9 rounded-full bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white transition-colors"
+            className="flex items-center justify-center size-8 rounded-full bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-700 transition-colors"
           >
             <X className="size-4" />
           </button>
         </div>
 
-        {/* Contenido central */}
-        <div className="flex flex-col items-center justify-center flex-1 gap-7 w-full px-6">
-          {/* Nombre agente */}
-          <p className="text-white/40 text-xs font-semibold tracking-widest uppercase">
-            {agentName}
-          </p>
+        {/* Nombre agente */}
+        <p className="mt-4 text-xs font-semibold tracking-widest uppercase text-gray-400">
+          {agentName}
+        </p>
 
-          {/* Visualizador */}
-          <div className="flex items-center justify-center gap-2 h-24">
-            {isIdle ? (
-              <Loader2 className="size-10 text-gray-500 animate-spin" />
-            ) : (
-              [0, 1, 2, 3, 4].map((i) => (
-                <div
-                  key={i}
-                  className={`w-1.5 rounded-full transition-all duration-300 ${barColor} ${
-                    isSpeaking
-                      ? speakingHeights[i]
-                      : isListening
-                      ? listeningHeights[i]
-                      : "h-1"
-                  }`}
-                  style={
-                    isListening || isSpeaking
-                      ? {
-                          animation: `voiceBar ${0.5 + i * 0.08}s ease-in-out infinite alternate`,
-                          animationDelay: `${i * 0.09}s`,
-                        }
-                      : undefined
-                  }
-                />
-              ))
-            )}
-          </div>
-
-          {/* Estado */}
-          <div className="flex items-center gap-2">
-            <span className={`inline-block size-2 rounded-full ${dotColor}`} />
-            <p className="text-white/60 text-sm">{STATE_LABELS[state]}</p>
-          </div>
-
-          {/* Hint */}
-          <p className="text-white/25 text-xs text-center min-h-[16px]">
-            {hint}
-          </p>
+        {/* Personaje */}
+        <div className="flex items-end justify-center w-full h-64 px-6">
+          {isIdle ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="size-10 text-gray-300 animate-spin" />
+            </div>
+          ) : (
+            <video
+              key={videoSrc}
+              src={videoSrc}
+              autoPlay
+              loop
+              playsInline
+              className="h-full w-auto object-contain"
+            />
+          )}
         </div>
+
+        {/* Hint */}
+        <p className="mt-2 mb-2 text-xs text-gray-400 text-center min-h-[16px]">
+          {hint}
+        </p>
 
         {/* Error */}
         {error && (
-          <div className="mx-5 mb-3 rounded-xl bg-rose-500/20 border border-rose-500/30 px-4 py-2 text-xs text-rose-300 text-center">
+          <div className="mx-5 mb-3 rounded-xl bg-rose-50 border border-rose-200 px-4 py-2 text-xs text-rose-500 text-center">
             {error}
           </div>
         )}
 
         {/* Footer */}
         <div className="pb-5 text-center">
-          <p className="text-white/20 text-xs">
+          <p className="text-gray-300 text-xs">
             Cerrá para ver la conversación en el chat
           </p>
         </div>
       </div>
-
-      <style>{`
-        @keyframes voiceBar {
-          0%   { transform: scaleY(0.3); opacity: 0.5; }
-          100% { transform: scaleY(1.4); opacity: 1;   }
-        }
-      `}</style>
     </div>
   );
 }
