@@ -6,7 +6,7 @@ export default function BusquettiBanner() {
 
   return (
     <iframe
-      src={`https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}&controls=0&rel=0&modestbranding=1`}
+      src={`https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0&rel=0&modestbranding=1`}
       allow="autoplay; encrypted-media"
       allowFullScreen
       className="w-full aspect-video"
