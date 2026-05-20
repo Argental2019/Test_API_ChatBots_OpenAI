@@ -677,8 +677,18 @@ const {
               return (
                 <div
                   key={i}
-                  className={`mb-3 flex ${mine ? "justify-end" : "justify-start"}`}
+                  className={`mb-3 flex items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}
                 >
+                  {!mine && (
+                    <div className="shrink-0 size-10 rounded-full overflow-hidden border border-gray-200 shadow-sm bg-white">
+                      <img
+                        src="/busquetti/LogoBusquetti.jpg"
+                        alt="Busquetti"
+                        className="w-full h-full object-cover object-[center_12%] scale-[1.8]"
+                      />
+                    </div>
+                  )}
+
                   <div
                     className={`w-fit max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-6 ${
                       mine
@@ -709,6 +719,13 @@ const {
                       {mine ? "Vos" : agent.name} · {formatTime(m.ts)}
                     </div>
                   </div>
+
+                  {/* Avatar usuario */}
+                  {mine && (
+                    <div className="shrink-0 size-8 rounded-full bg-gray-900 flex items-center justify-center shadow-sm">
+                      <span className="text-white text-xs font-semibold">Vos</span>
+                    </div>
+                  )}
                 </div>
               );
             })}
