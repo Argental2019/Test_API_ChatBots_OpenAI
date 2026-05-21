@@ -2,7 +2,7 @@
 import Markdown from "@/components/markdown";
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Home, Send, Loader2, CheckCircle2, AlertCircle, AudioLines } from "lucide-react";
+import { Home, Send, Loader2, CheckCircle2, AlertCircle, AudioLines, X } from "lucide-react";
 import { getAgentById } from "@/lib/agents";
 import { useElevenLabsVoice } from "@/hooks/useElevenLabsVoice";
 import type { VoiceMessage } from "@/hooks/useElevenLabsVoice";
@@ -212,7 +212,7 @@ export default function AgentChatPage({ params }: { params: { id: string } }) {
   const [contextCache, setContextCache] = useState<string | null>(null);
   const [contextFiles, setContextFiles] = useState<ContextFile[] | null>(null);
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
-
+  const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   // ── Voz ──
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
 
@@ -574,15 +574,16 @@ const {
   </Link>
 
   {/* Imagen del producto — arriba a la derecha */}
-  {(agent as any).image && (
-    <div className="absolute right-4">
-      <img
-  src={(agent as any).image}
-  alt={agent.name}
-  className="h-24 w-24 object-contain"
-/>
-    </div>
-  )}
+ {(agent as any).image && (
+  <div className="absolute right-4">
+    <img
+      src={(agent as any).image}
+      alt={agent.name}
+      className="h-24 w-24 object-contain cursor-zoom-in hover:scale-105 transition-transform duration-200"
+      onClick={() => setLightboxImg((agent as any).imageFull ?? (agent as any).image)}
+    />
+  </div>
+)}
 
           <div className="mx-auto text-center pointer-events-none">
             <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-gray-600">
@@ -799,7 +800,29 @@ const {
           </p>
         </footer>
       </main>
-
+{lightboxImg && (
+  <div
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm"
+    onClick={() => setLightboxImg(null)}
+  >
+    <div
+      className="relative max-w-xl w-full mx-6"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        onClick={() => setLightboxImg(null)}
+        className="absolute -top-10 right-0 inline-flex items-center justify-center rounded-full bg-white/10 p-1.5 text-white hover:bg-white/20 transition"
+      >
+        <X className="size-5" />
+      </button>
+      <img
+        src={lightboxImg}
+        alt="Producto"
+        className="w-full h-auto rounded-2xl shadow-2xl"
+      />
+    </div>
+  </div>
+)}
       {/* Modal de modo voz */}
       <VoiceModeModal
         open={voiceModalOpen}
