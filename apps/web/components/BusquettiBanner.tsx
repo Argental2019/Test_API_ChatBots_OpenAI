@@ -9,7 +9,7 @@ export default function BusquettiBanner() {
       src={`https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0&rel=0&modestbranding=1`}
       allow="autoplay; encrypted-media"
       allowFullScreen
-      className="w-full aspect-video"
+      className="w-full aspect-[4/5]"
     />
   );
 }
