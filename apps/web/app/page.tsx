@@ -427,7 +427,7 @@ const filteredAgents = useMemo(() => {
               <input
                 value={nameFilter}
                 onChange={(e) => setNameFilter(e.target.value)}
-                placeholder="Buscar por Categoría, SubCategoría, Nombre y más..."
+                placeholder="Buscar por Categoría, Nombre y más..."
                 className="w-full rounded-lg border px-3 py-2 text-sm"
               />
             </div>
