@@ -37,7 +37,7 @@ export default function VoiceModeModal({
 
   const videoSrc = isSpeaking
     ? "/busquetti/BusquettiHablandoV5.mp4"
-    : "/busquetti/BusquettiEsperandov5.mp4";
+    : "/busquetti/BusquettiEsperandoV5.mp4";
 
   const hint = isSpeaking
     ? "Hablá para interrumpir"
