@@ -36,8 +36,8 @@ export default function VoiceModeModal({
   const isIdle      = state === "idle";
 
   const videoSrc = isSpeaking
-    ? "/busquetti/BusquettiHablando.mp4"
-    : "/busquetti/BusquettiEsperando.mp4";
+    ? "/busquetti/BusquettiHablandoV5.mp4"
+    : "/busquetti/BusquettiEsperandov5.mp4";
 
   const hint = isSpeaking
     ? "Hablá para interrumpir"
@@ -109,12 +109,13 @@ export default function VoiceModeModal({
             </div>
           ) : (
             <video
-              key={videoSrc}
-              src={videoSrc}
-              autoPlay
-              loop
-              playsInline
-              className="h-full w-auto object-contain"
+            key={videoSrc}
+            src={videoSrc}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="h-full w-auto object-contain"
             />
           )}
         </div>
