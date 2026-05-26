@@ -103,21 +103,16 @@ export default function VoiceModeModal({
           md:h-72
           portrait:h-[55vh]
           portrait:sm:h-[62vh]">
-          {isIdle ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="size-10 portrait:size-20 portrait:sm:size-28 text-gray-300 animate-spin" />
-            </div>
-          ) : (
-            <video
-            key={videoSrc}
-            src={videoSrc}
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="h-full w-auto object-contain"
-            />
-          )}
+          <video
+          key={videoSrc}
+          src={videoSrc}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          className="h-full w-auto object-contain"
+        />
         </div>
 
         {/* Hint */}
