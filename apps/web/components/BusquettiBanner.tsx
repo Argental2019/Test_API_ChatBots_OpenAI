@@ -4,8 +4,10 @@
 import { useEffect, useState } from "react";
 
 export default function BusquettiBanner() {
-  const videoId = "YUS6aOamDI8";
-  const [isPortrait, setIsPortrait] = useState(false);
+  const horizontalId = "YUS6aOamDI8";
+  const verticalId   = "tW5dgLMJdWc";
+
+  const [isPortrait, setIsPortrait] = useState<boolean | null>(null);
 
   useEffect(() => {
     const check = () => setIsPortrait(window.innerHeight > window.innerWidth);
@@ -14,12 +16,18 @@ export default function BusquettiBanner() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
+  if (isPortrait === null) return null;
+
+  const videoId = isPortrait ? verticalId : horizontalId;
+  const aspect  = isPortrait ? "aspect-[4/5]" : "aspect-video";
+
   return (
     <iframe
+      key={videoId}
       src={`https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0&rel=0&modestbranding=1`}
       allow="autoplay; encrypted-media"
       allowFullScreen
-      className={`w-full ${isPortrait ? "aspect-[4/5]" : "aspect-video"}`}
+      className={`w-full ${aspect}`}
     />
   );
 }
