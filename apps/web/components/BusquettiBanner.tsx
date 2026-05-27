@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 export default function BusquettiBanner() {
   const horizontalId = "YUS6aOamDI8";
-  const verticalId   = "tW5dgLMJdWc";
+  const verticalId   = "RDdtTqeOM3Q";
 
   const [isPortrait, setIsPortrait] = useState<boolean | null>(null);
 
