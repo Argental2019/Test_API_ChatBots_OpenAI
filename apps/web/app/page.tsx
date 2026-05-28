@@ -72,7 +72,7 @@ export default function MultiAgentChat() {
   const [contextCache, setContextCache] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
   const [contextFiles, setContextFiles] = useState<ContextFile[] | null>(null);
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc"); // ← ACÁ, fuera del componente
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc" | "relevance">("relevance"); 
 
   // ── Lightbox ──
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
@@ -102,9 +102,14 @@ const filteredAgents = useMemo(() => {
     const okName = !nf || haystack.includes(nf);
     return okFamily && okSubfamily && okName;
   }).sort((a, b) => {
-    const cmp = norm(a.name).localeCompare(norm(b.name));
-    return sortOrder === "asc" ? cmp : -cmp;
-  });
+  if (sortOrder === "relevance") {
+    const ra = a.relevanceOrder ?? 9999;
+    const rb = b.relevanceOrder ?? 9999;
+    return ra - rb;
+  }
+  const cmp = norm(a.name).localeCompare(norm(b.name));
+  return sortOrder === "asc" ? cmp : -cmp;
+});
 }, [familyFilter, subfamilyFilter, nameFilter, sortOrder]);
 
   // resetear subfamilia cuando cambia familia
@@ -435,9 +440,10 @@ const filteredAgents = useMemo(() => {
             <label className="mb-1 block text-sm font-medium text-gray-700">Ordenar</label>
             <select
               value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
+              onChange={(e) => setSortOrder(e.target.value as "asc" | "desc" | "relevance")}
               className="w-full rounded-lg border px-3 py-2 text-sm"
             >
+              <option value="relevance">Más relevantes</option>
               <option value="asc">A → Z</option>
               <option value="desc">Z → A</option>
             </select>
