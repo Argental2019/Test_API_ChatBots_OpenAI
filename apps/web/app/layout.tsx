@@ -1,4 +1,5 @@
 //apps\web\app\layout.tsx
+// @ts-ignore
 import "./global.css";
 import type { Metadata } from "next";
 
