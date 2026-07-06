@@ -14,6 +14,7 @@ export type Agent = {
   image?: string; 
   imageFull?: string;
   relevanceOrder?: number;
+  disabled?: boolean; 
 };
 // ===================== BASE PROMPT =====================
 const BASE_PROMPT = ({
@@ -1653,6 +1654,7 @@ relevanceOrder:8,
     systemPrompt: BASE_PROMPT({ agentId: "LIDO", agentName: "HORNO ROTATIVO LIDO 960", primaryFolderLabel: "Info pública" }),
   },
     { id: "SPNI-500", 
+       disabled: true,
       image: "/images/agents/SPNI-500- SIN FONDO.webp",
        imageFull: "/images/agents/full/SPNI-500- SIN FONDO.png",
        relevanceOrder: 11,
@@ -1866,7 +1868,8 @@ relevanceOrder:8,
     faqs: faqsDefault,
     systemPrompt: BASE_PROMPT({ agentId: "DPN-2232", agentName: "DESCORTEZADORA DPN-2232 PANIER ", primaryFolderLabel: "Info pública" }),
   },
- { id: "MIX-60", 
+ { id: "MIX-60",
+   disabled: true,
   image: "/images/agents/MIX 60 - SIN FONDO.webp",
    imageFull: "/images/agents/full/MIX 60 - SIN FONDO.png",
    relevanceOrder: 20,
@@ -2247,7 +2250,9 @@ export function buildAgentPrompt(agentId: string, agentName: string, adminMode: 
   return BASE_PROMPT({ agentId, agentName, primaryFolderLabel, adminMode });
 }
 // ===================== 6) EXPORT FINAL =====================
-export const AGENTS: Agent[] = AGENTS_BASE.map(applyCsvToAgent);
+export const AGENTS: Agent[] = AGENTS_BASE
+  .filter(a => !a.disabled)
+  .map(applyCsvToAgent);
 
 export function getAgentById(id: string) {
   return AGENTS.find(a => a.id === id);
