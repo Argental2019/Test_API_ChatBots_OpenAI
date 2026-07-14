@@ -1,3 +1,4 @@
+//apps\web\app\agent\[id]\page.tsx
 "use client";
 import Markdown from "@/components/markdown";
 import React, { useEffect, useRef, useState } from "react";

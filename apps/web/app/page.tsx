@@ -4,7 +4,7 @@ import Link from "next/link";
 import Markdown from "@/components/markdown";
 import FooterPolicy from "@/components/FooterPolicy";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
-
+import AdvisorBanner from "@/components/AdvisorBanner";
 import BusquettiBanner from "@/components/BusquettiBanner";
 import React, { useMemo, useEffect, useRef, useState } from "react";
 import {
@@ -391,6 +391,7 @@ const filteredAgents = useMemo(() => {
 
         <main className="mx-auto max-w-6xl px-4 py-8">
           <BusquettiBanner />
+           <AdvisorBanner />
           <div className="mb-10">
             <h1 className="text-4xl font-bold tracking-tight text-gray-900">Busquetti | Multi-Agentes IA</h1>
             <p className="mt-2 text-gray-600">Seleccioná un agente para comenzar</p>
