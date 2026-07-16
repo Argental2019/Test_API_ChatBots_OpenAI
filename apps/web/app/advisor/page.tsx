@@ -276,7 +276,7 @@ export default function AdvisorPage() {
                               <p className="text-xs text-gray-500">{agent.family}</p>
                             </div>
                             <Link
-                              href={agent.url}
+                              href={agent.url as any}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-black transition"
