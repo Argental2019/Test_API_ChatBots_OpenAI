@@ -8,6 +8,7 @@ export type AgentSummary = {
   subfamily: string;
   description: string;
   url: string;
+  image?: string;
 };
 
 /**
@@ -22,6 +23,7 @@ export function getAgentCatalog(): AgentSummary[] {
     subfamily: a.subfamily,
     description: a.description,
     url: `/agent/${a.id}`,
+    image: (a as any).image,
   }));
 }
 
@@ -50,6 +52,7 @@ export function getAgentsByIds(ids: string[]): AgentSummary[] {
         subfamily: agent.subfamily,
         description: agent.description,
         url: `/agent/${agent.id}`,
+        image: (agent as any).image,
       };
     })
     .filter(Boolean) as AgentSummary[];

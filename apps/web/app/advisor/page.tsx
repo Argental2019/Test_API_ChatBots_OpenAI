@@ -271,9 +271,20 @@ export default function AdvisorPage() {
                             key={agent.id}
                             className="flex items-center justify-between gap-3 rounded-xl border bg-white px-4 py-3 shadow-sm"
                           >
-                            <div>
-                              <p className="text-sm font-semibold text-gray-900">{agent.name}</p>
-                              <p className="text-xs text-gray-500">{agent.family}</p>
+                            <div className="flex items-center gap-3">
+                              {agent.image && (
+                                <div className="shrink-0 size-14 rounded-lg overflow-hidden bg-gray-50 border">
+                                  <img
+                                    src={agent.image}
+                                    alt={agent.name}
+                                    className="w-full h-full object-contain"
+                                  />
+                                </div>
+                              )}
+                              <div>
+                                <p className="text-sm font-semibold text-gray-900">{agent.name}</p>
+                                <p className="text-xs text-gray-500">{agent.family}</p>
+                              </div>
                             </div>
                             <Link
                               href={agent.url as any}
