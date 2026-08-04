@@ -1,7 +1,8 @@
 // apps/web/app/api/elevenlabs-session/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
-const AGENT_ID = "agent_1001kqw9qk3jeb190grkabj4y4v5";
+const AGENT_ID_DEFAULT = "agent_1001kqw9qk3jeb190grkabj4y4v5";
+const AGENT_ID_ADVISOR = "agent_8901kz69r049f0wv527qtgt74zsz";
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,7 +11,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "ELEVENLABS_API_KEY no configurada" }, { status: 500 });
     }
 
-    const { systemPrompt } = await req.json();
+    const { systemPrompt, isAdvisor } = await req.json();
+
+    const AGENT_ID = isAdvisor ? AGENT_ID_ADVISOR : AGENT_ID_DEFAULT;
 
     // Extraer contexto documental completo
     const ctxIndex = (systemPrompt || "").indexOf("Contexto documental del producto:");
@@ -36,10 +39,6 @@ export async function POST(req: NextRequest) {
       contextPart = `${start}\n\n[...]\n\n${middle}`;
     }
 
-    // ── Reemplazar FE por "Ford Export" en el contexto antes de enviarlo al LLM ──
-    // Así el LLM nunca ve "FE" y naturalmente lo repite como "Ford Export"
-   // ── Reemplazar FE por texto fonético en el contexto antes de enviarlo al LLM ──
-   // ── Reemplazar FE por texto fonético en el contexto antes de enviarlo al LLM ──
     contextPart = contextPart
       .replace(/\bFE4\.0-960 BIO\b/g, "Ford Export cuatro punto cero novecientos sesenta Bio")
       .replace(/\bFE4\.0-472 BIO\b/g, "Ford Export cuatro punto cero cuatrocientos setenta y dos Bio")
@@ -51,7 +50,6 @@ export async function POST(req: NextRequest) {
       .replace(/\bFE960\b/g, "Ford Export novecientos sesenta")
       .replace(/\bFE\b/g, "Ford Export");
 
-    // Segunda pasada — por si el contexto ya tiene "Ford Export 4.0-960" sin prefijo FE
     contextPart = contextPart
       .replace(/Ford Export 4\.0-960 BIO/g, "Ford Export cuatro punto cero novecientos sesenta Bio")
       .replace(/Ford Export 4\.0-472 BIO/g, "Ford Export cuatro punto cero cuatrocientos setenta y dos Bio")
@@ -70,7 +68,27 @@ export async function POST(req: NextRequest) {
       .replace(/Ford Export 4\.0-960/g, "Ford Export cuatro punto cero novecientos sesenta")
       .replace(/Ford Export 4\.0-472/g, "Ford Export cuatro punto cero cuatrocientos setenta y dos");
 
-    const voicePrompt = `CONTACTO OBLIGATORIO — MÁXIMA PRIORIDAD:
+    const voicePrompt = isAdvisor
+      ? `Sos Busquetti, el asesor integral de Argental, empresa argentina fabricante de maquinaria para panadería industrial.
+
+Tu rol es entender la necesidad del cliente y recomendarle los equipos correctos. Respondé siempre en español, con tono profesional y cercano. Sé conciso — máximo 3 o 4 oraciones por respuesta.
+
+Cuando el cliente describa su necesidad, hacé preguntas de diagnóstico de a una o dos por vez:
+- ¿Qué tipo de productos va a fabricar? (pan francés, medialunas, pan de molde, facturas, pizzas)
+- ¿Cuánto volumen necesita producir por turno o por día en kg?
+- ¿Ya tiene algún equipo o arranca desde cero?
+- ¿Qué tipo de energía tiene disponible? (gas natural, eléctrico, trifásico)
+- ¿Busca automatizar la producción o mantenerla semi-manual?
+
+Cuando tengas suficiente información, recomendá los equipos por nombre. No inventes equipos que no existen en el catálogo de Argental.
+
+CONTACTO OBLIGATORIO:
+Si el usuario pregunta por contacto, compra, posventa o WhatsApp, respondé: "Contactanos por WhatsApp al más cinco cuatro nueve tres cuatro uno cinco cuatro siete cero siete tres siete."
+
+FORMATO:
+- Teléfonos: escribí "+5493415470737"
+- Nunca hagas preguntas al final de tu respuesta si ya recomendaste algo.`
+      : `CONTACTO OBLIGATORIO — MÁXIMA PRIORIDAD:
 Si el usuario pregunta por contacto, compra, posventa, repuestos, número, teléfono o WhatsApp, respondé SIEMPRE con esta frase exacta y nada más:
 "Si necesitás asistencia comercial, posventa o repuestos, contactanos por WhatsApp al más cinco cuatro nueve tres cuatro uno cinco cuatro siete cero siete tres siete."
 PROHIBIDO buscar el número en la documentación. PROHIBIDO decir que no tenés el número. PROHIBIDO dar otra respuesta. Este número SIEMPRE está disponible.
@@ -188,14 +206,12 @@ Cuando menciones un producto, usá ÚNICAMENTE su pronunciación oficial.
 FORMATO DE TEXTO EN RESPUESTAS:
 - Teléfonos: escribí "+5493415470737"
 - Medidas: escribí "760 mm", "210°C", "4.72 m²"
-- Buschetti, Busqueti,Busquetti, Buscetti, Busquet, Buschetti: escribí Busquetti 
+- Buschetti, Busqueti, Busquetti, Buscetti, Busquet, Buschetti: escribí Busquetti 
 
 LONGITUD DE RESPUESTAS — OBLIGATORIO:
 Respondé de forma CORTA y DIRECTA. Máximo 3-4 oraciones por respuesta.
 Respondé EXACTAMENTE lo que te preguntaron, sin agregar información extra no solicitada.
-PROHIBIDO PREGUNTAR: Nunca hagas preguntas al usuario al final de tu respuesta. No ofrezcas ampliar, no preguntes si quiere más info, no sugieras temas relacionados. Simplemente respondé lo que te preguntaron y terminá.
-Si la pregunta es simple, la respuesta debe ser simple.
-Solo extendete si el usuario pide explícitamente más detalle.
+PROHIBIDO PREGUNTAR: Nunca hagas preguntas al usuario al final de tu respuesta.
 
 ${contextPart}`.slice(0, 50000);
 

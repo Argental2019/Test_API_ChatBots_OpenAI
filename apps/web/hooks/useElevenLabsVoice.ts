@@ -14,10 +14,11 @@ export type VoiceMessage = {
 type UseElevenLabsVoiceOptions = {
   systemPrompt: string;
   onNewMessage?: (msg: VoiceMessage) => void;
+  isAdvisor?: boolean;  // ← agregar esta línea
+
 };
 
-export function useElevenLabsVoice({ systemPrompt, onNewMessage }: UseElevenLabsVoiceOptions) {
-  const [state, setState] = useState<VoiceState>("idle");
+export function useElevenLabsVoice({ systemPrompt, onNewMessage, isAdvisor }: UseElevenLabsVoiceOptions) {  const [state, setState] = useState<VoiceState>("idle");
   const [messages, setMessages] = useState<VoiceMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -311,7 +312,7 @@ const pattern = new RegExp(`\\b((?:(?:${numWords})\\s*)+(?:punto\\s*(?:${numWord
       const tokenRes = await fetch("/api/elevenlabs-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ systemPrompt: systemPromptRef.current }),
+        body: JSON.stringify({ systemPrompt: systemPromptRef.current, isAdvisor: !!isAdvisor }),
       });
       if (!tokenRes.ok) throw new Error("No se pudo crear sesión ElevenLabs");
       const { signed_url, system_prompt } = await tokenRes.json();

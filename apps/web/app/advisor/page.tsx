@@ -3,15 +3,18 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Home, Send, Loader2 } from "lucide-react";
+import { Home, Send, Loader2, AudioLines } from "lucide-react";
 import Markdown from "@/components/markdown";
 import { getAgentsByIds } from "@/lib/advisorTools";
+import { useElevenLabsVoice } from "@/hooks/useElevenLabsVoice";
+import type { VoiceMessage } from "@/hooks/useElevenLabsVoice";
+import VoiceModeModal from "@/components/VoiceModeModal";
 
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   ts?: number;
-  recommendedAgents?: Array<{ id: string; name: string; url: string; family: string }>;
+  recommendedAgents?: Array<{ id: string; name: string; url: string; family: string; image?: string }>;
 };
 
 function formatTime(ts?: number) {
@@ -32,9 +35,55 @@ export default function AdvisorPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [voiceModalOpen, setVoiceModalOpen] = useState(false);
 
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+const advisorVoicePrompt = `
+Sos Busquetti, el asesor integral de Argental, empresa argentina fabricante de maquinaria para panadería industrial.
+
+Tu rol es entender la necesidad del cliente y recomendarle los equipos correctos del catálogo de Argental. Respondé siempre en español, con tono profesional y cercano. Sé conciso y directo.
+
+Cuando el cliente describa su necesidad, hacé preguntas de diagnóstico de a una o dos por vez:
+- ¿Qué tipo de productos va a fabricar? (pan francés, medialunas, pan de molde, facturas, pizzas, etc.)
+- ¿Cuánto volumen necesita producir por turno o por día en kg?
+- ¿Ya tiene algún equipo o arranca desde cero?
+- ¿Qué tipo de energía tiene disponible? (gas natural, eléctrico, trifásico)
+- ¿Busca automatizar la producción o mantenerla semi-manual?
+
+Cuando tengas suficiente información, recomendá los equipos por nombre. No inventes equipos que no existen en el catálogo de Argental. Si el cliente quiere más detalles técnicos de un equipo, decile que puede consultarlo en la ficha del equipo en Busquetti.
+`.trim();
+
+const {
+  state: voiceState,
+  messages: voiceMessages,
+  error: voiceError,
+  startVoiceMode,
+  stopVoiceMode,
+} = useElevenLabsVoice({
+  systemPrompt: advisorVoicePrompt,
+  isAdvisor: true,
+});
+
+  const handleOpenVoice = () => {
+    setVoiceModalOpen(true);
+    startVoiceMode();
+  };
+
+  const handleCloseVoice = () => {
+    stopVoiceMode();
+    setVoiceModalOpen(false);
+
+    if (voiceMessages.length > 0) {
+      const converted: ChatMessage[] = voiceMessages.map((m) => ({
+        role: m.role,
+        content: m.content,
+        ts: m.ts,
+      }));
+      setMessages((prev) => [...prev, ...converted]);
+    }
+  };
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -114,7 +163,6 @@ export default function AdvisorPage() {
         }
       }
 
-      // Al terminar el stream, extraer los equipos recomendados
       const { clean, ids } = parseRecommendations(raw);
       const recommendedAgents = ids.length > 0 ? getAgentsByIds(ids) : [];
 
@@ -325,6 +373,18 @@ export default function AdvisorPage() {
                 placeholder="Contame qué necesitás producir…"
                 className="max-h-[200px] flex-1 resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
               />
+
+              {/* Botón modo voz */}
+              <button
+                type="button"
+                onClick={handleOpenVoice}
+                disabled={loading}
+                className="mb-1 inline-flex items-center justify-center rounded-full border px-3 py-3 text-sm shadow-sm transition bg-white text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                title="Modo conversación por voz"
+              >
+                <AudioLines className="size-4" />
+              </button>
+
               <button
                 onClick={() => sendMessage()}
                 disabled={loading || !input.trim()}
@@ -341,6 +401,16 @@ export default function AdvisorPage() {
           <p>© {new Date().getFullYear()} Argental · Busquetti Asesor Integral</p>
         </footer>
       </main>
+
+      {/* Modal de modo voz */}
+      <VoiceModeModal
+        open={voiceModalOpen}
+        onClose={handleCloseVoice}
+        state={voiceState}
+        messages={voiceMessages}
+        error={voiceError}
+        agentName="Busquetti — Asesor Integral"
+      />
     </div>
   );
 }
