@@ -230,7 +230,7 @@ const {
               </span>
               Activo
             </div>
-            <h2 className="mt-2 text-base font-semibold text-gray-900">Busquetti — Asesor Integral</h2>
+            <h2 className="mt-2 text-base font-semibold text-gray-900">Busquetti | Asesor Integral</h2>
             <p className="text-xs text-gray-500">Contame qué necesitás y te recomiendo los equipos ideales</p>
           </div>
         </div>
@@ -409,7 +409,7 @@ const {
         state={voiceState}
         messages={voiceMessages}
         error={voiceError}
-        agentName="Busquetti — Asesor Integral"
+        agentName="Busquetti | Asesor Integral"
       />
     </div>
   );
