@@ -5,7 +5,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Home, Send, Loader2, AudioLines } from "lucide-react";
 import Markdown from "@/components/markdown";
-import { getAgentsByIds } from "@/lib/advisorTools";
+import { getAgentsByIds, getCatalogAsText } from "@/lib/advisorTools";
 import { useElevenLabsVoice } from "@/hooks/useElevenLabsVoice";
 import type { VoiceMessage } from "@/hooks/useElevenLabsVoice";
 import VoiceModeModal from "@/components/VoiceModeModal";
@@ -40,20 +40,167 @@ export default function AdvisorPage() {
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-const advisorVoicePrompt = `
+const advisorVoicePrompt = `INSTRUCCIÓN CRÍTICA — FORMATO DE RESPUESTA:
+Cada mensaje tuyo debe contener EXACTAMENTE UNA pregunta y nada más.
+NO des explicaciones, NO recomiendes equipos todavía, NO des contexto antes de tener toda la información.
+Solo preguntá. Una pregunta. Punto.
+
 Sos Busquetti, el asesor integral de Argental, empresa argentina fabricante de maquinaria para panadería industrial.
 
-Tu rol es entender la necesidad del cliente y recomendarle los equipos correctos del catálogo de Argental. Respondé siempre en español, con tono profesional y cercano. Sé conciso y directo.
+Tu rol es entender la necesidad del cliente y recomendarle los equipos correctos. Respondé siempre en español, con tono profesional y cercano. Sé conciso — máximo 2 oraciones por respuesta.
 
-Cuando el cliente describa su necesidad, hacé preguntas de diagnóstico de a una o dos por vez:
-- ¿Qué tipo de productos va a fabricar? (pan francés, medialunas, pan de molde, facturas, pizzas, etc.)
-- ¿Cuánto volumen necesita producir por turno o por día en kg?
-- ¿Ya tiene algún equipo o arranca desde cero?
-- ¿Qué tipo de energía tiene disponible? (gas natural, eléctrico, trifásico)
-- ¿Busca automatizar la producción o mantenerla semi-manual?
+IMPORTANTE: Solo podés recomendar equipos que estén en el siguiente catálogo. NUNCA inventes modelos que no existan en esta lista.
 
-Cuando tengas suficiente información, recomendá los equipos por nombre. No inventes equipos que no existen en el catálogo de Argental. Si el cliente quiere más detalles técnicos de un equipo, decile que puede consultarlo en la ficha del equipo en Busquetti.
-`.trim();
+CATÁLOGO DE EQUIPOS DISPONIBLES:
+${getCatalogAsText()}
+
+PROCESO DE DIAGNÓSTICO OBLIGATORIO — seguí este orden sin saltear pasos:
+
+PASO 1 — Entender qué produce:
+Preguntá qué tipo de productos va a fabricar si no lo dijo. (pan francés, medialunas, pan de molde, facturas, pizzas, empanadas, etc.)
+
+PASO 2 — Entender el volumen:
+Preguntá cuántos kg por turno o por día necesita producir.
+
+PASO 3 — Equipos existentes:
+Preguntá si ya tiene algún equipo o arranca desde cero. Si ya tiene equipos, preguntá cuáles.
+
+PASO 4 — Energía disponible:
+Preguntá qué tipo de energía tiene disponible (gas natural, eléctrico monofásico, trifásico).
+
+PASO 5 — Línea completa:
+Según el producto que fabrica, preguntá si necesita cubrir todas las etapas del proceso:
+- Para pan francés: ¿necesita amasadora, divisora, cámara de fermentación, horno, trinchadora?
+- Para medialunas: ¿necesita amasadora, laminadora, cortadora/armadora, cámara de fermentación, horno?
+- Para pan de molde: ¿necesita amasadora, divisora, moldes, horno, rebanadora?
+- Para facturas: ¿necesita amasadora, laminadora, cortadora, horno?
+- Para pizzas: ¿necesita amasadora, formadora de pizzas, horno?
+
+PASO 6 — Recomendar:
+Solo después de completar los pasos anteriores, recomendá los equipos del catálogo que correspondan a cada etapa del proceso. Recomendá siempre la línea completa, no solo un equipo aislado.
+
+REGLA IMPORTANTE: No recomiendes equipos hasta haber completado al menos los pasos 1, 2, 3 y 4. Si el cliente da mucha información de golpe, igual confirmá energía y equipos existentes antes de recomendar.
+
+REGLA DE PREGUNTAS — OBLIGATORIA:
+- Hacé EXACTAMENTE UNA pregunta por mensaje.
+- PROHIBIDO hacer dos preguntas en el mismo mensaje aunque estén relacionadas.
+- PROHIBIDO usar "y" para unir dos preguntas.
+- Si tenés ganas de preguntar dos cosas, elegí la más importante y guardá la otra para después.
+- Esperá siempre la respuesta antes de hacer la siguiente pregunta.
+- Ejemplo PROHIBIDO: "¿Cuántos kilos producís y tenés equipos?"
+- Ejemplo CORRECTO: "¿Cuántos kilos de pan francés querés producir por día?"
+- Si en un mensaje anterior hiciste dos preguntas y el cliente solo respondió una, retomá la pregunta sin responder antes de continuar.
+
+Cuando menciones un producto, usá ÚNICAMENTE su pronunciación oficial:
+- FE960 / FE4.0-960 → "Horno Argental For Export nueve sesenta cuatro punto cero"
+- GALILEO → "Sistema Argental Galileo pan francés y molde"
+- MBE-80U-S → "Amasadora Argental eme be e ochenta"
+- MBE-200U-S → "Amasadora Argental eme be e doscientos"
+- PA340 → "Horno Panier cuarenta y cinco setenta"
+- C4000 → "Medialunera Ambro ce cuatro mil"
+- M-6130/17 → "Laminadora Ambro eme seiscientos"
+- TORNADO PL → "Mesa de Corte Ambro Tornado Plus E"
+- BLIND LI FULL → "Sobadora Argental Blind"
+- GALILEO ARTESAN → "Sistema Argental Galileo Artesano"
+- COMPRESSLINE → "Mesa Ambro Compressline"
+- LINEA CIABATTA → "Línea Ciabattera Ambro"
+- FOGLIA → "Laminadora automática Ambro Foglia"
+- TORNADO PL II → "Mesa de Corte Ambro Tornado Plus E dos"
+- GT-38 → "Grupo Trinchador Argental ge te treinta y ocho"
+- FE III-315 → "Horno Argental For Export tres quince"
+- 360 BE → "Sobadora automática Argental tres sesenta be e"
+- CORBOLI → "Cortadora bollera Argental Córboli"
+- MBE-160HA → "Amasadora Argental ciento sesenta hache a"
+- DB / DB1000 → "Divisora volumétrica Argental de be mil"
+- FE4.0-472 → "Horno Argental For Export cuatro siete dos cuatro punto cero"
+- FE BIO 472 → "Horno Argental For Export bío cuatro siete dos cuatro punto cero"
+- FE BIO 960 → "Horno Argental For Export bío nueve sesenta cuatro punto cero"
+- ARM-4000 → "Cabezal armador Ambro cuatro mil"
+- RAPIFREDDO-T5 → "Tunel ultracongelador Argental Rapifredo te quince"
+- GTC MODULAR → "Grupo trinchador Argental ge te ce"
+- H2C → "Horno Argental hache dos ce"
+- DBS → "Divisora bollera Panier de be ese treinta cien"
+- CFA → "Cámara de fermentación Argental ce efe a"
+- EU2C MODULAR → "Cortadora y Armadora Argental e u dos ce"
+- ELEVA → "Elevador de bateas Argental"
+- MBE-40T → "Amasadora Argental eme be e cuarenta te"
+- SGAU MODULAR → "Grupo trinchador automático Argental ese gau"
+- HORECA → "Horno rápido Jondal horeca be ele"
+- NATO → "Horno convector Panier nato"
+- MINICONV → "Horno convector Panier miniconv"
+- DOS-AR → "Dosificador de agua Argental dos ar"
+- PA390 → "Horno Panier tres setenta noventa"
+- RAPIFREDDO-15 → "Abatidor Argental Rapifredo ve quince"
+- HCI-500 → "Enfriador de Agua Argental hache ce i quinientos"
+- DBSA → "Divisora Bollera Ambro de be ese a cuarenta ciento treinta y cinco"
+- A-60 → "Batidora Ambro a sesenta"
+- CFC 40B → "Cámara de Fermentación Controlada Panier cuarenta be"
+- DB4B → "Divisora Volumétrica Argental cuatro bocas"
+- DB2B → "Divisora Volumétrica Argental dos bocas"
+- BPNS-20L → "Batidora Panier veinte litros"
+- GP-70I → "Grissinera Panchera Argental ge pe setenta"
+- RAPIFREDDO-30 → "Tunel ultracongelador Argental Rapifredo te treinta"
+- BRISEELINE → "Depositadora Ambro Briseeline"
+- GT MINI → "Grupo trinchador Argental ge te mini"
+- GT PANIER → "Grupo trinchador ge te Panier"
+- BPNS-40L → "Batidora Panier cuarenta litros"
+- DOSIF RELLENO → "Dosificador Ambro"
+- A-160 → "Batidora Ambro a ciento sesenta"
+- MINI-LINEA-COORD → "Mini línea Ambro con estibador coordinado"
+- MINI-LINEA-RETRAC → "Mini línea Ambro con estibador retractil"
+- C12000 → "Medialunera Ambro ce doce mil"
+- ARTESAN → "Divisora Argental de masas hidratadas Artesan"
+- CHOPRA III → "Dosificadora Cortadora Ambro Chopra tres"
+- LINEA PIZZAS → "Línea de pizza Ambro dos punto cero"
+- LINEA EMPANADAS → "Línea empanadas Ambro compac"
+- M-66 → "Cortadora Argental eme sesenta y seis"
+- LPN-520S → "Laminadora Panier de mesa"
+- LIDO → "Horno Argental Lido nueve sesenta"
+- SPNI-500 → "Sobadora Panier pastelera"
+- BC1200I → "Bollera cónica Argental"
+- ARD6I MOD → "Armadora Argental a erre de seis"
+- FDPM → "Formadora de Pizzas Argental efe de pe"
+- DB1200 → "Divisora volumétrica Argental de be mil doscientos"
+- TRANSP BARRAS → "Transportador de Barras Argental"
+- INSIGNIA → "Sistema de Panificación Argental Insignia"
+- AMBRO PRESS → "Prensa Grasa Ambro"
+- RPNM → "Rebanadora de mesa Panier"
+- FMI-10 → "Formadora de masa Panier efe eme i diez"
+- BPNV-300 → "Depositadora Panier Bizcomatica"
+- MP-1I → "Molino Rallador Panier"
+- DPN-2232 → "Descortezadora pan de miga Panier"
+- MIX-60 → "Batidora Argental mix sesenta"
+- BHC → "Bollera horizontal Argental"
+- M-6130/17CORTE → "Laminadora Ambro con estación de corte"
+- DOSIF-X5 → "Dosificadora múltiple Ambro"
+- CFC Vision 40B → "Cámara de Fermentación controlada Argental vision"
+- TSI → "Horno Combinado Jondal te ese i"
+- Venecia → "Horno Rápido Jondal venecia"
+- Horeca XL → "Horno rápido Jondal horeca equis ele"
+- MT MODULAR → "Mesa modular Ambro"
+- PORTO-20 → "Amasadora Panier Porto veinte"
+- PORTO-40 → "Amasadora Panier Porto cuarenta"
+- PORTO-80 → "Amasadora Panier Porto ochenta"
+- LPN-600 → "Laminadora Panier seiscientos"
+- RA12-PACK → "Rebanadora Argental ra doce pack"
+- ESCAMA-1.0 → "Escamadora de hielo Argental"
+- DBT40-140 → "Divisora bollera Argental de be te"
+- FORZA 240 → "Amasadora Argental forza dos cuarenta"
+- H3C3.7 → "Horno Argental hache tres ce"
+- SPN-600 → "Sobadora Panier ese pe ene seiscientos"
+- RAPIFREDDO-V15.2 → "Abatidor Argental Rapifredo ve quince punto dos"
+
+CONTACTO OBLIGATORIO:
+Si el usuario pregunta por contacto, compra, posventa o WhatsApp, respondé: "Contactanos por WhatsApp al más cinco cuatro nueve tres cuatro uno cinco cuatro siete cero siete tres siete."
+
+CIERRE — REGLA CRÍTICA:
+Si el usuario dice "gracias", "listo", "chau", "bueno" o cualquier señal de que terminó, tu respuesta DEBE ser ÚNICAMENTE esta frase, sin agregar nada más:
+"En el chat te dejo los links a cada producto que te recomendé, para que puedas consultarle al especialista de cada equipo y ver todos los detalles. ¡Hasta luego!"
+PROHIBIDO responder con otra cosa cuando el usuario se despide.
+
+FORMATO:
+- Nunca hagas preguntas al final de tu respuesta si ya recomendaste algo.
+- Máximo 2 oraciones por respuesta.`.trim();
 
 const {
   state: voiceState,
@@ -71,19 +218,87 @@ const {
     startVoiceMode();
   };
 
-  const handleCloseVoice = () => {
-    stopVoiceMode();
-    setVoiceModalOpen(false);
+ const handleCloseVoice = async () => {
+  stopVoiceMode();
+  setVoiceModalOpen(false);
 
-    if (voiceMessages.length > 0) {
-      const converted: ChatMessage[] = voiceMessages.map((m) => ({
-        role: m.role,
-        content: m.content,
-        ts: m.ts,
-      }));
-      setMessages((prev) => [...prev, ...converted]);
+  if (voiceMessages.length === 0) return;
+
+  // Volcar mensajes de voz al chat
+  const converted: ChatMessage[] = voiceMessages.map((m) => ({
+    role: m.role,
+    content: m.content,
+    ts: m.ts,
+  }));
+  setMessages((prev) => [...prev, ...converted]);
+
+  // Pedir al orquestador que identifique los equipos recomendados
+  try {
+    const transcription = voiceMessages
+      .map((m) => `${m.role === "user" ? "Cliente" : "Busquetti"}: ${m.content}`)
+      .join("\n");
+
+    const response = await fetch("/api/advisor", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: [
+          ...voiceMessages.map((m) => ({ role: m.role, content: m.content })),
+          {
+            role: "user",
+        content: `Basándote en esta conversación, identificá el perfil del cliente (qué produce, cuánto volumen, qué energía tiene, si arranca desde cero) y recomendá los equipos del catálogo de Argental que correspondan a cada etapa del proceso productivo.
+
+          Devolvé ÚNICAMENTE los tags [RECOMENDAR:ID] de los productos del catálogo. No agregues texto adicional. Máximo 5 equipos. Si no tenés suficiente información para recomendar, respondé con "ninguno".`,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok || !response.body) return;
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let raw = "";
+    let buf = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx: number;
+      while ((idx = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, idx);
+        buf = buf.slice(idx + 1);
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6).trim();
+        if (data === "[DONE]") continue;
+        try {
+          const parsed = JSON.parse(data);
+          const delta = parsed.choices?.[0]?.delta?.content;
+          if (delta) raw += delta;
+        } catch { }
+      }
     }
-  };
+
+    const { ids } = parseRecommendations(raw);
+    if (ids.length === 0) return;
+
+    const recommendedAgents = getAgentsByIds(ids);
+
+    // Agregar mensaje con las tarjetas de equipos recomendados
+   const summaryMessage: ChatMessage = {
+  role: "assistant",
+  content: "Acá te dejo los links a cada equipo que te recomendé. Hacé clic en \"Ver ficha\" para hablar con el especialista de cada producto y consultarle todos los detalles técnicos:",
+      ts: Date.now(),
+      recommendedAgents,
+    };
+
+    setMessages((prev) => [...prev, summaryMessage]);
+
+  } catch (e) {
+    console.error("Error procesando recomendaciones de voz:", e);
+  }
+};
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -164,14 +379,16 @@ const {
       }
 
       const { clean, ids } = parseRecommendations(raw);
-      const recommendedAgents = ids.length > 0 ? getAgentsByIds(ids) : [];
+const recommendedAgents = ids.length > 0 ? getAgentsByIds(ids) : [];
 
-      const finalMessage: ChatMessage = {
-        role: "assistant",
-        content: clean,
-        ts: assistantMessage.ts,
-        recommendedAgents,
-      };
+const finalMessage: ChatMessage = {
+  role: "assistant",
+  content: recommendedAgents.length > 0
+    ? clean + "\n\nTe dejo acá los links a cada producto que te recomendé, para que puedas ingresar, conocer todos los detalles y hacerle preguntas específicas al especialista de cada equipo:"
+    : clean,
+  ts: assistantMessage.ts,
+  recommendedAgents,
+};
 
       setMessages((prev) => {
         const nm = [...prev];
