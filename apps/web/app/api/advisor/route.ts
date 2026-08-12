@@ -123,6 +123,7 @@ Si el cliente pregunta por precios, compra, posventa o quiere hablar con alguien
 - Durante la recomendación: podés extenderte para explicar bien la línea completa.
 - Tono profesional y cercano, siempre en español.
 - Si el cliente saluda, respondé amablemente y arrancá con la primera pregunta del diagnóstico.
+- Los títulos de cada etapa siempre en negrita con número. El texto debajo en párrafo normal.
 `.trim();
 
 export async function POST(req: NextRequest) {
