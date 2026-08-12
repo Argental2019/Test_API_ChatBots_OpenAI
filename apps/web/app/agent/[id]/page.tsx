@@ -562,146 +562,193 @@ const {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-white">
-      <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
-        <div className="relative mx-auto max-w-4xl px-4 py-3 flex items-center">
-  <Link
-    href="/"
-    className="absolute left-4 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-  >
-    <Home className="size-4" />
-    Volver
-  </Link>
+return (
+    <div style={{ minHeight: "100vh", background: "#fff" }}>
 
-  {/* Imagen del producto — arriba a la derecha */}
- {(agent as any).image && (
-  <div className="absolute right-4">
-    <img
-      src={(agent as any).image}
-      alt={agent.name}
-      className="h-24 w-24 object-contain cursor-zoom-in hover:scale-105 transition-transform duration-200"
-      onClick={() => setLightboxImg((agent as any).imageFull ?? (agent as any).image)}
-    />
-  </div>
-)}
+      {/* HEADER */}
+      <header style={{
+        position: "sticky", top: 0, zIndex: 10,
+        borderBottom: "1px solid var(--border)",
+        background: "rgba(255,255,255,.92)",
+        backdropFilter: "blur(8px)",
+      }}>
+        <div style={{
+          maxWidth: 900, margin: "0 auto",
+          padding: "16px 24px",
+          display: "flex", alignItems: "center", gap: 16,
+        }}>
+          <Link
+            href="/"
+            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--panel-2)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
+            style={{
+              flexShrink: 0, width: 38, height: 38, borderRadius: 10,
+              border: "1px solid var(--border-input)", background: "#fff",
+              display: "grid", placeItems: "center",
+              fontSize: 16, color: "var(--navy)", textDecoration: "none",
+            }}
+          >
+            ←
+          </Link>
 
-          <div className="mx-auto text-center pointer-events-none">
-            <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-gray-600">
-              <span className="relative flex size-2">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--success)" }} />
+              <span style={{
+                fontSize: 11, fontWeight: 700, letterSpacing: ".12em",
+                textTransform: "uppercase", color: "var(--muted-2)",
+              }}>
+                Agente de equipo
+                {isAdmin && (
+                  <span style={{
+                    marginLeft: 8, background: "var(--navy)", color: "#fff",
+                    fontSize: 10, padding: "2px 8px", borderRadius: 999,
+                  }}>Admin</span>
+                )}
               </span>
-              Activo{" "}
-              {isAdmin && (
-                <span className="ml-2 rounded-full bg-gray-900 px-2 py-0.5 text-white">
-                  Admin
-                </span>
-              )}
             </div>
-
-            <div className="mt-1 text-[11px] text-gray-500 leading-snug">
-              <div>
-                Categoría:{" "}
-                <span className="font-medium text-gray-700">{agent.family || "-"}</span>
-              </div>
-              <div>
-                Subcategoría:{" "}
-                <span className="font-medium text-gray-700">{agent.subfamily || "-"}</span>
-              </div>
-            </div>
-
-            <h2 className="mt-2 text-base font-semibold text-gray-900 leading-tight">
+            <h2 className="heading-font" style={{
+              fontWeight: 600, fontSize: 20, letterSpacing: "-.02em",
+              margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+              color: "var(--ink)",
+            }}>
               {agent.name}
             </h2>
           </div>
+
+          {/* Imagen producto */}
+          {(agent as any).image && (
+            <div style={{
+              flexShrink: 0, width: 92, height: 72, borderRadius: 12,
+              overflow: "hidden", border: "1px solid var(--border)",
+              background: "var(--panel-2)", cursor: "zoom-in",
+            }}
+              onClick={() => setLightboxImg((agent as any).imageFull ?? (agent as any).image)}
+            >
+              <img
+                src={(agent as any).image}
+                alt={agent.name}
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
+            </div>
+          )}
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-4">
+      <main style={{ maxWidth: 900, margin: "0 auto", padding: "0 24px 40px" }}>
+
         {/* Toast */}
         {toast && (
-          <div
-            className={`mt-4 flex items-center gap-2 rounded-xl border px-4 py-3 text-sm ${
-              toast.type === "ok"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : "border-rose-200 bg-rose-50 text-rose-700"
-            }`}
-          >
-            {toast.type === "ok" ? (
-              <CheckCircle2 className="size-4" />
-            ) : (
-              <AlertCircle className="size-4" />
-            )}
+          <div style={{
+            marginTop: 16, display: "flex", alignItems: "center", gap: 8,
+            padding: "10px 16px", borderRadius: 12, fontSize: 13,
+            background: toast.type === "ok" ? "#f0fdf4" : "#fff1f2",
+            border: `1px solid ${toast.type === "ok" ? "#bbf7d0" : "#fecdd3"}`,
+            color: toast.type === "ok" ? "#15803d" : "#be123c",
+          }}>
+            {toast.type === "ok" ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
             {toast.msg}
           </div>
         )}
 
         {/* FAQs */}
         {!!agent.faqs?.length && (
-          <div className="mt-6 flex flex-wrap gap-2">
-            {agent.faqs.map((faq: string, i: number) => (
-              <button
-                key={i}
-                onClick={() => sendMessage(faq)}
-                disabled={loading || !contextLoaded}
-                className="rounded-full border bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {faq}
-              </button>
-            ))}
+          <div style={{ padding: "18px 0 6px" }}>
+            <span style={{
+              fontSize: 11, fontWeight: 700, letterSpacing: ".12em",
+              textTransform: "uppercase", color: "var(--muted-2)",
+            }}>
+              Preguntas frecuentes
+            </span>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+              {agent.faqs.map((faq: string, i: number) => (
+                <button
+                  key={i}
+                  onClick={() => sendMessage(faq)}
+                  disabled={loading || !contextLoaded}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "var(--navy)";
+                    e.currentTarget.style.background = "var(--panel-3)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "var(--border-input)";
+                    e.currentTarget.style.background = "#fff";
+                  }}
+                  style={{
+                    border: "1px solid var(--border-input)", background: "#fff",
+                    cursor: "pointer", borderRadius: 999, padding: "9px 15px",
+                    fontSize: 13, fontWeight: 600, color: "var(--navy)",
+                    opacity: loading || !contextLoaded ? 0.5 : 1,
+                  }}
+                >
+                  {faq}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Chat */}
-        <section className="mt-6 rounded-2xl border bg-white shadow-sm">
-          <div className="max-h-[64vh] overflow-y-auto p-4 sm:p-6">
-            {!contextLoaded && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 text-gray-700">
-                  <Loader2 className="size-5 animate-spin" />
-                  <span>Verificando cambios…</span>
-                </div>
-                <div className="flex justify-start">
-                  <div className="h-16 w-3/4 max-w-[520px] animate-pulse rounded-2xl bg-gray-100" />
-                </div>
-                <div className="flex justify-end">
-                  <div className="h-12 w-2/3 max-w-[420px] animate-pulse rounded-2xl bg-gray-100" />
-                </div>
-                <div className="flex justify-start">
-                  <div className="h-24 w-4/5 max-w-[560px] animate-pulse rounded-2xl bg-gray-100" />
-                </div>
-              </div>
-            )}
+        {/* CHAT */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 20, padding: "24px 0 8px" }}>
 
-            {messages.map((m, i) => {
-              const mine = m.role === "user";
-              return (
-                <div
-                  key={i}
-                  className={`mb-3 flex items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}
-                >
+          {/* Loading skeleton */}
+          {!contextLoaded && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--muted)" }}>
+                <Loader2 size={16} className="animate-spin" />
+                <span style={{ fontSize: 13 }}>Verificando cambios…</span>
+              </div>
+              {[180, 120, 200].map((w, i) => (
+                <div key={i} style={{
+                  display: "flex", justifyContent: i === 1 ? "flex-end" : "flex-start",
+                }}>
+                  <div style={{
+                    height: 56, width: `${w}px`, borderRadius: 16,
+                    background: "var(--panel-2)", animation: "pulse 1.5s infinite",
+                  }} />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Mensajes */}
+          {messages.map((m, i) => {
+            const mine = m.role === "user";
+            return (
+              <div
+                key={i}
+                style={{
+                  display: "flex", flexDirection: "column", gap: 12,
+                  animation: "bqfade .3s ease both",
+                }}
+              >
+                <div style={{
+                  display: "flex", gap: 12, alignItems: "flex-start",
+                  justifyContent: mine ? "flex-end" : "flex-start",
+                }}>
+                  {/* Avatar Busquetti */}
                   {!mine && (
-                    <div className="shrink-0 size-10 rounded-full overflow-hidden border border-gray-200 shadow-sm bg-white">
-                      <img
-                        src="/busquetti/LogoBusquetti.jpg"
-                        alt="Busquetti"
-                        className="w-full h-full object-cover object-[center_12%] scale-[1.8]"
-                      />
+                    <div style={{
+                      flexShrink: 0, width: 36, height: 36, borderRadius: "50%",
+                      background: "var(--navy)", display: "grid", placeItems: "center",
+                      fontFamily: "'Archivo', sans-serif", fontWeight: 700,
+                      fontSize: 15, color: "var(--gold)",
+                    }}>
+                      B
                     </div>
                   )}
 
-                  <div
-                    className={`w-fit max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-6 ${
-                      mine
-                        ? "bg-gray-900 text-white shadow-md"
-                        : "border bg-white text-gray-900 shadow-sm"
-                    }`}
-                  >
+                  {/* Burbuja */}
+                  <div style={{
+                    maxWidth: "76%", padding: "14px 17px",
+                    borderRadius: mine ? "16px 16px 4px 16px" : "4px 16px 16px 16px",
+                    background: mine ? "var(--navy)" : "var(--panel-3)",
+                    color: mine ? "#fff" : "var(--ink)",
+                    fontSize: 14.5, lineHeight: 1.6,
+                    border: `1px solid ${mine ? "var(--navy)" : "var(--border)"}`,
+                  }}>
                     {mine ? (
-                      <Markdown className="whitespace-pre-wrap leading-relaxed">
-                        {m.content}
-                      </Markdown>
+                      <Markdown className="whitespace-pre-wrap leading-relaxed">{m.content}</Markdown>
                     ) : (
                       <AgentMessage
                         content={m.content}
@@ -713,118 +760,151 @@ const {
                         ].join(" ")}
                       />
                     )}
-                    <div
-                      className={`mt-1 text-[11px] ${
-                        mine ? "text-gray-300" : "text-gray-500"
-                      }`}
-                    >
+                    <div style={{
+                      marginTop: 4, fontSize: 11,
+                      color: mine ? "rgba(255,255,255,.5)" : "var(--muted-3)",
+                    }}>
                       {mine ? "Vos" : agent.name} · {formatTime(m.ts)}
                     </div>
                   </div>
 
                   {/* Avatar usuario */}
                   {mine && (
-                    <div className="shrink-0 size-8 rounded-full bg-gray-900 flex items-center justify-center shadow-sm">
-                      <span className="text-white text-xs font-semibold">Vos</span>
+                    <div style={{
+                      flexShrink: 0, width: 32, height: 32, borderRadius: "50%",
+                      background: "var(--ink)", display: "grid", placeItems: "center",
+                    }}>
+                      <span style={{ color: "#fff", fontSize: 11, fontWeight: 700 }}>Vos</span>
                     </div>
                   )}
                 </div>
-              );
-            })}
-
-            <div ref={endRef} />
-          </div>
-
-          {/* Composer */}
-          <div className="sticky bottom-0 border-t bg-white p-3 sm:p-4">
-            <div className="flex items-end gap-3">
-              <textarea
-                ref={inputRef}
-                rows={1}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyPress}
-                disabled={loading || !contextLoaded}
-                placeholder={contextLoaded ? "Escribí tu pregunta…" : "Cargando contexto…"}
-                className="max-h-[200px] flex-1 resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
-              />
-
-              {/* Botón modo voz */}
-              <button
-                type="button"
-                onClick={handleOpenVoice}
-                disabled={loading || !contextLoaded}
-                className={`mb-1 inline-flex items-center justify-center rounded-full border px-3 py-3 text-sm shadow-sm transition
-                  bg-white text-gray-700 hover:bg-gray-50
-                  disabled:cursor-not-allowed disabled:opacity-50`}
-                title="Modo conversación por voz"
-              >
-                <AudioLines className="size-4" />
-              </button>
-
-              {/* Enviar */}
-              <button
-                onClick={() => sendMessage()}
-                disabled={loading || !contextLoaded || !input.trim()}
-                className="inline-flex items-center gap-2 rounded-2xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {loading ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Send className="size-4" />
-                )}
-                {loading ? "Enviando" : "Enviar"}
-              </button>
-            </div>
-
-            {CAN_REQUEST_META && (
-              <div className="mt-2 text-[11px] text-gray-500">
-                {isAdmin ? "Depuración: ACTIVADA" : ""}
               </div>
-            )}
-          </div>
-        </section>
+            );
+          })}
+          <div ref={endRef} />
+        </div>
 
-        <footer className="mx-auto max-w-4xl py-6 mt-6 border-t text-center text-xs text-gray-500 space-y-2">
-          <p>© {new Date().getFullYear()} Argental · Asistentes</p>
-          <p className="text-[11px] leading-relaxed">
-            El uso de los Agentes Argental implica la aceptación de la siguiente{" "}
-            <a
-              href="/politicas-de-uso-Argental"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
+        {/* COMPOSER */}
+        <div style={{
+          position: "sticky", bottom: 0,
+          background: "linear-gradient(to bottom, rgba(255,255,255,0), #fff 22%)",
+          padding: "14px 0 0",
+        }}>
+          <div style={{
+            display: "flex", alignItems: "flex-end", gap: 10,
+            border: "1px solid var(--border-input)", borderRadius: 16,
+            padding: "10px 10px 10px 16px", background: "#fff",
+            boxShadow: "0 10px 26px -20px rgba(15,17,21,.4)",
+          }}>
+            <textarea
+              ref={inputRef}
+              rows={1}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyPress}
+              disabled={loading || !contextLoaded}
+              placeholder={contextLoaded ? "Escribí tu pregunta…" : "Cargando contexto…"}
+              style={{
+                flex: 1, border: "none", outline: "none", resize: "none",
+                fontSize: 14.5, lineHeight: 1.5, padding: "10px 0",
+                color: "var(--ink)", background: "transparent", maxHeight: 120,
+              }}
+            />
+
+            {/* Voz */}
+            <button
+              type="button"
+              onClick={handleOpenVoice}
+              disabled={loading || !contextLoaded}
+              title="Modo conversación por voz"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "var(--navy)";
+                e.currentTarget.style.color = "var(--navy)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--border-input)";
+                e.currentTarget.style.color = "var(--muted-2)";
+              }}
+              style={{
+                flexShrink: 0, width: 40, height: 40, borderRadius: 11,
+                border: "1px solid var(--border-input)", background: "#fff",
+                color: "var(--muted-2)", cursor: "pointer", fontSize: 15,
+                display: "grid", placeItems: "center",
+                opacity: loading || !contextLoaded ? 0.5 : 1,
+              }}
             >
-              Política de Uso y Limitación de Responsabilidad de los Agentes Argental
+              <AudioLines size={16} />
+            </button>
+
+            {/* Enviar */}
+            <button
+              onClick={() => sendMessage()}
+              disabled={loading || !contextLoaded || !input.trim()}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--navy)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "var(--ink)")}
+              style={{
+                flexShrink: 0, height: 40, padding: "0 20px",
+                border: "none", borderRadius: 11, background: "var(--ink)",
+                color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 6,
+                opacity: loading || !contextLoaded || !input.trim() ? 0.5 : 1,
+              }}
+            >
+              {loading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              {loading ? "Enviando" : "Enviar"}
+            </button>
+          </div>
+
+          {CAN_REQUEST_META && isAdmin && (
+            <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted-2)" }}>
+              Depuración: ACTIVADA
+            </div>
+          )}
+
+          <p style={{
+            margin: "14px 0 0", fontSize: 11.5, lineHeight: 1.6,
+            color: "var(--muted-3)", textAlign: "center",
+          }}>
+            El uso de los Agentes Argental implica la aceptación de la{" "}
+            <a href="/politicas-de-uso-Argental" target="_blank" rel="noopener noreferrer"
+              style={{ color: "var(--navy)" }}>
+              Política de Uso y Limitación de Responsabilidad
             </a>
             .
           </p>
-        </footer>
+        </div>
       </main>
-{lightboxImg && (
-  <div
-    className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm"
-    onClick={() => setLightboxImg(null)}
-  >
-    <div
-      className="relative max-w-xl w-full mx-6"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <button
-        onClick={() => setLightboxImg(null)}
-        className="absolute -top-10 right-0 inline-flex items-center justify-center rounded-full bg-white/10 p-1.5 text-white hover:bg-white/20 transition"
-      >
-        <X className="size-5" />
-      </button>
-      <img
-        src={lightboxImg}
-        alt="Producto"
-        className="w-full h-auto rounded-2xl shadow-2xl"
-      />
-    </div>
-  </div>
-)}
-      {/* Modal de modo voz */}
+
+      {/* Lightbox */}
+      {lightboxImg && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 50,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(0,0,0,.75)", backdropFilter: "blur(8px)",
+          }}
+          onClick={() => setLightboxImg(null)}
+        >
+          <div style={{ position: "relative", maxWidth: 560, width: "100%", margin: "0 24px" }}
+            onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setLightboxImg(null)}
+              style={{
+                position: "absolute", top: -40, right: 0,
+                background: "rgba(255,255,255,.1)", border: "none",
+                borderRadius: "50%", width: 32, height: 32,
+                color: "#fff", cursor: "pointer", fontSize: 16,
+              }}
+            >
+              <X size={16} />
+            </button>
+            <img src={lightboxImg} alt="Producto"
+              style={{ width: "100%", height: "auto", borderRadius: 16 }} />
+          </div>
+        </div>
+      )}
+
+      {/* Modal voz */}
       <VoiceModeModal
         open={voiceModalOpen}
         onClose={handleCloseVoice}

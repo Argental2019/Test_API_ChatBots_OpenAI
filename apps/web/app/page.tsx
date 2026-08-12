@@ -391,108 +391,224 @@ const filteredAgents = useMemo(() => {
 
         <main className="mx-auto max-w-6xl px-4 py-8">
           <BusquettiBanner />
-           <AdvisorBanner />
+          <div className="mt-8">
+            <AdvisorBanner />
+          </div>
           <div className="mb-10">
             <h1 className="text-4xl font-bold tracking-tight text-gray-900">Busquetti | Multi-Agentes IA</h1>
             <p className="mt-2 text-gray-600">Seleccioná un agente para comenzar</p>
           </div>
 
           {/* 🔎 Barra de filtros */}
-          <div className="mb-6 grid gap-3 sm:grid-cols-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Categoría</label>
-              <select
-                value={familyFilter}
-                onChange={(e) => setFamilyFilter(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-              >
-                <option value="">Todas</option>
-                {families.map((f) => (
-                  <option key={f} value={f}>{f}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Subcategoría</label>
-              <select
-                value={subfamilyFilter}
-                onChange={(e) => setSubfamilyFilter(e.target.value)}
-                disabled={!subfamilies.length}
-                className="w-full rounded-lg border px-3 py-2 text-sm disabled:bg-gray-50"
-              >
-                <option value="">Todas</option>
-                {subfamilies.map((sf) => (
-                  <option key={sf} value={sf}>{sf}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Búsqueda</label>
-              <input
-                value={nameFilter}
-                onChange={(e) => setNameFilter(e.target.value)}
-                placeholder="Buscar por Categoría, Nombre y más..."
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-              />
-            </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Ordenar</label>
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as "asc" | "desc" | "relevance")}
-              className="w-full rounded-lg border px-3 py-2 text-sm"
-            >
-              <option value="relevance">Más relevantes</option>
-              <option value="asc">A → Z</option>
-              <option value="desc">Z → A</option>
-            </select>
-          </div>
-        </div>
-
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-  {filteredAgents.map((agent) => (
-    <div
-      key={agent.id}
-      className="group relative overflow-hidden rounded-2xl border bg-white p-6 text-left shadow-sm transition-all hover:shadow-xl"
-    >
-      <div
-        className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${agent.accent} opacity-0 transition-opacity group-hover:opacity-10`}
-      />
-      <div className="relative">
-        {(agent as any).image && (
-          <div className="mb-3 flex justify-center h-28">
-            <img
-              src={(agent as any).image}
-              alt={agent.name}
-              className="h-full w-auto object-contain cursor-zoom-in hover:scale-105 transition-transform duration-200"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setLightboxImg((agent as any).imageFull ?? (agent as any).image);
-              }}
-            />
-          </div>
-        )}
-
-        <div className="mt-3 flex flex-wrap gap-2 text-xs">
-          <span className="rounded-full border px-2 py-0.5 text-gray-600">{agent.family}</span>
-          <span className="rounded-full border px-2 py-0.5 text-gray-600">{agent.subfamily}</span>
-        </div>
-
-        <h3 className="mt-3 text-xl font-semibold text-gray-900">{agent.name}</h3>
-
-        <div className="mt-6 flex justify-center">
-          <Link
-  href={`/agent/${agent.id}`}
-  className="inline-flex items-center rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-black hover:shadow-md hover:scale-105 active:scale-95"
+<div
+  style={{
+    marginBottom: 24,
+    padding: 14,
+    border: "1px solid var(--border)",
+    borderRadius: 14,
+    background: "var(--panel)",
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+    gap: 12,
+  }}
 >
-  Iniciar chat
-</Link>
-        </div>
+  {[
+    {
+      label: "Categoría",
+      value: familyFilter,
+      onChange: (v: string) => setFamilyFilter(v),
+      options: [{ value: "", label: "Todas" }, ...families.map(f => ({ value: f, label: f }))],
+    },
+    {
+      label: "Subcategoría",
+      value: subfamilyFilter,
+      onChange: (v: string) => setSubfamilyFilter(v),
+      options: [{ value: "", label: "Todas" }, ...subfamilies.map(s => ({ value: s, label: s }))],
+    },
+  ].map(({ label, value, onChange, options }) => (
+    <label key={label} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--muted-2)" }}>
+        {label}
+      </span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          border: "1px solid var(--border-input)",
+          background: "#fff",
+          borderRadius: 9,
+          padding: "11px 12px",
+          fontSize: 14,
+          fontWeight: 600,
+          color: "var(--navy)",
+        }}
+      >
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </label>
+  ))}
+
+  <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--muted-2)" }}>
+      Búsqueda
+    </span>
+    <input
+      value={nameFilter}
+      onChange={(e) => setNameFilter(e.target.value)}
+      placeholder="Amasadora, horno, divisora…"
+      style={{
+        border: "1px solid var(--border-input)",
+        background: "#fff",
+        borderRadius: 9,
+        padding: "11px 12px",
+        fontSize: 14,
+        color: "var(--ink)",
+      }}
+    />
+  </label>
+
+  <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--muted-2)" }}>
+      Ordenar
+    </span>
+    <select
+      value={sortOrder}
+      onChange={(e) => setSortOrder(e.target.value as "asc" | "desc" | "relevance")}
+      style={{
+        appearance: "none",
+        border: "1px solid var(--border-input)",
+        background: "#fff",
+        borderRadius: 9,
+        padding: "11px 12px",
+        fontSize: 14,
+        fontWeight: 600,
+        color: "var(--navy)",
+      }}
+    >
+      <option value="relevance">Más relevantes</option>
+      <option value="asc">A → Z</option>
+      <option value="desc">Z → A</option>
+    </select>
+  </label>
+</div>
+
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+    gap: 20,
+  }}
+>
+  {filteredAgents.map((agent) => (
+    <article
+      key={agent.id}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = "0 16px 32px -20px rgba(27,42,94,.35)";
+        e.currentTarget.style.borderColor = "var(--border-strong)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = "0 2px 6px -2px rgba(15,17,21,.06)";
+        e.currentTarget.style.borderColor = "var(--border)";
+      }}
+      style={{
+        border: "1px solid var(--border)",
+        borderRadius: 16,
+        overflow: "hidden",
+        background: "#fff",
+        boxShadow: "0 2px 6px -2px rgba(15,17,21,.06)",
+        display: "flex",
+        flexDirection: "column",
+        transition: "box-shadow .15s, border-color .15s",
+      }}
+    >
+      {/* Imagen */}
+      <div
+        style={{
+          height: 186,
+          background: "var(--panel-2)",
+          borderBottom: "1px solid #EDEFF4",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+        }}
+      >
+        {(agent as any).image ? (
+          <img
+            src={(agent as any).image}
+            alt={agent.name}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setLightboxImg((agent as any).imageFull ?? (agent as any).image);
+            }}
+            style={{
+              height: "100%",
+              width: "auto",
+              objectFit: "contain",
+              cursor: "zoom-in",
+              transition: "transform .2s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+          />
+        ) : (
+          <span style={{ fontSize: 13, color: "var(--muted-2)" }}>{agent.name}</span>
+        )}
       </div>
-    </div>
+
+      {/* Contenido */}
+      <div style={{ padding: "18px 18px 20px", display: "flex", flexDirection: "column", gap: 14, flex: 1 }}>
+        {/* Tags */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          <span style={{
+            fontSize: 10.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase",
+            color: "var(--navy)", background: "var(--tag-cat-bg)", padding: "5px 9px", borderRadius: 6,
+          }}>
+            {agent.family}
+          </span>
+          <span style={{
+            fontSize: 10.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase",
+            color: "var(--tag-sub-fg)", background: "var(--tag-sub-bg)", padding: "5px 9px", borderRadius: 6,
+          }}>
+            {agent.subfamily}
+          </span>
+        </div>
+
+        {/* Nombre */}
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <h3
+            className="heading-font"
+            style={{ fontWeight: 600, fontSize: 17.5, letterSpacing: "-.015em", margin: 0, color: "var(--ink)", textAlign: "center" }}
+          >
+            {agent.name}
+          </h3>
+        </div>
+
+        {/* Botón */}
+        <Link
+          href={`/agent/${agent.id}`}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "var(--navy)")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "var(--ink)")}
+          style={{
+            display: "block",
+            textAlign: "center",
+            border: "none",
+            cursor: "pointer",
+            background: "var(--ink)",
+            color: "#fff",
+            fontSize: 14,
+            fontWeight: 600,
+            padding: 12,
+            borderRadius: 10,
+            textDecoration: "none",
+            transition: "background .15s",
+          }}
+        >
+          Iniciar chat
+        </Link>
+      </div>
+    </article>
   ))}
 </div>
           {filteredAgents.length === 0 && (

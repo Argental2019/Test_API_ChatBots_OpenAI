@@ -1,3 +1,35 @@
+/* apps\web\app\global.css */
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap');
+
+:root {
+  --navy: #1b2a5e;
+  --gold: #f5a800;
+  --gold-hover: #ffb81f;
+  --ink: #0f1115;
+  --border: #e9ebf0;
+  --border-strong: #d8dde7;
+  --border-input: #e1e5ec;
+  --muted: #78808f;
+  --muted-2: #8a93a3;
+  --muted-3: #9aa1ae;
+  --panel: #fbfcfd;
+  --panel-2: #f4f6fa;
+  --panel-3: #f7f9fc;
+  --tag-cat-bg: #eef1f8;
+  --tag-sub-bg: #fdf3dc;
+  --tag-sub-fg: #8a6200;
+  --success: #22a06b;
+}
+
+.heading-font {
+  font-family: 'Archivo', sans-serif;
+}
+
+@keyframes bqfade {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

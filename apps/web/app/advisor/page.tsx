@@ -379,16 +379,16 @@ const {
       }
 
       const { clean, ids } = parseRecommendations(raw);
-const recommendedAgents = ids.length > 0 ? getAgentsByIds(ids) : [];
+      const recommendedAgents = ids.length > 0 ? getAgentsByIds(ids) : [];
 
-const finalMessage: ChatMessage = {
-  role: "assistant",
-  content: recommendedAgents.length > 0
-    ? clean + "\n\nTe dejo acá los links a cada producto que te recomendé, para que puedas ingresar, conocer todos los detalles y hacerle preguntas específicas al especialista de cada equipo:"
-    : clean,
-  ts: assistantMessage.ts,
-  recommendedAgents,
-};
+      const finalMessage: ChatMessage = {
+        role: "assistant",
+        content: recommendedAgents.length > 0
+          ? clean + "\n\nTe dejo acá los links a cada producto que te recomendé, para que puedas ingresar, conocer todos los detalles y hacerle preguntas específicas al especialista de cada equipo:"
+          : clean,
+        ts: assistantMessage.ts,
+        recommendedAgents,
+      };
 
       setMessages((prev) => {
         const nm = [...prev];
@@ -428,198 +428,335 @@ const finalMessage: ChatMessage = {
   ];
 
   return (
-    <div className="min-h-screen bg-white">
-      <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
-        <div className="relative mx-auto max-w-4xl px-4 py-3 flex items-center">
+    <div style={{ minHeight: "100vh", background: "#fff" }}>
+
+      {/* HEADER */}
+      <header style={{
+        position: "sticky", top: 0, zIndex: 10,
+        borderBottom: "1px solid var(--border)",
+        background: "rgba(255,255,255,.92)",
+        backdropFilter: "blur(8px)",
+      }}>
+        <div style={{
+          maxWidth: 900, margin: "0 auto",
+          padding: "16px 24px",
+          display: "flex", alignItems: "center", gap: 16,
+        }}>
           <Link
             href="/"
-            className="absolute left-4 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--panel-2)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
+            style={{
+              flexShrink: 0, width: 38, height: 38, borderRadius: 10,
+              border: "1px solid var(--border-input)", background: "#fff",
+              display: "grid", placeItems: "center",
+              fontSize: 16, color: "var(--navy)", textDecoration: "none",
+            }}
           >
-            <Home className="size-4" />
-            Volver
+            ←
           </Link>
 
-          <div className="mx-auto text-center pointer-events-none">
-            <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-gray-600">
-              <span className="relative flex size-2">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--success)" }} />
+              <span style={{
+                fontSize: 11, fontWeight: 700, letterSpacing: ".12em",
+                textTransform: "uppercase", color: "var(--muted-2)",
+              }}>
+                Asesor Integral
               </span>
-              Activo
             </div>
-            <h2 className="mt-2 text-base font-semibold text-gray-900">Busquetti | Asesor Integral</h2>
-            <p className="text-xs text-gray-500">Contame qué necesitás y te recomiendo los equipos ideales</p>
+            <h2 className="heading-font" style={{
+              fontWeight: 600, fontSize: 20, letterSpacing: "-.02em",
+              margin: 0, color: "var(--ink)",
+            }}>
+              Busquetti — Asesor Integral
+            </h2>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-4">
+      <main style={{ maxWidth: 900, margin: "0 auto", padding: "0 24px 40px" }}>
+
         {/* FAQs */}
-        <div className="mt-6 flex flex-wrap gap-2">
-          {FAQS.map((faq, i) => (
-            <button
-              key={i}
-              onClick={() => sendMessage(faq)}
-              disabled={loading}
-              className="rounded-full border bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {faq}
-            </button>
-          ))}
+        <div style={{ padding: "18px 0 6px" }}>
+          <span style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: ".12em",
+            textTransform: "uppercase", color: "var(--muted-2)",
+          }}>
+            Preguntas frecuentes
+          </span>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+            {FAQS.map((faq, i) => (
+              <button
+                key={i}
+                onClick={() => sendMessage(faq)}
+                disabled={loading}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--navy)";
+                  e.currentTarget.style.background = "var(--panel-3)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "var(--border-input)";
+                  e.currentTarget.style.background = "#fff";
+                }}
+                style={{
+                  border: "1px solid var(--border-input)", background: "#fff",
+                  cursor: "pointer", borderRadius: 999, padding: "9px 15px",
+                  fontSize: 13, fontWeight: 600, color: "var(--navy)",
+                  opacity: loading ? 0.5 : 1,
+                }}
+              >
+                {faq}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Chat */}
-        <section className="mt-6 rounded-2xl border bg-white shadow-sm">
-          <div className="max-h-[64vh] overflow-y-auto p-4 sm:p-6">
+        {/* CHAT */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 20, padding: "24px 0 8px" }}>
 
-            {messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12 text-center text-gray-400">
-                <div className="mb-4 size-16 rounded-full overflow-hidden border border-gray-200 shadow-sm">
-                  <img
-                    src="/busquetti/LogoBusquetti.jpg"
-                    alt="Busquetti"
-                    className="w-full h-full object-cover object-[center_12%] scale-[1.8]"
-                  />
-                </div>
-                <p className="text-sm font-medium text-gray-600">Hola, soy Busquetti</p>
-                <p className="mt-1 text-xs text-gray-400">
-                  Contame qué querés producir y te ayudo a elegir los equipos que necesitás
-                </p>
+          {/* Estado vacío */}
+          {messages.length === 0 && (
+            <div style={{
+              display: "flex", flexDirection: "column", alignItems: "center",
+              justifyContent: "center", padding: "48px 0", textAlign: "center",
+            }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: "50%",
+                background: "var(--navy)", display: "grid", placeItems: "center",
+                fontFamily: "'Archivo', sans-serif", fontWeight: 700,
+                fontSize: 22, color: "var(--gold)", marginBottom: 16,
+              }}>
+                B
               </div>
-            )}
+              <p style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", margin: "0 0 6px" }}>
+                Hola, soy Busquetti
+              </p>
+              <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
+                Contame qué querés producir y te ayudo a elegir los equipos que necesitás
+              </p>
+            </div>
+          )}
 
-            {messages.map((m, i) => {
-              const mine = m.role === "user";
-              return (
-                <div
-                  key={i}
-                  className={`mb-3 flex items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}
-                >
+          {/* Mensajes */}
+          {messages.map((m, i) => {
+            const mine = m.role === "user";
+            return (
+              <div
+                key={i}
+                style={{
+                  display: "flex", flexDirection: "column", gap: 12,
+                  animation: "bqfade .3s ease both",
+                }}
+              >
+                <div style={{
+                  display: "flex", gap: 12, alignItems: "flex-start",
+                  justifyContent: mine ? "flex-end" : "flex-start",
+                }}>
+                  {/* Avatar Busquetti */}
                   {!mine && (
-                    <div className="shrink-0 size-10 rounded-full overflow-hidden border border-gray-200 shadow-sm bg-white">
-                      <img
-                        src="/busquetti/LogoBusquetti.jpg"
-                        alt="Busquetti"
-                        className="w-full h-full object-cover object-[center_12%] scale-[1.8]"
-                      />
+                    <div style={{
+                      flexShrink: 0, width: 36, height: 36, borderRadius: "50%",
+                      background: "var(--navy)", display: "grid", placeItems: "center",
+                      fontFamily: "'Archivo', sans-serif", fontWeight: 700,
+                      fontSize: 15, color: "var(--gold)",
+                    }}>
+                      B
                     </div>
                   )}
 
-                  <div className={`w-fit max-w-[85%] ${mine ? "" : "space-y-3"}`}>
-                    <div
-                      className={`rounded-2xl px-5 py-3 text-sm leading-6 ${
-                        mine
-                          ? "bg-gray-900 text-white shadow-md"
-                          : "border bg-white text-gray-900 shadow-sm"
-                      }`}
-                    >
-                      <Markdown
-                        className={
-                          mine
-                            ? "whitespace-pre-wrap leading-relaxed"
-                            : "prose prose-sm sm:prose-base max-w-none leading-relaxed [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5"
-                        }
-                      >
-                        {m.content}
-                      </Markdown>
-                      <div className={`mt-1 text-[11px] ${mine ? "text-gray-300" : "text-gray-500"}`}>
-                        {mine ? "Vos" : "Busquetti"} · {formatTime(m.ts)}
-                      </div>
+                  {/* Burbuja */}
+                  <div style={{
+                    maxWidth: "76%", padding: "14px 17px",
+                    borderRadius: mine ? "16px 16px 4px 16px" : "4px 16px 16px 16px",
+                    background: mine ? "var(--navy)" : "var(--panel-3)",
+                    color: mine ? "#fff" : "var(--ink)",
+                    fontSize: 14.5, lineHeight: 1.6,
+                    border: `1px solid ${mine ? "var(--navy)" : "var(--border)"}`,
+                  }}>
+                    <Markdown className={
+                      mine
+                        ? "whitespace-pre-wrap leading-relaxed"
+                        : "prose prose-sm sm:prose-base max-w-none leading-relaxed [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5"
+                    }>
+                      {m.content}
+                    </Markdown>
+                    <div style={{
+                      marginTop: 4, fontSize: 11,
+                      color: mine ? "rgba(255,255,255,.5)" : "var(--muted-3)",
+                    }}>
+                      {mine ? "Vos" : "Busquetti"} · {formatTime(m.ts)}
                     </div>
+                  </div>
 
-                    {/* Tarjetas de equipos recomendados */}
-                    {!mine && m.recommendedAgents && m.recommendedAgents.length > 0 && (
-                      <div className="mt-3 space-y-2">
-                        <p className="text-xs font-semibold text-gray-500 px-1">Equipos recomendados:</p>
-                        {m.recommendedAgents.map((agent) => (
-                          <div
-                            key={agent.id}
-                            className="flex items-center justify-between gap-3 rounded-xl border bg-white px-4 py-3 shadow-sm"
-                          >
-                            <div className="flex items-center gap-3">
-                              {agent.image && (
-                                <div className="shrink-0 size-14 rounded-lg overflow-hidden bg-gray-50 border">
-                                  <img
-                                    src={agent.image}
-                                    alt={agent.name}
-                                    className="w-full h-full object-contain"
-                                  />
-                                </div>
-                              )}
-                              <div>
-                                <p className="text-sm font-semibold text-gray-900">{agent.name}</p>
-                                <p className="text-xs text-gray-500">{agent.family}</p>
-                              </div>
+                  {/* Avatar usuario */}
+                  {mine && (
+                    <div style={{
+                      flexShrink: 0, width: 32, height: 32, borderRadius: "50%",
+                      background: "var(--ink)", display: "grid", placeItems: "center",
+                    }}>
+                      <span style={{ color: "#fff", fontSize: 11, fontWeight: 700 }}>Vos</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Tarjetas de equipos recomendados */}
+                {!mine && m.recommendedAgents && m.recommendedAgents.length > 0 && (
+                  <div style={{ marginLeft: 48, display: "flex", flexDirection: "column", gap: 10 }}>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, letterSpacing: ".08em",
+                      textTransform: "uppercase", color: "var(--muted-2)",
+                    }}>
+                      Equipos recomendados
+                    </span>
+                    <div style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(238px, 1fr))",
+                      gap: 12,
+                    }}>
+                      {m.recommendedAgents.map((agent) => (
+                        <div
+                          key={agent.id}
+                          style={{
+                            border: "1px solid var(--border)", borderRadius: 14,
+                            overflow: "hidden", background: "#fff",
+                            boxShadow: "0 2px 6px -2px rgba(15,17,21,.06)",
+                          }}
+                        >
+                          {agent.image && (
+                            <div style={{
+                              height: 126, background: "var(--panel-2)",
+                              borderBottom: "1px solid #EDEFF4",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                            }}>
+                              <img
+                                src={agent.image}
+                                alt={agent.name}
+                                style={{ height: "100%", width: "auto", objectFit: "contain" }}
+                              />
                             </div>
+                          )}
+                          <div style={{ padding: "13px 14px 15px" }}>
+                            <span style={{
+                              fontSize: 10, fontWeight: 700, letterSpacing: ".09em",
+                              textTransform: "uppercase", color: "var(--muted-2)",
+                            }}>
+                              {agent.family}
+                            </span>
+                            <h4 className="heading-font" style={{
+                              fontWeight: 600, fontSize: 15, letterSpacing: "-.01em",
+                              margin: "5px 0 12px", color: "var(--ink)",
+                            }}>
+                              {agent.name}
+                            </h4>
                             <Link
                               href={agent.url as any}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-black transition"
+                              style={{
+                                display: "inline-flex", alignItems: "center", gap: 6,
+                                fontSize: 13, fontWeight: 700, color: "var(--navy)",
+                                borderBottom: "2px solid var(--gold)", paddingBottom: 2,
+                                textDecoration: "none",
+                              }}
                             >
                               Ver ficha ↗
                             </Link>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {mine && (
-                    <div className="shrink-0 size-8 rounded-full bg-gray-900 flex items-center justify-center shadow-sm">
-                      <span className="text-white text-xs font-semibold">Vos</span>
+                        </div>
+                      ))}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
-            <div ref={endRef} />
+          <div ref={endRef} />
+        </div>
+
+        {/* COMPOSER */}
+        <div style={{
+          position: "sticky", bottom: 0,
+          background: "linear-gradient(to bottom, rgba(255,255,255,0), #fff 22%)",
+          padding: "14px 0 0",
+        }}>
+          <div style={{
+            display: "flex", alignItems: "flex-end", gap: 10,
+            border: "1px solid var(--border-input)", borderRadius: 16,
+            padding: "10px 10px 10px 16px", background: "#fff",
+            boxShadow: "0 10px 26px -20px rgba(15,17,21,.4)",
+          }}>
+            <textarea
+              ref={inputRef}
+              rows={1}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyPress}
+              disabled={loading}
+              placeholder="Describí tu producción, espacio y objetivo…"
+              style={{
+                flex: 1, border: "none", outline: "none", resize: "none",
+                fontSize: 14.5, lineHeight: 1.5, padding: "10px 0",
+                color: "var(--ink)", background: "transparent", maxHeight: 120,
+              }}
+            />
+
+            {/* Voz */}
+            <button
+              type="button"
+              onClick={handleOpenVoice}
+              disabled={loading}
+              title="Modo conversación por voz"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "var(--navy)";
+                e.currentTarget.style.color = "var(--navy)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--border-input)";
+                e.currentTarget.style.color = "var(--muted-2)";
+              }}
+              style={{
+                flexShrink: 0, width: 40, height: 40, borderRadius: 11,
+                border: "1px solid var(--border-input)", background: "#fff",
+                color: "var(--muted-2)", cursor: "pointer",
+                display: "grid", placeItems: "center",
+                opacity: loading ? 0.5 : 1,
+              }}
+            >
+              <AudioLines size={16} />
+            </button>
+
+            {/* Enviar */}
+            <button
+              onClick={() => sendMessage()}
+              disabled={loading || !input.trim()}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--navy)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "var(--ink)")}
+              style={{
+                flexShrink: 0, height: 40, padding: "0 20px",
+                border: "none", borderRadius: 11, background: "var(--ink)",
+                color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 6,
+                opacity: loading || !input.trim() ? 0.5 : 1,
+              }}
+            >
+              {loading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              {loading ? "Enviando" : "Enviar"}
+            </button>
           </div>
 
-          {/* Composer */}
-          <div className="sticky bottom-0 border-t bg-white p-3 sm:p-4">
-            <div className="flex items-end gap-3">
-              <textarea
-                ref={inputRef}
-                rows={1}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyPress}
-                disabled={loading}
-                placeholder="Contame qué necesitás producir…"
-                className="max-h-[200px] flex-1 resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
-              />
-
-              {/* Botón modo voz */}
-              <button
-                type="button"
-                onClick={handleOpenVoice}
-                disabled={loading}
-                className="mb-1 inline-flex items-center justify-center rounded-full border px-3 py-3 text-sm shadow-sm transition bg-white text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                title="Modo conversación por voz"
-              >
-                <AudioLines className="size-4" />
-              </button>
-
-              <button
-                onClick={() => sendMessage()}
-                disabled={loading || !input.trim()}
-                className="inline-flex items-center gap-2 rounded-2xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {loading ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-                {loading ? "Enviando" : "Enviar"}
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <footer className="py-6 mt-6 border-t text-center text-xs text-gray-500">
-          <p>© {new Date().getFullYear()} Argental · Busquetti Asesor Integral</p>
-        </footer>
+          <p style={{
+            margin: "14px 0 0", fontSize: 11.5, lineHeight: 1.6,
+            color: "var(--muted-3)", textAlign: "center",
+          }}>
+            © {new Date().getFullYear()} Argental · Busquetti Asesor Integral
+          </p>
+        </div>
       </main>
 
-      {/* Modal de modo voz */}
+      {/* Modal voz */}
       <VoiceModeModal
         open={voiceModalOpen}
         onClose={handleCloseVoice}
