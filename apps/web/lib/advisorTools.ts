@@ -1,5 +1,14 @@
 // apps/web/lib/advisorTools.ts
 import { AGENTS } from "./agents";
+import knowledgeRaw from "./agentKnowledge.json";
+
+const knowledge = knowledgeRaw as Record<string, {
+  id: string;
+  name: string;
+  family: string;
+  description: string;
+  knowledge: Record<string, string>;
+}>;
 
 export type AgentSummary = {
   id: string;
@@ -28,13 +37,27 @@ export function getAgentCatalog(): AgentSummary[] {
 }
 
 /**
- * Devuelve el catálogo como texto plano para meterlo en el prompt del orquestador.
+ * Devuelve el catálogo como texto plano enriquecido con el conocimiento
+ * generado automáticamente de cada agente.
  */
 export function getCatalogAsText(): string {
-  const catalog = getAgentCatalog();
-  return catalog
-    .map((a) => `- ID: ${a.id} | ${a.family} > ${a.subfamily} | ${a.name}`)
-    .join("\n");
+  return AGENTS.map((a) => {
+    const k = knowledge[a.id];
+    const lines = [
+      `## ${a.name} (ID: ${a.id})`,
+      `Familia: ${a.family} | Subfamilia: ${a.subfamily}`,
+    ];
+
+    if (k?.knowledge) {
+      const entries = Object.values(k.knowledge).filter(Boolean);
+      if (entries.length > 0) {
+        // Tomamos las primeras 2 respuestas para no saturar el contexto
+        lines.push(entries.slice(0, 2).join(" ").slice(0, 400));
+      }
+    }
+
+    return lines.join("\n");
+  }).join("\n\n");
 }
 
 /**
