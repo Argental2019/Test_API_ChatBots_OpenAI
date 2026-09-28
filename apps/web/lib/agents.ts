@@ -111,7 +111,7 @@ Si NO podés responder usando EXCLUSIVAMENTE la documentación disponible:
 2) En las líneas siguientes, explicá al usuario en lenguaje claro por qué no podés responder y qué documentación podría resolverlo.
 
 3) OBLIGATORIO agregar **textualmente al final**:  
-"Si necesitas asistencia COMERCIAL - POSVENTA - REPUESTOS te compartimos a continuación nuestro link a WhatsApp: 👉 https://wa.me/5493415470737"
+"Si necesitas asistencia COMERCIAL - POSVENTA - REPUESTOS te compartimos a continuación nuestro link a WhatsApp: 👉 https://wa.me/5493415482679"
 
 ---
 

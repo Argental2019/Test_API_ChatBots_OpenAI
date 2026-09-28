@@ -186,10 +186,10 @@ const pattern = new RegExp(`\\b((?:(?:${numWords})\\s*)+(?:punto\\s*(?:${numWord
   const fixTranscriptText = useCallback((text: string): string => {
     let t = fixMeasures(text);
     // Teléfono Argental — múltiples formas orales posibles
-    t = t.replace(/m[aá]s\s+cincuenta\s+y\s+cuatro\s+nueve\s+treinta\s+y\s+cuatro\s+uno\s+cinco\s+cuatro\s+siete\s+cero\s+siete\s+tres\s+siete/gi, "+5493415470737");
-    t = t.replace(/m[aá]s\s+cinco\s+cuatro\s+nueve\s+tres?\s+cuatro\s+uno\s+cinco\s+cuatro\s+siete\s+cero\s+siete\s+tres\s+siete/gi, "+5493415470737");
-    t = t.replace(/m[aá]s\s+cinco\s+cuatro\s+nueve\s+tres\s+cuatro\s+uno\s+cinco\s+cuatro\s+siete\s+cero\s+siete\s+tres\s+siete/gi, "+5493415470737");
-    t = t.replace(/\+?54\s*9\s*341\s*5\s*47\s*0\s*7\s*3\s*7/g, "+5493415470737");
+    t = t.replace(/m[aá]s\s+cincuenta\s+y\s+cuatro\s+nueve\s+treinta\s+y\s+cuatro\s+uno\s+cinco\s+cuatro\s+ocho\s+dos\s+seis\s+siete\s+nueve/gi, "+5493415482679");
+    t = t.replace(/m[aá]s\s+cinco\s+cuatro\s+nueve\s+tres?\s+cuatro\s+uno\s+cinco\s+cuatro\s+ocho\s+dos\s+seis\s+siete\s+nueve/gi, "+5493415482679");
+    t = t.replace(/m[aá]s\s+cinco\s+cuatro\s+nueve\s+tres\s+cuatro\s+uno\s+cinco\s+cuatro\s+ocho\s+dos\s+seis\s+siete\s+nueve/gi, "+5493415482679");
+    t = t.replace(/\+?54\s*9\s*341\s*5\s*48\s*2\s*6\s*7\s*9/g, "+5493415482679");
     // Modelos técnicos pronunciados
     t = t.replace(/Efe\s+E\s+novecientos\s+sesenta/gi, "FE 4.0-960");
     t = t.replace(/Efe\s+E\s+cuatro\s+punto\s+cero\s+novecientos\s+sesenta\s+Bio/gi, "FE 4.0-960 BIO");

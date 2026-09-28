@@ -56,7 +56,7 @@ async function reportMiss(miss: any) {
 }
 
 function openWhatsApp() {
-  const url = "https://wa.me/5493415470737";
+  const url = "https://wa.me/5493415482679";
   const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(
     navigator.userAgent
   );

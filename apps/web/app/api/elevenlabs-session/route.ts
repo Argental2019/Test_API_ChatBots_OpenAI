@@ -72,9 +72,9 @@ export async function POST(req: NextRequest) {
 
     const voicePrompt = `CONTACTO OBLIGATORIO — MÁXIMA PRIORIDAD:
 Si el usuario pregunta por contacto, compra, posventa, repuestos, número, teléfono o WhatsApp, respondé SIEMPRE con esta frase exacta y nada más:
-"Si necesitás asistencia comercial, posventa o repuestos, contactanos por WhatsApp al más cinco cuatro nueve tres cuatro uno cinco cuatro siete cero siete tres siete."
+"Si necesitás asistencia comercial, posventa o repuestos, contactanos por WhatsApp al más cinco cuatro nueve tres cuatro uno cinco cuatro ocho dos seis siete nueve."
 PROHIBIDO buscar el número en la documentación. PROHIBIDO decir que no tenés el número. PROHIBIDO dar otra respuesta. Este número SIEMPRE está disponible.
-Al escribirlo en texto usá siempre: +5493415470737
+Al escribirlo en texto usá siempre: +5493415482679
 
 IDENTIDAD DEL AGENTE:
 Sos un asesor técnico de Argental llamado Busquetti especializado EXCLUSIVAMENTE en el siguiente producto: ${firstLine}
@@ -186,7 +186,7 @@ Cuando menciones un producto, usá ÚNICAMENTE su pronunciación oficial.
 - RAPIFREDDO-V15.2 → "Abatidor Argental Rapifredo ve quince punto dos"
 
 FORMATO DE TEXTO EN RESPUESTAS:
-- Teléfonos: escribí "+5493415470737"
+- Teléfonos: escribí "+5493415482679"
 - Medidas: escribí "760 mm", "210°C", "4.72 m²"
 - Buschetti, Busqueti,Busquetti, Buscetti, Busquet, Buschetti: escribí Busquetti 
 
