@@ -23,6 +23,8 @@ import { extractTextFromBuffer } from "./utils/extractText.js";
 import cors from "cors";
 import multer from "multer";
 import OpenAI from "openai";
+import { registerAdvisorRoutes } from "./routes/advisorExcel.js";
+import { registerAdvisorPreparationRoutes } from "./routes/advisorPreparation.js";
 // ...
 dotenv.config();
 const app = express();
@@ -106,7 +108,7 @@ const mem = new Map();
 let redis = null;
 if (process.env.REDIS_URL) {
   redis = new Redis(process.env.REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: 2 });
-  redis.on("error", (e) => console.error("Redis error:", e.message));
+  redis.on("error", (f) => console.error("Redis error:", e.message));
 }
 const cacheGet = async (k) => {
   if (redis) {
@@ -116,7 +118,22 @@ const cacheGet = async (k) => {
   return mem.has(k) ? mem.get(k) : null;
 };
 const cacheSet = async (k, v, ttl = 86400) => {
-  if (redis) return redis.set(k, JSON.stringify(v), "EX", ttl);
+  if (redis) {
+    if (ttl > 0) {
+      return redis.set(
+        k,
+        JSON.stringify(v),
+        "EX",
+        ttl
+      );
+    }
+
+    return redis.set(
+      k,
+      JSON.stringify(v)
+    );
+  }
+
   mem.set(k, v);
   return true;
 };
@@ -1061,6 +1078,34 @@ app.get(
 );
 
 app.get("/stats", (req, res) => res.status(200).json(metricsSnapshot()));
+
+// ===== Asesor Integral: endpoints nuevos =====
+// ===== Asesor Integral: endpoints nuevos =====
+
+registerAdvisorRoutes(app, {
+  getDrive,
+  getFileMeta,
+  getFileBinary,
+
+  getManifest,
+  readFileSmart,
+  cacheDelByPrefix,
+
+  cacheGet,
+  cacheSet,
+  withTimer,
+  asyncHandler,
+});
+
+registerAdvisorPreparationRoutes(app, {
+  openai,
+  cacheGet,
+  cacheSet,
+  getManifest,
+  readFileSmart,
+  withTimer,
+  asyncHandler,
+});
 
 // ===== Error handler global =====
 app.use((err, req, res, _next) => {
