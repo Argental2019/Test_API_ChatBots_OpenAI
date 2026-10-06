@@ -39,6 +39,15 @@ de su funcionamiento y de la documentación recibida.
 
   c) Permite validar la compatibilidad con el producto o proceso que el cliente necesita.
 
+- En la condición c), "compatibilidad con el producto o proceso" significa que una
+  característica técnica del equipo puede permitir o impedir físicamente o funcionalmente
+  elaborar, procesar o tratar el producto como el cliente necesita.
+
+  No considera compatibilidad productiva a las funciones que solamente facilitan la
+  administración, organización, configuración, supervisión, conectividad o comodidad
+  de uso del equipo, salvo que la documentación establezca explícitamente que su ausencia
+  impide realizar el proceso requerido.
+
 - Para la condición a), tené en cuenta que conocer la capacidad por ciclo no alcanza
   para saber la producción diaria: también hace falta saber cuántos ciclos productivos
   puede realizar la máquina en un período.
@@ -92,6 +101,16 @@ de su funcionamiento y de la documentación recibida.
 
   No las unifiques.
 
+- Dos datos expresados con la misma unidad no representan necesariamente la misma
+  magnitud comparable.
+
+  Si un valor depende de una referencia, condición, producto, proceso, equipo base
+  o escenario de comparación, solo unificalo en un mismo campo cuando esa referencia
+  sea equivalente entre los modelos.
+
+  Si las referencias no son equivalentes o la documentación no permite demostrarlo,
+  tratá los datos como magnitudes diferentes o no generes un campo comparativo común.
+
 - Si varios documentos expresan exactamente la misma magnitud en unidades diferentes,
   normalizá todos los valores a una única unidad, siempre que la conversión sea
   matemática, directa y no requiera supuestos.
@@ -102,6 +121,16 @@ de su funcionamiento y de la documentación recibida.
   No realices derivaciones que requieran asumir comportamientos, relaciones técnicas
   o equivalencias no documentadas.
 
+- Cuando un dato documentado contenga dos o más magnitudes numéricas independientes
+  que puedan compararse por separado con una necesidad del cliente, DEBÉS crear un
+  campo numérico independiente para cada magnitud.
+
+  No agrupes esas magnitudes dentro de un campo de texto, una lista ni una cadena
+  compuesta.
+
+  Por ejemplo, si una dimensión está expresada como ancho x largo, tratá ancho y largo
+  como magnitudes independientes. El ejemplo es ilustrativo y no implica que esos
+  campos deban existir para todos los tipos de equipo.
 
 4. CAMPOS REDUNDANTES
 
@@ -147,6 +176,10 @@ de su funcionamiento y de la documentación recibida.
 6. FORMATO DE LOS CAMPOS
 
 - La tabla tiene que servir para TODAS las máquinas del tipo.
+
+- No incluyas como campos datos que el sistema ya conoce para identificar la máquina,
+  como nombre del modelo, código, ID o marca. Esos datos no forman parte del esquema
+  técnico usado para decidir si una máquina cumple o no con la necesidad del cliente.
 
 - Nombres en minúscula, en español, sin tildes, con guiones bajos y con la unidad
   al final cuando corresponda.
@@ -217,6 +250,29 @@ de las máquinas para algún cliente razonablemente representable con la documen
 - Si la respuesta es no, eliminalo.
 
 - Si hay duda y su utilidad no puede demostrarse con los documentos, eliminalo.
+
+- Que un dato sea útil, conveniente, diferenciador o comercialmente valorable no alcanza
+  para incluirlo. Debe existir un escenario concreto, respaldado por la documentación,
+  en el que el valor de ese dato pueda hacer que una máquina sea compatible o incompatible
+  con una necesidad real del cliente, o que una opción deje de ser adecuada frente a otra.
+
+- No incluyas un campo únicamente porque permita describir mejor la máquina, identificarla,
+  facilitar su uso, administrar funciones, organizar configuraciones o destacar una
+  característica comercial.
+
+- Sí incluí datos específicos del funcionamiento, capacidad, formato de producto,
+  dimensiones útiles, rangos de operación o instalación cuando una diferencia en esos
+  valores pueda cambiar qué máquina corresponde recomendar.
+
+- Para justificar un campo no alcanza con expresiones como "facilita", "permite gestionar",
+  "mejora", "ayuda", "es útil" o "permite identificar". La justificación debe explicar
+  concretamente qué necesidad del cliente podría hacer que un valor del campo cumpla
+  y otro valor no cumpla.
+
+- No conviertas una preferencia operativa o comercial en una condición indispensable
+  imaginando un cliente que podría exigirla. Para incluir un campo, la incompatibilidad
+  debe surgir de una limitación técnica, productiva o de instalación documentada, no
+  solamente de una preferencia, conveniencia o forma de administrar el equipo.
 
 
 Respondé únicamente con el JSON pedido.

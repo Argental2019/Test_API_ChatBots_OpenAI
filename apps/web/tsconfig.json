@@ -6,7 +6,6 @@
     "moduleResolution": "Bundler",
     "jsx": "preserve",
     "strict": true,
-    "baseUrl": ".",
     "paths": { "@/*": ["./*"] },
     "allowJs": true,
     "skipLibCheck": true,
