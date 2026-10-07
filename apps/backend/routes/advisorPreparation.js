@@ -891,6 +891,7 @@ export async function generarEsquemaTipo({
         "gpt-5.1",
 
       stream: false,
+      
 
       response_format: {
         type: "json_object",

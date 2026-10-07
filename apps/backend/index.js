@@ -6,7 +6,7 @@
 // ===== Imports =====
 import { fileURLToPath } from "url";
 import path from "path";
-
+import { registerAdvisorDiagnosisRoutes } from "./routes/advisorDiagnosis.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -1107,6 +1107,21 @@ registerAdvisorPreparationRoutes(app, {
   asyncHandler,
 });
 
+registerAdvisorDiagnosisRoutes(app, {
+  openai,
+  asyncHandler,
+    // Lee valores desde Redis o desde el fallback en memoria.
+  cacheGet,
+
+  // Guarda valores en Redis o en el fallback en memoria.
+  cacheSet,
+  // Reutilizamos las funciones de Drive que ya tiene el backend.
+  // getFileMeta obtiene nombre, tipo y versión actual del archivo.
+  getFileMeta,
+
+  // readFileSmart lee el archivo y reutiliza el cache por versión/etag.
+  readFileSmart,
+});
 // ===== Error handler global =====
 app.use((err, req, res, _next) => {
   const status = err.status || 500;
