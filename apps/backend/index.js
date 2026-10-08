@@ -9,6 +9,8 @@ import path from "path";
 import { registerAdvisorDiagnosisRoutes } from "./routes/advisorDiagnosis.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+import { registerAdvisorComparisonRoutes } from "./routes/advisorComparison.js";
+import { REGLAS_COMUNES } from "./advisor/prompt/reglasComunes.js";
 
 console.log("🔥 Backend Express cargado desde:", __filename);
 
@@ -1121,6 +1123,13 @@ registerAdvisorDiagnosisRoutes(app, {
 
   // readFileSmart lee el archivo y reutiliza el cache por versión/etag.
   readFileSmart,
+});
+registerAdvisorComparisonRoutes(app, {
+  openai,
+  asyncHandler,
+  cacheGet,
+  cacheSet,
+  reglasComunes: REGLAS_COMUNES,
 });
 // ===== Error handler global =====
 app.use((err, req, res, _next) => {

@@ -40,6 +40,9 @@ export default function AdvisorPage() {
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  const sessionIdRef = useRef<string>(crypto.randomUUID());
+
+
 const advisorVoicePrompt = `INSTRUCCIÓN CRÍTICA — FORMATO DE RESPUESTA:
 Cada mensaje tuyo debe contener EXACTAMENTE UNA pregunta y nada más.
 NO des explicaciones, NO recomiendes equipos todavía, NO des contexto antes de tener toda la información.
@@ -314,6 +317,11 @@ const {
   const sendMessage = async (text?: string) => {
     const content = (text ?? input).trim();
     if (!content || loading) return;
+    // La primera vez que se envía un mensaje creamos la sesión.
+    // Los mensajes siguientes reutilizan exactamente el mismo ID.
+    if (!sessionIdRef.current) {
+      sessionIdRef.current = crypto.randomUUID();
+    }
 
     const userMessage: ChatMessage = { role: "user", content, ts: Date.now() };
     const history = [...messages, userMessage];
@@ -329,9 +337,14 @@ const {
           "Content-Type": "application/json",
           Accept: "text/event-stream",
         },
-        body: JSON.stringify({
-          messages: history.map((m) => ({ role: m.role, content: m.content })),
-        }),
+                    body: JSON.stringify({
+            sessionId: sessionIdRef.current,
+
+            messages: history.map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
+          }),
       });
 
       if (!response.ok || !response.body) throw new Error("Error en la respuesta");
