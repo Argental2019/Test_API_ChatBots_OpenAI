@@ -35,6 +35,21 @@ export function calcularObligatoriasPendientes({
   const productos = Array.isArray(registro?.busqueda?.productos)
     ? registro.busqueda.productos
     : [];
+      /**
+   * Número de la pregunta de la guía que pide los productos.
+   * Lo informa Prompt 3 a partir de la guía y la ruta lo valida.
+   * No se hardcodea ningún número de pregunta.
+   */
+  const preguntaProductos =
+    typeof registro?.busqueda?.pregunta_productos === "number"
+      ? registro.busqueda.pregunta_productos
+      : null;
+
+  const hayProductos = productos.some(
+    (producto) =>
+      typeof producto === "string" &&
+      producto.trim() !== ""
+  );
 
   /**
    * Una respuesta solamente cuenta como resuelta cuando Prompt 3
@@ -55,7 +70,21 @@ export function calcularObligatoriasPendientes({
       if (!Number.isFinite(numero)) {
         return [];
       }
-
+            /**
+       * La pregunta que pide los productos se da por resuelta si
+       * registro.busqueda.productos ya tiene al menos un producto,
+       * aunque Prompt 3 no haya creado su entrada en registro.respuestas.
+       *
+       * El dato existe; no tiene sentido trabar el diagnóstico
+       * esperando una respuesta duplicada.
+       */
+      if (
+        preguntaProductos !== null &&
+        numero === preguntaProductos &&
+        hayProductos
+      ) {
+        return [];
+      }
       // Obtenemos todas las respuestas correspondientes
       // a esta pregunta.
       const respuestasPregunta = respuestas.filter(

@@ -12,6 +12,9 @@
 // - Cada equipo se traduce a su ID Busquetti. Si no tiene ID o su agente no
 //   está disponible, se saltea; si es parte de un conjunto, se saltea el
 //   conjunto entero (no se puede recomendar una línea incompleta).
+// - Capacidad de referencia: a cada equipo se le asigna el mayor "consumo de
+//   harina máx." de las filas donde aparece (en esa etapa). La usa la
+//   comparación cuando la ficha no permite calcular la capacidad.
 // =============================================================================
 
 import { normalizar } from "./leercatalogo";
@@ -63,7 +66,13 @@ export function armarCandidatos(
       avisos.push({ codigo: "agente_no_disponible", mensaje: `El agente "${equipo.idBusquetti}" (${nombre}) no existe o está deshabilitado; se saltea.` });
       return null;
     }
-    return { id: equipo.idBusquetti, nombreComercial: equipo.nombreComercial, marca: equipo.marca, tipoEquipo: equipo.tipoEquipo };
+        return {
+      id: equipo.idBusquetti,
+      nombreComercial: equipo.nombreComercial,
+      marca: equipo.marca,
+      tipoEquipo: equipo.tipoEquipo,
+      capacidadReferenciaExcel: null, // se completa al terminar la etapa
+    };
   };
 
   const resultado: EtapaCandidatos[] = [];
@@ -73,7 +82,21 @@ export function armarCandidatos(
     let habiaEquipos = false;
 
     // Agrega una opción, o la combina con una igual que ya vino de otra fila.
-    const agregar = (opcion: OpcionCandidata) => {
+        // Mayor consumo de harina máx. de las filas donde aparece cada equipo.
+    const capacidadPorEquipo = new Map<string, number>();
+
+    // Agrega una opción, o la combina con una igual que ya vino de otra fila.
+    // También registra el consumo máximo de la fila para cada equipo de la opción.
+    const agregar = (opcion: OpcionCandidata, consumoFila: number | null) => {
+      if (consumoFila !== null) {
+        for (const equipo of opcion.equipos) {
+          capacidadPorEquipo.set(
+            equipo.id,
+            Math.max(capacidadPorEquipo.get(equipo.id) ?? 0, consumoFila),
+          );
+        }
+      }
+
       const existente = opciones.get(opcion.clave);
       if (!existente) {
         opciones.set(opcion.clave, opcion);
@@ -95,7 +118,7 @@ export function armarCandidatos(
         nombres.forEach((nombre, i) => {
           const equipo = resolver(nombre);
           if (!equipo) return;
-          agregar({ clave: equipo.id, tipo: "individual", equipos: [equipo], preferencia: i + 1, sistemas: [...sistemas], productos: [fila.producto] });
+            agregar({ clave: equipo.id, tipo: "individual", equipos: [equipo], preferencia: i + 1, sistemas: [...sistemas], productos: [fila.producto] }, fila.consumoMaxKgDia);
         });
       } else {
         // Todos los equipos de la fila forman un conjunto.
@@ -106,11 +129,18 @@ export function armarCandidatos(
         }
         const validos = equipos as EquipoOpcion[];
         if (validos.length === 1) {
-          agregar({ clave: validos[0].id, tipo: "individual", equipos: validos, preferencia: 1, sistemas: [...sistemas], productos: [fila.producto] });
+            agregar({ clave: validos[0].id, tipo: "individual", equipos: validos, preferencia: 1, sistemas: [...sistemas], productos: [fila.producto] }, fila.consumoMaxKgDia);
         } else {
           const clave = validos.map((e) => e.id).sort().join("+");
-          agregar({ clave, tipo: "conjunto", equipos: validos, preferencia: 1, sistemas: [...sistemas], productos: [fila.producto] });
+                      agregar({ clave, tipo: "conjunto", equipos: validos, preferencia: 1, sistemas: [...sistemas], productos: [fila.producto] }, fila.consumoMaxKgDia);
         }
+      }
+    }
+
+        // Capacidad de referencia de cada equipo: la mayor de las filas donde aparece.
+    for (const opcion of opciones.values()) {
+      for (const equipo of opcion.equipos) {
+        equipo.capacidadReferenciaExcel = capacidadPorEquipo.get(equipo.id) ?? null;
       }
     }
 

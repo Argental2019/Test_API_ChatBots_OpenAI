@@ -35,7 +35,10 @@ CONVERSACIÓN
 - Interpretá las respuestas cortas ("sí", "no", "ok", "dale", "eso") según la última
   pregunta del asesor.
 
-- Si el cliente corrige un dato que ya había dado, reemplazalo por el nuevo valor.
+- Si el cliente corrige un dato que ya había dado, reemplazá la respuesta completa por
+  lo que dijo ahora. No combines partes de la respuesta anterior que el dato nuevo deja
+  sin efecto: por ejemplo, si antes dijo "trifásica 380 V" y ahora dice "solo tengo
+  monofásica", la respuesta es "monofásica", sin tensión, porque no la informó.
 
 - Partí siempre del REGISTRO ACTUAL y devolvelo completo, con los cambios de este
   mensaje.
@@ -71,6 +74,12 @@ las listas:
   aclaración.
 
 - congela: true, false o null.
+
+- pregunta_productos: el número de la pregunta de PREGUNTAS DE LA GUÍA que le pide al
+  cliente qué productos quiere elaborar. Este dato no sale de la conversación sino de la
+  guía: completalo siempre, aunque el cliente todavía no haya respondido esa pregunta.
+  Usá solo un número que exista en PREGUNTAS DE LA GUÍA. Si ninguna pregunta de la guía
+  pide los productos, el valor es null.
 
 
 4. RESPUESTAS A LAS PREGUNTAS DE LA GUÍA
@@ -171,6 +180,25 @@ de lo que dijo el cliente. Usá solo valores dichos por el cliente.
 
 8. FUERA DE ALCANCE
 
+8. FUERA DE ALCANCE
+
+Indicá si la consulta queda fuera de lo que Argental puede cubrir, con uno de estos valores:
+
+- "volumen_excedido": si el mayor volumen confirmado por el cliente supera la capacidad máxima indicada.
+- "sin_productos_disponibles": si ninguno de los productos del cliente está en PRODUCTOS VÁLIDOS.
+- null: si no existe ningún motivo de fuera de alcance.
+
+IMPORTANTE:
+- Cuando no exista motivo de fuera de alcance, devolvé null real de JSON, SIN comillas.
+- Nunca devuelvas "null" como texto.
+- Nunca devuelvas "", "ninguno", "no" ni otro texto equivalente.
+- Los únicos valores permitidos son exactamente:
+  - "volumen_excedido"
+  - "sin_productos_disponibles"
+  - null
+
+Si el cliente tiene algunos productos disponibles y otros no, no queda fuera de alcance: los productos no disponibles van en productos_no_disponibles.
+
 Indicá si la consulta queda fuera de lo que Argental puede cubrir, con el motivo:
 
 - volumen_excedido: el mayor volumen confirmado por el cliente (actual o futuro, sumando
@@ -193,7 +221,8 @@ Formato de respuesta:
     "productos": ["…"],
     "productos_no_disponibles": [],
     "etapas_cubiertas": [],
-    "congela": null
+    "congela": null,
+    "pregunta_productos": null
   },
   "respuestas": [
     {
@@ -211,7 +240,7 @@ Formato de respuesta:
     }
   ],
   "notas": ["…"],
-  "fuera_de_alcance": "volumen_excedido | sin_productos_disponibles | null"
+  "fuera_de_alcance": null
 }`;
 
 export function prompt3Diagnostico({

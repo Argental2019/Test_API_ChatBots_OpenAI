@@ -3,9 +3,14 @@
 import { getAgentById } from "@/lib/agents";
 import { armarCandidatos } from "@/lib/advisor/excel/armarcandidatos";
 import {
+  carpetasExcluidas,
   catalogoDesdeBackend,
   urlBackend,
 } from "@/lib/advisor/preparacion/servidor";
+import {
+  maquinasDeTipo,
+  tiposDeEquipo,
+} from "@/lib/advisor/preparacion/maquinasDeTipo";
 
 type MensajeFront = {
   role: "user" | "assistant";
@@ -140,7 +145,72 @@ function obtenerCarpetasExcluidas() {
 // -----------------------------------------------------------------------------
 // POST /api/advisor
 // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// PREPARACIÓN AUTOMÁTICA DE ESQUEMAS Y FICHAS
+// -----------------------------------------------------------------------------
+//
+// Envía al backend todas las máquinas del Excel que tienen agente. El backend
+// responde enseguida y, si falta algún esquema o ficha, lo genera en segundo
+// plano. Nunca frena la conversación: si falla, solo queda en el log.
+//
 
+async function dispararPreparacion(
+  backend: string,
+  catalogo: any
+) {
+  try {
+    const excluidas = carpetasExcluidas();
+
+    const maquinas = tiposDeEquipo(catalogo).flatMap((tipo) => {
+      const resultado = maquinasDeTipo(
+        catalogo,
+        tipo,
+        (id: string) => (getAgentById(id) as any) ?? undefined,
+        excluidas
+      );
+
+      return resultado.maquinas.map((maquina) => ({
+        ...maquina,
+        tipoEquipo: resultado.tipoEquipo,
+      }));
+    });
+
+    if (maquinas.length === 0) {
+      return;
+    }
+
+    const respuesta = await fetch(
+      `${backend}/advisor/preparation/auto`,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          maquinas,
+        }),
+
+        signal: AbortSignal.timeout(5000),
+      }
+    );
+
+    const datos = await respuesta.json().catch(() => null);
+
+    if (datos?.estado && datos.estado !== "completa") {
+      console.log(
+        "PREPARACION AUTOMATICA:",
+        datos.estado
+      );
+    }
+  } catch (error) {
+    console.warn(
+      "No se pudo disparar la preparación automática:",
+      error instanceof Error ? error.message : error
+    );
+  }
+}
 export async function POST(req: Request) {
   try {
     // -------------------------------------------------------------------------
@@ -212,11 +282,86 @@ export async function POST(req: Request) {
       );
     }
 
+        // -------------------------------------------------------------------------
+    // 3B. PREPARACIÓN AUTOMÁTICA
+    // -------------------------------------------------------------------------
+
+    await dispararPreparacion(backend, catalogo);
     // -------------------------------------------------------------------------
     // 4. HISTORIAL
     // -------------------------------------------------------------------------
 
     const historial = convertirHistorial(messages);
+
+        // -------------------------------------------------------------------------
+    // 4B. REPREGUNTAS DESPUÉS DE LA RECOMENDACIÓN (PROMPT 6B)
+    // -------------------------------------------------------------------------
+    //
+    // Si la sesión todavía no tiene una recomendación, el backend responde
+    // "no_aplica" enseguida y se sigue con el diagnóstico.
+    //
+    // Si ya la tiene:
+    // - "responder" / "sin_evidencia": se muestra la respuesta y termina.
+    // - "recalcular" / "rediagnosticar": se sigue el flujo normal. El
+    //   diagnóstico relee la conversación con el dato nuevo y se rehacen la
+    //   comparación y la recomendación.
+    //
+
+    const followupResponse = await fetch(
+      `${backend}/advisor/followup`,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          sessionId,
+          historial,
+        }),
+      }
+    );
+
+    let followup: any;
+
+    try {
+      followup = await followupResponse.json();
+    } catch {
+      return respuestaError(
+        "El backend devolvió una respuesta inválida en la repregunta"
+      );
+    }
+
+    if (
+      !followupResponse.ok ||
+      !followup?.ok
+    ) {
+      return respuestaError(
+        followup?.error ||
+          "Error procesando la repregunta",
+        followupResponse.status || 500,
+        {
+          followup,
+        }
+      );
+    }
+
+    if (followup.accion !== "no_aplica") {
+      console.log(
+        "REPREGUNTA DEL ASESOR:",
+        JSON.stringify(followup, null, 2)
+      );
+    }
+
+    if (
+      followup.accion === "responder" ||
+      followup.accion === "sin_evidencia"
+    ) {
+      return respuestaSSE(
+        followup.mensajeCliente
+      );
+    }
 
     // -------------------------------------------------------------------------
     // 5. PROMPT 3 + PROMPT 4
@@ -469,19 +614,21 @@ export async function POST(req: Request) {
       JSON.stringify(fichasJson, null, 2)
     );
 
-    if (
-      !fichasResponse.ok ||
-      !fichasJson?.ok
-    ) {
-      return respuestaError(
-        fichasJson?.error ||
-          "Error obteniendo las fichas de los candidatos",
-        fichasResponse.status || 500,
-        {
-          fichas: fichasJson,
-        }
-      );
-    }
+  if (
+    !fichasResponse.ok ||
+    !Array.isArray(fichasJson?.resultados)
+  ) {
+    return respuestaError(
+      fichasJson?.error ||
+        "Error obteniendo las fichas de los candidatos",
+      !fichasResponse.ok
+        ? fichasResponse.status
+        : 500,
+      {
+        fichas: fichasJson,
+      }
+    );
+  }
 
     // -------------------------------------------------------------------------
     // 11. INDEXAR LAS FICHAS POR ID BUSQUETTI
@@ -550,9 +697,6 @@ export async function POST(req: Request) {
                 ficha: {
                   valores:
                     ficha?.valores || {},
-
-                  estados:
-                    ficha?.estados || {},
                 },
               };
             }),
@@ -586,7 +730,7 @@ export async function POST(req: Request) {
     // - datos ya obtenidos durante comparación
     // - cantidad de preguntas realizadas
     //
-
+    console.log(">>> ANTES DE PROMPT 5");
     const comparacionResponse =
       await fetch(
         `${backend}/advisor/comparison/analyze`,
@@ -611,6 +755,10 @@ export async function POST(req: Request) {
         }
       );
 
+      console.log(
+    ">>> RESPUESTA HTTP PROMPT 5:",
+    comparacionResponse.status
+  );
     let comparacion: any;
 
     try {
@@ -622,6 +770,12 @@ export async function POST(req: Request) {
       );
     }
 
+    console.log(
+  ">>> PROMPT 5 PARSEADO:",
+  comparacion?.ok,
+  comparacion?.accion,
+  comparacion?.mensajeCliente
+);
     console.log(
       "COMPARACION DEL ASESOR:",
       JSON.stringify(
@@ -656,15 +810,67 @@ export async function POST(req: Request) {
     //
 
     if (
-      comparacion.accion ===
-        "preguntar" &&
-      comparacion.mensajeCliente
+      comparacion.accion === "listo"
     ) {
+      // -----------------------------------------------------------------------
+      // PROMPT 6A - RECOMENDACIÓN
+      // -----------------------------------------------------------------------
+      //
+      // La comparación ya quedó guardada en la sesión.
+      // Mandamos los candidatos (nombres, marcas y fichas) porque la sesión
+      // todavía no los tiene; el backend los guarda para el Prompt 6B.
+      //
+
+      const recomendacionResponse = await fetch(
+        `${backend}/advisor/recommendation/generate`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            sessionId,
+            candidatos: candidatosConFichas,
+          }),
+        }
+      );
+
+      let recomendacion: any;
+
+      try {
+        recomendacion = await recomendacionResponse.json();
+      } catch {
+        return respuestaError(
+          "El backend devolvió una respuesta inválida durante la recomendación"
+        );
+      }
+
+      console.log(
+        "RECOMENDACION DEL ASESOR:",
+        JSON.stringify(recomendacion, null, 2)
+      );
+
+      if (
+        !recomendacionResponse.ok ||
+        !recomendacion?.ok ||
+        !recomendacion?.mensajeCliente
+      ) {
+        return respuestaError(
+          recomendacion?.error ||
+            "Error generando la recomendación",
+          recomendacionResponse.status || 500,
+          {
+            recomendacion,
+          }
+        );
+      }
+
       return respuestaSSE(
-        comparacion.mensajeCliente
+        recomendacion.mensajeCliente
       );
     }
-
     // -------------------------------------------------------------------------
     // 15. PROMPT 5 TERMINÓ
     // -------------------------------------------------------------------------

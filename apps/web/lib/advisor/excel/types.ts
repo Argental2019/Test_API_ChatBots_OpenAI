@@ -100,6 +100,13 @@ export interface EquipoOpcion {
   nombreComercial: string;
   marca: string | null;
   tipoEquipo: string | null;
+    /**
+   * Mayor "consumo de harina máx. (kg/día)" de las filas de SISTEMAS donde
+   * aparece este equipo, en esta etapa y para los productos del cliente.
+   * Es la capacidad de referencia de Argental; se usa cuando la ficha no
+   * permite calcular la capacidad. null si esas filas no tienen el dato.
+   */
+  capacidadReferenciaExcel: number | null;
 }
 
 /** Una opción de una etapa: un equipo solo, o un conjunto que va junto. */

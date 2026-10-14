@@ -17,7 +17,14 @@
 // Cuando la conversación pide una ficha, se compara la huella actual de Drive:
 // - si no cambió, se usa la ficha guardada;
 // - si cambió, se devuelve la ficha anterior y se regenera en segundo plano;
-// - si no existe, se genera en el momento.
+// - si no existe, se genera en segundo plano y la conversación sigue sin esa
+//   ficha (el equipo queda "a confirmar").
+//
+// Preparación automática (/advisor/preparation/auto):
+// el web envía la lista de máquinas del Excel. Si falta algún esquema o ficha,
+// se generan en segundo plano, encadenando vueltas hasta completar todo, sin
+// intervención de IT. Al iniciar el backend se retoma lo que haya quedado
+// pendiente (la última lista recibida queda guardada en Redis).
 // =============================================================================
 import crypto from "crypto";
 import { prompt1Esquema } from "../advisor/prompt/prompt1Esquema.js";
@@ -502,7 +509,7 @@ async function procesarConLimite(elementos, limite, fn) {
  * - "vigente": la ficha guardada coincide con Drive y con el esquema.
  * - "actualizando": cambió Drive o el esquema; se devuelve la ficha anterior
  *   y la nueva se está generando en segundo plano.
- * - "generada": no existía y se generó en el momento.
+ * - "pendiente": no existía; se está generando en segundo plano.
  * - "sin_verificar": no se pudo consultar Drive; se devuelve la ficha guardada.
  * - "sin_esquema" / "error": no hay ficha disponible.
  */
@@ -540,14 +547,11 @@ export async function obtenerFichas(maquinas, deps) {
       return { idBusquetti, estado: "error", ficha: null, error: error?.message };
     }
 
-    // No existe: se genera en el momento (el cliente espera solo esta vez).
+    // No existe: se genera en segundo plano. La conversación no espera:
+    // el equipo va sin ficha y queda "a confirmar".
     if (!existente) {
-      try {
-        const ficha = await generarFichaMaquina({ ...deps, maquina, tipoEquipo: tipo });
-        return { idBusquetti, estado: "generada", ficha };
-      } catch (error) {
-        return { idBusquetti, estado: "error", ficha: null, error: error?.message };
-      }
+      await regenerarEnSegundoPlano({ ...maquina, tipoEquipo: tipo }, deps);
+      return { idBusquetti, estado: "pendiente", ficha: null };
     }
 
     // Existe y coincide con Drive y con el esquema: se usa tal cual.
@@ -559,6 +563,216 @@ export async function obtenerFichas(maquinas, deps) {
     await regenerarEnSegundoPlano({ ...maquina, tipoEquipo: tipo }, deps);
     return { idBusquetti, estado: "actualizando", ficha: existente };
   });
+}
+
+// =============================================================================
+// Preparación automática: esquemas y fichas faltantes
+// =============================================================================
+//
+// No hay revisiones periódicas: se ejecuta cuando el web lo pide (en cada
+// mensaje) o al iniciar el backend si quedó algo pendiente, y solo trabaja si
+// falta algo.
+//
+// - La "firma" identifica la lista de máquinas (ID, tipo y carpetas). Si esa
+//   lista ya quedó preparada, no se hace nada.
+// - Si cambia el Excel o agents.ts, cambia la firma y se revisa de nuevo:
+//   solo se genera lo que falta.
+// - Cada vuelta tiene un tiempo máximo y lo generado queda guardado en Redis.
+//   Las vueltas se encadenan solas mientras haya avance.
+// - Si una generación falla (por ejemplo, una carpeta sin documentación), no
+//   se reintenta en cada vuelta: se espera FALLO_SEGUNDOS.
+// =============================================================================
+
+const CLAVE_PREPARACION = (firma) => `advisor:preparacion:${firma}`;
+const CLAVE_BLOQUEO_PREPARACION = "advisor:bloqueo:preparacion";
+const CLAVE_FALLO = (clave) => `advisor:preparacion:fallo:${clave}`;
+
+// Última lista de máquinas recibida del web (para retomar al iniciar el backend).
+const CLAVE_MAQUINAS_PREPARACION = "advisor:preparacion:maquinas";
+
+const FALLO_SEGUNDOS = 6 * 60 * 60;
+const FICHAS_POR_PASO = 2;
+const PRESUPUESTO_PREPARACION_MS =
+  Number(process.env.ADVISOR_PREPARACION_PRESUPUESTO_MS) || 120000;
+
+/** Firma de la lista de máquinas: cambia si se agrega, quita o modifica una. */
+export function firmaPreparacion(maquinas) {
+  const filas = maquinas
+    .map((m) => [
+      String(m.idBusquetti),
+      String(m.tipoEquipo || "").trim(),
+      [...(m.driveFolders || [])].sort(),
+    ])
+    .sort((a, b) => a[0].localeCompare(b[0]));
+
+  return md5(JSON.stringify(filas));
+}
+
+/** Se queda solo con las máquinas que tienen todo lo necesario para prepararse. */
+function maquinasValidas(maquinas) {
+  return (maquinas || []).filter(
+    (m) =>
+      m?.idBusquetti &&
+      typeof m?.tipoEquipo === "string" &&
+      m.tipoEquipo.trim() &&
+      Array.isArray(m?.driveFolders) &&
+      m.driveFolders.length > 0
+  );
+}
+
+/**
+ * Una vuelta de preparación: genera esquemas y fichas faltantes hasta agotar
+ * el tiempo de la vuelta (PRESUPUESTO_PREPARACION_MS).
+ * Devuelve:
+ * - completa: si al terminar existen todos los esquemas y fichas;
+ * - huboAvance: si en esta vuelta se generó al menos un esquema o una ficha.
+ */
+async function avanzarPreparacion(maquinas, deps) {
+  const { cacheGet, cacheSet } = deps;
+
+  const inicio = Date.now();
+  const hayTiempo = () => Date.now() - inicio < PRESUPUESTO_PREPARACION_MS;
+  let huboAvance = false;
+
+  // Máquinas agrupadas por tipo (el esquema es por tipo).
+  const porTipo = new Map();
+  for (const maquina of maquinas) {
+    const tipo = maquina.tipoEquipo.trim();
+    if (!porTipo.has(tipo)) porTipo.set(tipo, []);
+    porTipo.get(tipo).push(maquina);
+  }
+
+  // 1. Esquemas faltantes (Prompt 1). Van primero: sin esquema no hay ficha.
+  for (const [tipo, delTipo] of porTipo) {
+    if (!hayTiempo()) break;
+    if (await cacheGet(CLAVE_ESQUEMA(tipo))) continue;
+    if (await cacheGet(CLAVE_FALLO(`esquema:${tipo}`))) continue;
+
+    try {
+      console.log("[advisor/preparation/auto] generando esquema", tipo);
+      await generarEsquemaTipo({ ...deps, tipoEquipo: tipo, maquinas: delTipo });
+      huboAvance = true;
+    } catch (error) {
+      console.error("[advisor/preparation/auto] fallo el esquema", tipo, error?.message);
+      await cacheSet(
+        CLAVE_FALLO(`esquema:${tipo}`),
+        { error: error?.message || String(error), en: new Date().toISOString() },
+        FALLO_SEGUNDOS
+      );
+    }
+  }
+
+  // 2. Fichas faltantes (Prompt 2), solo de tipos que ya tienen esquema.
+  const faltantes = [];
+  for (const maquina of maquinas) {
+    if (!(await cacheGet(CLAVE_ESQUEMA(maquina.tipoEquipo.trim())))) continue;
+    if (await cacheGet(CLAVE_FICHA(maquina.idBusquetti))) continue;
+    if (await cacheGet(CLAVE_FALLO(`ficha:${maquina.idBusquetti}`))) continue;
+    faltantes.push(maquina);
+  }
+
+  for (let i = 0; i < faltantes.length && hayTiempo(); i += FICHAS_POR_PASO) {
+    const grupo = faltantes.slice(i, i + FICHAS_POR_PASO);
+
+    await Promise.all(
+      grupo.map(async (maquina) => {
+        // Mismo bloqueo que usa la conversación: nunca se genera dos veces.
+        const claveBloqueo = CLAVE_BLOQUEO(maquina.idBusquetti);
+        if (!(await tomarBloqueo(claveBloqueo, deps))) return;
+
+        try {
+          console.log("[advisor/preparation/auto] generando ficha", maquina.idBusquetti);
+          await generarFichaMaquina({ ...deps, maquina, tipoEquipo: maquina.tipoEquipo.trim() });
+          huboAvance = true;
+        } catch (error) {
+          console.error("[advisor/preparation/auto] fallo la ficha", maquina.idBusquetti, error?.message);
+          await cacheSet(
+            CLAVE_FALLO(`ficha:${maquina.idBusquetti}`),
+            { error: error?.message || String(error), en: new Date().toISOString() },
+            FALLO_SEGUNDOS
+          );
+        } finally {
+          await liberarBloqueo(claveBloqueo, deps);
+        }
+      })
+    );
+  }
+
+  // 3. ¿Quedó todo? Solo se marca completa si existen todos los esquemas y fichas.
+  for (const tipo of porTipo.keys()) {
+    if (!(await cacheGet(CLAVE_ESQUEMA(tipo)))) return { completa: false, huboAvance };
+  }
+  for (const maquina of maquinas) {
+    if (!(await cacheGet(CLAVE_FICHA(maquina.idBusquetti)))) return { completa: false, huboAvance };
+  }
+  return { completa: true, huboAvance };
+}
+
+/**
+ * Corre vueltas de preparación una detrás de otra hasta completar todo.
+ * Se detiene cuando:
+ * - queda todo completo (se guarda la marca de la firma), o
+ * - una vuelta no avanzó nada (lo que falta tiene un fallo reciente o lo está
+ *   generando otra ejecución): no tiene sentido seguir intentando ahora.
+ */
+async function prepararEnCadena(maquinas, firma, deps) {
+  try {
+    while (true) {
+      // Renueva el bloqueo general: mientras esta cadena siga, nadie arranca otra.
+      await deps.cacheSet(
+        CLAVE_BLOQUEO_PREPARACION,
+        { desde: new Date().toISOString() },
+        BLOQUEO_SEGUNDOS
+      );
+
+      const { completa, huboAvance } = await avanzarPreparacion(maquinas, deps);
+
+      if (completa) {
+        await deps.cacheSet(
+          CLAVE_PREPARACION(firma),
+          { completaEn: new Date().toISOString(), maquinas: maquinas.length },
+          0
+        );
+        console.log("[advisor/preparation/auto] preparación completa", firma);
+        return;
+      }
+
+      if (!huboAvance) {
+        console.log(
+          "[advisor/preparation/auto] sin avance en esta vuelta; lo pendiente se retoma más adelante"
+        );
+        return;
+      }
+    }
+  } catch (error) {
+    console.error("[advisor/preparation/auto] error", error?.message);
+  }
+}
+
+/**
+ * Al iniciar el backend: si la última lista de máquinas recibida no quedó
+ * completa, retoma la preparación sola, sin esperar un mensaje del chat.
+ */
+export async function retomarPreparacion(deps) {
+  try {
+    const maquinas = maquinasValidas(await deps.cacheGet(CLAVE_MAQUINAS_PREPARACION));
+    if (maquinas.length === 0) return;
+
+    const firma = firmaPreparacion(maquinas);
+    if (await deps.cacheGet(CLAVE_PREPARACION(firma))) return;
+
+    if (!(await tomarBloqueo(CLAVE_BLOQUEO_PREPARACION, deps))) return;
+
+    console.log("[advisor/preparation/auto] retomando preparación pendiente al iniciar");
+
+    const tarea = prepararEnCadena(maquinas, firma, deps).finally(() =>
+      liberarBloqueo(CLAVE_BLOQUEO_PREPARACION, deps)
+    );
+
+    await enSegundoPlano(tarea);
+  } catch (error) {
+    console.error("[advisor/preparation/auto] no se pudo retomar", error?.message);
+  }
 }
 
 /**
@@ -732,6 +946,54 @@ export function registerAdvisorPreparationRoutes(app, deps) {
         });
 
         return res.status(200).json({ resultados });
+      })
+    )
+  );
+
+  // ============================================================
+  // Preparación automática (la dispara el web en cada mensaje)
+  // ============================================================
+  // Body: { maquinas: [{ idBusquetti, nombreModelo, tipoEquipo, driveFolders }] }
+  // Responde enseguida; el trabajo sigue en segundo plano.
+
+  app.post(
+    "/advisor/preparation/auto",
+    withTimer(
+      "advisorPreparationAuto",
+      asyncHandler(async (req, res) => {
+        const { maquinas } = req.body || {};
+
+        if (!Array.isArray(maquinas) || maquinas.length === 0) {
+          return res.status(400).json({
+            error: "Se requiere maquinas: [{ idBusquetti, nombreModelo, tipoEquipo, driveFolders }]",
+          });
+        }
+
+        const validas = maquinasValidas(maquinas);
+        const firma = firmaPreparacion(validas);
+
+        // Se guarda la lista para poder retomar al reiniciar el backend.
+        await cacheSet(CLAVE_MAQUINAS_PREPARACION, validas, 0);
+
+        // Ya está todo preparado para esta lista de máquinas.
+        if (await cacheGet(CLAVE_PREPARACION(firma))) {
+          return res.status(200).json({ estado: "completa", firma });
+        }
+
+        const prepDeps = { openai, getManifest, readFileSmart, cacheGet, cacheSet, cacheSetNX };
+
+        // Si ya hay una preparación en curso, no se lanza otra.
+        if (!(await tomarBloqueo(CLAVE_BLOQUEO_PREPARACION, prepDeps))) {
+          return res.status(200).json({ estado: "en_curso", firma });
+        }
+
+        const tarea = prepararEnCadena(validas, firma, prepDeps).finally(() =>
+          liberarBloqueo(CLAVE_BLOQUEO_PREPARACION, prepDeps)
+        );
+
+        await enSegundoPlano(tarea);
+
+        return res.status(202).json({ estado: "iniciada", firma });
       })
     )
   );

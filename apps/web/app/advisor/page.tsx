@@ -14,7 +14,7 @@ type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   ts?: number;
-  recommendedAgents?: Array<{ id: string; name: string; url: string; family: string; image?: string }>;
+    recommendedAgents?: Array<{ id: string; name: string; url: string; family: string; image?: string; aConfirmar?: boolean }>;
 };
 
 function formatTime(ts?: number) {
@@ -22,13 +22,26 @@ function formatTime(ts?: number) {
   return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-function parseRecommendations(text: string): { clean: string; ids: string[] } {
+/**
+ * Saca del texto los tags del asesor y devuelve sus IDs:
+ * - [RECOMENDAR:ID]  → ids (equipos recomendados)
+ * - [ALTERNATIVA:ID] → idsAConfirmar (equipos sugeridos, dimensionamiento a confirmar)
+ * El cliente nunca ve los tags.
+ */
+function parseRecommendations(text: string): { clean: string; ids: string[]; idsAConfirmar: string[] } {
   const ids: string[] = [];
-  const clean = text.replace(/\[RECOMENDAR:([^\]]+)\]/g, (_, id) => {
-    ids.push(id.trim());
-    return "";
-  }).trim();
-  return { clean, ids };
+  const idsAConfirmar: string[] = [];
+
+  const clean = text
+    .replace(/\[(RECOMENDAR|ALTERNATIVA):([^\]]+)\]/g, (_, tipo: string, id: string) => {
+      const lista = tipo === "RECOMENDAR" ? ids : idsAConfirmar;
+      const limpio = id.trim();
+      if (!lista.includes(limpio)) lista.push(limpio);
+      return "";
+    })
+    .trim();
+
+  return { clean, ids, idsAConfirmar };
 }
 
 export default function AdvisorPage() {
@@ -391,8 +404,13 @@ const {
         }
       }
 
-      const { clean, ids } = parseRecommendations(raw);
-const recommendedAgents = ids.length > 0 ? getAgentsByIds(ids) : [];
+      const { clean, ids, idsAConfirmar } = parseRecommendations(raw);
+
+      // Primero los recomendados y después los sugeridos a confirmar.
+      const recommendedAgents = [
+        ...(ids.length > 0 ? getAgentsByIds(ids) : []).map((agent) => ({ ...agent, aConfirmar: false })),
+        ...(idsAConfirmar.length > 0 ? getAgentsByIds(idsAConfirmar) : []).map((agent) => ({ ...agent, aConfirmar: true })),
+      ];
 
 const finalMessage: ChatMessage = {
   role: "assistant",
@@ -562,6 +580,11 @@ const finalMessage: ChatMessage = {
                               <div>
                                 <p className="text-sm font-semibold text-gray-900">{agent.name}</p>
                                 <p className="text-xs text-gray-500">{agent.family}</p>
+                                {agent.aConfirmar && (
+                                  <span className="mt-1 inline-block rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                                    Dimensionamiento a confirmar
+                                  </span>
+                                )}
                               </div>
                             </div>
                             <Link

@@ -11,6 +11,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import { registerAdvisorComparisonRoutes } from "./routes/advisorComparison.js";
 import { REGLAS_COMUNES } from "./advisor/prompt/reglasComunes.js";
+import { registerAdvisorRecommendationRoutes } from "./routes/advisorRecommendation.js";
+import { registerAdvisorFollowupRoutes } from "./routes/advisorFollowup.js";
 
 console.log("🔥 Backend Express cargado desde:", __filename);
 
@@ -26,7 +28,7 @@ import cors from "cors";
 import multer from "multer";
 import OpenAI from "openai";
 import { registerAdvisorRoutes } from "./routes/advisorExcel.js";
-import { registerAdvisorPreparationRoutes } from "./routes/advisorPreparation.js";
+import { registerAdvisorPreparationRoutes, retomarPreparacion } from "./routes/advisorPreparation.js";
 // ...
 dotenv.config();
 const app = express();
@@ -1131,6 +1133,25 @@ registerAdvisorComparisonRoutes(app, {
   cacheSet,
   reglasComunes: REGLAS_COMUNES,
 });
+
+registerAdvisorRecommendationRoutes(app, {
+  openai,
+  asyncHandler,
+  cacheGet,
+  cacheSet,
+  reglasComunes: REGLAS_COMUNES,
+});
+
+// Prompt 6B: repreguntas después de la recomendación.
+// logMiss es la misma función que usa /agent/log-miss (registro de @@MISS).
+registerAdvisorFollowupRoutes(app, {
+  openai,
+  asyncHandler,
+  cacheGet,
+  cacheSet,
+  reglasComunes: REGLAS_COMUNES,
+  logMiss,
+});
 // ===== Error handler global =====
 app.use((err, req, res, _next) => {
   const status = err.status || 500;
@@ -1143,6 +1164,15 @@ if (!process.env.VERCEL) {
   app.listen(port, () => {
     console.log(`Servidor local: http://localhost:${port}`);
     if (!process.env.REDIS_URL) console.log("ℹ️ Cache en memoria (define REDIS_URL para Redis).");
+
+    // Si quedó una preparación de esquemas/fichas a medias, se retoma sola.
+    retomarPreparacion({
+      openai,
+      getManifest,
+      readFileSmart,
+      cacheGet,
+      cacheSet,
+    });
   });
 }
 
