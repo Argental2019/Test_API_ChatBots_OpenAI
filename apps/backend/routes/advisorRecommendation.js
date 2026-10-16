@@ -1,6 +1,9 @@
 // apps/backend/routes/advisorRecommendation.js
 
 import { prompt6Recomendacion } from "../advisor/prompt/prompt6Recomendacion.js";
+import { SESION_TTL_SEGUNDOS } from "../advisor/sesion.js";
+import { registrarTiempo } from "../advisor/tiempos.js";
+import { opcionesRazonamiento } from "../advisor/razonamiento.js";
 
 // -----------------------------------------------------------------------------
 // UTILIDADES
@@ -524,42 +527,98 @@ export function registerAdvisorRecommendationRoutes(
       const modelo =
         process.env.ADVISOR_RECOMMENDATION_MODEL ||
         process.env.ADVISOR_PREPARATION_MODEL ||
-        "gpt-5.1";
+        "gpt-5.6-luna";
 
       const inicio = Date.now();
 
-      let textoIA;
+      // Con "stream: true" (lo pide route.ts) el texto se manda a medida que
+      // OpenAI lo genera, una línea JSON por evento (NDJSON):
+      //   {"tipo":"delta","texto":"..."}   → un pedazo del mensaje
+      //   {"tipo":"fin", ...}              → mensaje final validado + tarjetas
+      //   {"tipo":"error","error":"..."}   → falló a mitad de camino
+      // Sin "stream" responde un JSON al final, como antes.
+      const quiereStream = req.body?.stream === true;
+
+      const enviarEvento = (evento) => {
+        res.write(JSON.stringify(evento) + "\n");
+      };
+
+      // Responde un error con el formato que corresponda: JSON si todavía no
+      // se empezó a mandar el stream, o un evento "error" si ya se empezó.
+      const responderError = (status, mensaje) => {
+        if (res.headersSent) {
+          enviarEvento({ tipo: "error", error: mensaje });
+          return res.end();
+        }
+
+        return res.status(status).json({
+          ok: false,
+          error: mensaje,
+        });
+      };
+
+      const parametros = {
+        model: modelo,
+
+        ...opcionesRazonamiento("ADVISOR_RECOMMENDATION_REASONING_EFFORT"),
+
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+      };
+
+      let textoIA = "";
 
       try {
-        const completion = await openai.chat.completions.create({
-          model: modelo,
+        if (quiereStream) {
+          const stream = await openai.chat.completions.create({
+            ...parametros,
+            stream: true,
+          });
 
-          messages: [
-            {
-              role: "user",
-              content: prompt,
-            },
-          ],
-        });
+          // Recién cuando OpenAI empieza a responder se abre el stream hacia
+          // la web (si falla antes, se responde un JSON de error común).
+          res.status(200);
+          res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
+          res.setHeader("Cache-Control", "no-cache, no-transform");
+          res.flushHeaders?.();
 
-        textoIA =
-          completion.choices?.[0]?.message?.content?.trim();
+          for await (const chunk of stream) {
+            const delta = chunk.choices?.[0]?.delta?.content;
+
+            if (delta) {
+              textoIA += delta;
+              enviarEvento({ tipo: "delta", texto: delta });
+            }
+          }
+
+          textoIA = textoIA.trim();
+        } else {
+          const completion = await openai.chat.completions.create(parametros);
+
+          textoIA =
+            completion.choices?.[0]?.message?.content?.trim();
+        }
       } catch (error) {
-        return res.status(500).json({
-          ok: false,
-          error: `Prompt 6A fallo: ${error.message}`,
-        });
+        return responderError(500, `Prompt 6A fallo: ${error.message}`);
       }
 
       const duracionMs = Date.now() - inicio;
 
       console.log(`PROMPT6A: ${duracionMs}ms`);
 
+      registrarTiempo(
+        sessionId,
+        "Prompt 6A",
+        inicio,
+        quiereStream ? "streaming" : ""
+      );
+
       if (!textoIA) {
-        return res.status(500).json({
-          ok: false,
-          error: "Prompt 6A no devolvio un mensaje para el cliente",
-        });
+        return responderError(500, "Prompt 6A no devolvio un mensaje para el cliente");
       }
 
       // -----------------------------------------------------------------------
@@ -584,40 +643,44 @@ export function registerAdvisorRecommendationRoutes(
       // y la fase: el Prompt 6B los va a usar para responder repreguntas.
       //
 
-      await cacheSet(
-        sessionKey,
-        {
-          ...sesion,
+      try {
+        await cacheSet(
+          sessionKey,
+          {
+            ...sesion,
 
-          // A partir de acá, el próximo mensaje del cliente va al Prompt 6B
-          // (repreguntas) en vez de rehacer diagnóstico y comparación.
-          fase: "recomendacion",
+            // A partir de acá, el próximo mensaje del cliente va al Prompt 6B
+            // (repreguntas) en vez de rehacer diagnóstico y comparación.
+            fase: "recomendacion",
 
-          candidatos,
+            candidatos,
 
-          recomendacion: {
-            mensajeCliente,
+            recomendacion: {
+              mensajeCliente,
 
-            tags: {
-              recomendar: tags.recomendar,
-              alternativa: tags.alternativa,
+              tags: {
+                recomendar: tags.recomendar,
+                alternativa: tags.alternativa,
+              },
+
+              seleccionDetallada,
+
+              generadaEn: new Date().toISOString(),
             },
 
-            seleccionDetallada,
-
-            generadaEn: new Date().toISOString(),
+            actualizadoEn: new Date().toISOString(),
           },
-
-          actualizadoEn: new Date().toISOString(),
-        },
-        0
-      );
+          SESION_TTL_SEGUNDOS
+        );
+      } catch (error) {
+        return responderError(500, `No se pudo guardar la recomendación: ${error.message}`);
+      }
 
       // -----------------------------------------------------------------------
       // RESPUESTA
       // -----------------------------------------------------------------------
 
-      return res.json({
+      const respuesta = {
         ok: true,
 
         sessionId,
@@ -630,7 +693,14 @@ export function registerAdvisorRecommendationRoutes(
         },
 
         tiempoPrompt6AMs: duracionMs,
-      });
+      };
+
+      if (quiereStream) {
+        enviarEvento({ tipo: "fin", ...respuesta });
+        return res.end();
+      }
+
+      return res.json(respuesta);
     })
   );
 }

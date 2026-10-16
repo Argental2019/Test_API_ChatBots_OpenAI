@@ -1,6 +1,9 @@
 // apps/backend/routes/advisorComparison.js
 
 import { prompt5Comparacion } from "../advisor/prompt/prompt5Comparacion.js";
+import { SESION_TTL_SEGUNDOS } from "../advisor/sesion.js";
+import { registrarTiempo } from "../advisor/tiempos.js";
+import { opcionesRazonamiento } from "../advisor/razonamiento.js";
 
 function idsCandidatos(candidatos) {
   const ids = new Set();
@@ -2141,6 +2144,7 @@ const modelo =
       .create({
         model:
           modelo,
+          ...opcionesRazonamiento("ADVISOR_COMPARISON_REASONING_EFFORT"),
 
         messages: [
           {
@@ -2515,6 +2519,7 @@ function combinarResultadosEtapas({
 // -----------------------------------------------------------------------------
 
 async function ejecutarComparacionEtapa({
+  sessionId,
   openai,
   reglasComunes,
   registroCliente,
@@ -2678,10 +2683,16 @@ Responde unicamente el JSON final completo de ESTA etapa.
     Date.now() -
     inicio;
 
-  console.log(
+   console.log(
     `PROMPT5 ETAPA ${nombreEtapa}: ${duracionMs}ms`
   );
 
+  registrarTiempo(
+    sessionId,
+    "Prompt 5 (una etapa)",
+    inicio,
+    etapa?.etapa || nombreEtapa
+  );
   // ---------------------------------------------------------------------------
   // LOG DE CONSUMO
   // ---------------------------------------------------------------------------
@@ -3043,6 +3054,8 @@ export function registerAdvisorComparisonRoutes(
                 ) =>
                   ejecutarComparacionEtapa(
                     {
+                      sessionId,
+
                       openai,
 
                       reglasComunes,
@@ -3107,8 +3120,15 @@ export function registerAdvisorComparisonRoutes(
           Date.now() -
           inicioPrompt5Paralelo;
 
-        console.log(
+                console.log(
           `PROMPT5 PARALELO TOTAL: ${duracionPrompt5Paralelo}ms`
+        );
+
+        registrarTiempo(
+          sessionId,
+          "Prompt 5 (todas las etapas)",
+          inicioPrompt5Paralelo,
+          `${candidatosConEsquemas.length} etapas en paralelo`
         );
         // -----------------------------------------------------------------------------
 // RESUMEN DE CONSUMO POR ETAPA
@@ -3490,7 +3510,7 @@ if (
         await cacheSet(
           sessionKey,
           nuevaSesion,
-          0
+          SESION_TTL_SEGUNDOS
         );
 
         // ---------------------------------------------------------------------

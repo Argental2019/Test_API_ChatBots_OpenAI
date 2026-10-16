@@ -5,6 +5,8 @@ import {
   armarRegistroCliente,
   armarVerificaciones,
 } from "./advisorRecommendation.js";
+import { SESION_TTL_SEGUNDOS } from "../advisor/sesion.js";
+import { registrarTiempo } from "../advisor/tiempos.js";
 
 // -----------------------------------------------------------------------------
 // CONFIGURACION
@@ -322,6 +324,13 @@ export function registerAdvisorFollowupRoutes(
         });
       }
 
+      registrarTiempo(
+        sessionId,
+        "Prompt 6B",
+        inicio,
+        respuesta?.accion || ""
+      );
+
       console.log(`PROMPT6B: ${Date.now() - inicio}ms`, {
         accion: respuesta?.accion,
         equipo: respuesta?.equipo_consultado,
@@ -399,7 +408,7 @@ export function registerAdvisorFollowupRoutes(
             fase: "diagnostico",
             actualizadoEn: new Date().toISOString(),
           },
-          0
+          SESION_TTL_SEGUNDOS
         );
       }
 

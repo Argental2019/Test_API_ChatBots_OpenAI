@@ -2,15 +2,10 @@
 
 import { getAgentById } from "@/lib/agents";
 import { armarCandidatos } from "@/lib/advisor/excel/armarcandidatos";
-import {
-  carpetasExcluidas,
-  catalogoDesdeBackend,
-  urlBackend,
-} from "@/lib/advisor/preparacion/servidor";
-import {
-  maquinasDeTipo,
-  tiposDeEquipo,
-} from "@/lib/advisor/preparacion/maquinasDeTipo";
+import { urlBackend } from "@/lib/advisor/preparacion/servidor";
+import { dispararPreparacion } from "@/lib/advisor/preparacion/disparar";
+import { registrarTiempo } from "@/lib/advisor/tiempos";
+import { catalogoDeSesion } from "@/lib/advisor/cacheCatalogo";
 
 type MensajeFront = {
   role: "user" | "assistant";
@@ -80,6 +75,178 @@ function respuestaSSE(texto: string) {
 }
 
 // -----------------------------------------------------------------------------
+// RESPUESTA SSE EN STREAMING (DIAGNÓSTICO TERMINADO → RECOMENDACIÓN)
+// -----------------------------------------------------------------------------
+//
+// Cuando el diagnóstico termina, la respuesta a la página se abre enseguida
+// como stream y se va completando:
+//
+// 1. "advisor_aviso": el mensaje de diagnóstico completo. page.tsx lo muestra
+//    en su propio globo y abre otro globo (vacío, con indicador de "comparando")
+//    para la recomendación.
+// 2. Mientras tanto se arman candidatos, fichas y la comparación (Prompt 5).
+// 3. La recomendación (Prompt 6A) llega del backend como NDJSON (una línea
+//    JSON por evento: "delta", "fin" o "error") y se pasa a la página pedazo a
+//    pedazo, en el mismo formato choices[0].delta.content.
+//    - Si un tag [RECOMENDAR:...] llega cortado entre dos pedazos, se retiene
+//      hasta que llega completo, para que no se vea en pantalla.
+// 4. "advisor_final": el mensaje ya validado por el backend. page.tsx
+//    reemplaza lo que mostró por ese texto.
+//
+// Si algo falla en el medio, se manda "advisor_final" con un mensaje de error
+// (ya no se puede responder un error HTTP porque el stream está abierto).
+//
+
+// Mensaje que ve el cliente apenas termina el diagnóstico.
+const MENSAJE_DIAGNOSTICO_COMPLETO =
+  "¡Listo, ya tengo todo lo que necesito! Ahora voy a comparar los equipos y armar tu recomendación. Puede tardar menos de un minuto.";
+
+const MENSAJE_ERROR_RECOMENDACION =
+  "No pude terminar de armar la recomendación. Probá de nuevo en unos segundos.";
+
+function chunkSSE(
+  delta: Record<string, unknown>,
+  finishReason: string | null = null
+) {
+  const chunk = {
+    id: "advisor",
+    object: "chat.completion.chunk",
+    choices: [{ index: 0, delta, finish_reason: finishReason }],
+  };
+
+  return `data: ${JSON.stringify(chunk)}\n\n`;
+}
+
+/** Lo que el proceso puede mandarle a la página mientras corre. */
+type CanalRecomendacion = {
+  /** Mensaje en su propio globo (diagnóstico completo). */
+  aviso: (texto: string) => void;
+
+  /** Mensaje final del globo de la recomendación (reemplaza lo mostrado). */
+  final: (texto: string) => void;
+
+  /**
+   * Pasa a la página la recomendación que el backend manda como NDJSON.
+   * Devuelve true si llegó completa (evento "fin").
+   */
+  pasarRecomendacion: (cuerpo: ReadableStream<Uint8Array>) => Promise<boolean>;
+};
+
+/**
+ * Abre el stream hacia la página y corre "proceso" adentro.
+ * "proceso" devuelve cómo terminó (para el archivo de tiempos); al final se
+ * llama a "alTerminar" con ese resultado.
+ */
+function respuestaSSEProceso(
+  proceso: (canal: CanalRecomendacion) => Promise<string>,
+  alTerminar: (resultado: string) => void
+) {
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const enviar = (texto: string) =>
+        controller.enqueue(encoder.encode(texto));
+
+      const emitirTexto = (texto: string) => {
+        if (texto) enviar(chunkSSE({ content: texto }));
+      };
+
+      const canal: CanalRecomendacion = {
+        aviso: (texto) => enviar(chunkSSE({ advisor_aviso: texto })),
+
+        final: (texto) => enviar(chunkSSE({ advisor_final: texto })),
+
+        pasarRecomendacion: async (cuerpo) => {
+          const decoder = new TextDecoder("utf-8");
+          const reader = cuerpo.getReader();
+          let buf = "";
+          let pendiente = "";
+          let terminoBien = false;
+
+          const procesar = (linea: string) => {
+            if (!linea.trim()) return;
+
+            let evento: any;
+
+            try {
+              evento = JSON.parse(linea);
+            } catch {
+              return;
+            }
+
+            if (evento.tipo === "delta") {
+              pendiente += String(evento.texto || "");
+
+              // Si hay un "[" sin su "]", se retiene desde ahí (tag a medio llegar).
+              const corte = pendiente.lastIndexOf("[");
+
+              if (corte >= 0 && !pendiente.includes("]", corte)) {
+                emitirTexto(pendiente.slice(0, corte));
+                pendiente = pendiente.slice(corte);
+              } else {
+                emitirTexto(pendiente);
+                pendiente = "";
+              }
+            } else if (evento.tipo === "fin") {
+              terminoBien = true;
+              pendiente = "";
+              canal.final(String(evento.mensajeCliente || ""));
+            } else if (evento.tipo === "error") {
+              console.error("ERROR RECOMENDACION (streaming):", evento.error);
+            }
+          };
+
+          try {
+            while (true) {
+              const { value, done } = await reader.read();
+              if (done) break;
+
+              buf += decoder.decode(value, { stream: true });
+
+              let idx: number;
+              while ((idx = buf.indexOf("\n")) >= 0) {
+                procesar(buf.slice(0, idx));
+                buf = buf.slice(idx + 1);
+              }
+            }
+
+            buf += decoder.decode();
+            procesar(buf);
+          } catch (error) {
+            console.error("ERROR leyendo la recomendación del backend:", error);
+          }
+
+          return terminoBien;
+        },
+      };
+
+      let resultado = "error en la recomendación";
+
+      try {
+        resultado = await proceso(canal);
+      } catch (error) {
+        console.error("ERROR /api/advisor (recomendación):", error);
+        canal.final(MENSAJE_ERROR_RECOMENDACION);
+      } finally {
+        enviar(chunkSSE({}, "stop"));
+        enviar("data: [DONE]\n\n");
+        controller.close();
+        alTerminar(resultado);
+      }
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+    },
+  });
+}
+// -----------------------------------------------------------------------------
 // RESPUESTA DE ERROR
 // -----------------------------------------------------------------------------
 
@@ -142,76 +309,17 @@ function obtenerCarpetasExcluidas() {
   );
 }
 
-// -----------------------------------------------------------------------------
-// POST /api/advisor
-// -----------------------------------------------------------------------------
-// -----------------------------------------------------------------------------
-// PREPARACIÓN AUTOMÁTICA DE ESQUEMAS Y FICHAS
-// -----------------------------------------------------------------------------
-//
-// Envía al backend todas las máquinas del Excel que tienen agente. El backend
-// responde enseguida y, si falta algún esquema o ficha, lo genera en segundo
-// plano. Nunca frena la conversación: si falla, solo queda en el log.
-//
-
-async function dispararPreparacion(
-  backend: string,
-  catalogo: any
-) {
-  try {
-    const excluidas = carpetasExcluidas();
-
-    const maquinas = tiposDeEquipo(catalogo).flatMap((tipo) => {
-      const resultado = maquinasDeTipo(
-        catalogo,
-        tipo,
-        (id: string) => (getAgentById(id) as any) ?? undefined,
-        excluidas
-      );
-
-      return resultado.maquinas.map((maquina) => ({
-        ...maquina,
-        tipoEquipo: resultado.tipoEquipo,
-      }));
-    });
-
-    if (maquinas.length === 0) {
-      return;
-    }
-
-    const respuesta = await fetch(
-      `${backend}/advisor/preparation/auto`,
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-        },
-
-        body: JSON.stringify({
-          maquinas,
-        }),
-
-        signal: AbortSignal.timeout(5000),
-      }
-    );
-
-    const datos = await respuesta.json().catch(() => null);
-
-    if (datos?.estado && datos.estado !== "completa") {
-      console.log(
-        "PREPARACION AUTOMATICA:",
-        datos.estado
-      );
-    }
-  } catch (error) {
-    console.warn(
-      "No se pudo disparar la preparación automática:",
-      error instanceof Error ? error.message : error
-    );
-  }
-}
 export async function POST(req: Request) {
+  // Medición de tiempos (archivo de tiempos, ver lib/advisor/tiempos.ts).
+  // Al terminar el pedido (en el finally) se registra el TOTAL del mensaje,
+  // con cómo terminó: pregunta, repregunta, recomendación o error.
+  const inicioMensaje = Date.now();
+  let sesionTiempos = "";
+  let numeroMensaje = 0;
+  let resultadoMensaje = "error";
+  // Si la respuesta sale en streaming, el TOTAL se registra cuando termina
+  // el stream (no en el finally, que corre apenas empieza a mandarse).
+  let totalEnStream = false;
   try {
     // -------------------------------------------------------------------------
     // 1. BODY DEL FRONTEND
@@ -242,6 +350,11 @@ export async function POST(req: Request) {
       );
     }
 
+    sesionTiempos = sessionId;
+    numeroMensaje = messages.filter(
+      (mensaje) => mensaje.role === "user"
+    ).length;
+
     // -------------------------------------------------------------------------
     // 2. BACKEND
     // -------------------------------------------------------------------------
@@ -265,7 +378,22 @@ export async function POST(req: Request) {
     // - sistemas productivos
     //
 
-    const catalogo = await catalogoDesdeBackend(backend);
+        const inicioCatalogo = Date.now();
+
+    // Se lee una sola vez por conversación (primer mensaje); después se usa
+    // la copia guardada. Ver lib/advisor/cacheCatalogo.ts.
+    const { catalogo, leidoAhora } = await catalogoDeSesion(
+      sessionId,
+      backend
+    );
+
+    registrarTiempo(
+      sessionId,
+      leidoAhora
+        ? "leer catálogo (Excel)"
+        : "catálogo (copia de la conversación)",
+      inicioCatalogo
+    );
 
     if (!catalogo) {
       return respuestaError(
@@ -286,7 +414,15 @@ export async function POST(req: Request) {
     // 3B. PREPARACIÓN AUTOMÁTICA
     // -------------------------------------------------------------------------
 
+    const inicioPreparacion = Date.now();
+
     await dispararPreparacion(backend, catalogo);
+
+    registrarTiempo(
+      sessionId,
+      "disparar preparación",
+      inicioPreparacion
+    );
     // -------------------------------------------------------------------------
     // 4. HISTORIAL
     // -------------------------------------------------------------------------
@@ -306,6 +442,8 @@ export async function POST(req: Request) {
     //   diagnóstico relee la conversación con el dato nuevo y se rehacen la
     //   comparación y la recomendación.
     //
+
+    const inicioFollowup = Date.now();
 
     const followupResponse = await fetch(
       `${backend}/advisor/followup`,
@@ -347,6 +485,13 @@ export async function POST(req: Request) {
       );
     }
 
+    registrarTiempo(
+      sessionId,
+      "followup / 6B (llamada completa)",
+      inicioFollowup,
+      followup?.accion || ""
+    );
+
     if (followup.accion !== "no_aplica") {
       console.log(
         "REPREGUNTA DEL ASESOR:",
@@ -358,6 +503,8 @@ export async function POST(req: Request) {
       followup.accion === "responder" ||
       followup.accion === "sin_evidencia"
     ) {
+      resultadoMensaje = `repregunta (${followup.accion})`;
+
       return respuestaSSE(
         followup.mensajeCliente
       );
@@ -375,6 +522,8 @@ export async function POST(req: Request) {
     // - evalúa opcionales
     // - ejecuta Prompt 4 si el diagnóstico continúa
     //
+
+    const inicioDiagnostico = Date.now();
 
     const diagnosisResponse = await fetch(
       `${backend}/advisor/diagnosis/analyze`,
@@ -412,6 +561,12 @@ export async function POST(req: Request) {
       );
     }
 
+    registrarTiempo(
+      sessionId,
+      "diagnóstico (llamada completa)",
+      inicioDiagnostico
+    );
+
     console.log(
       "DIAGNOSTICO NUEVO:",
       JSON.stringify(diagnosis, null, 2)
@@ -442,6 +597,8 @@ export async function POST(req: Request) {
         );
       }
 
+      resultadoMensaje = "pregunta del diagnóstico";
+
       return respuestaSSE(
         diagnosis.mensajeCliente
       );
@@ -458,455 +615,469 @@ export async function POST(req: Request) {
     }
 
     // -------------------------------------------------------------------------
-    // 8. ARMAR CANDIDATOS
+    // 7B. DESDE ACÁ, LA RESPUESTA VA EN STREAMING
     // -------------------------------------------------------------------------
     //
-    // Se mantiene la validación que ya usamos:
-    // un candidato tiene que tener agente individual existente.
+    // El diagnóstico terminó: se abre el stream hacia la página, se manda el
+    // aviso de diagnóstico completo y el resto (candidatos, fichas, Prompt 5 y
+    // Prompt 6A) corre adentro del stream. El TOTAL del mensaje se registra
+    // cuando termina el stream (no en el finally).
     //
 
-    const candidatos = armarCandidatos(
-      catalogo,
+    const busqueda = diagnosis.registro.busqueda;
 
-      diagnosis.registro.busqueda,
+    totalEnStream = true;
 
-      (id: string) =>
-        Boolean(getAgentById(id))
-    );
+    return respuestaSSEProceso(
+      async (canal) => {
+        canal.aviso(MENSAJE_DIAGNOSTICO_COMPLETO);
 
-    console.log(
-      "CANDIDATOS DEL ASESOR:",
-      JSON.stringify(candidatos, null, 2)
-    );
+        // Error dentro del stream: se loguea y el cliente ve un mensaje.
+        const fallar = (mensaje: string, detalle: unknown = null) => {
+          console.error("ERROR RECOMENDACION:", mensaje, detalle ?? "");
+          canal.final(MENSAJE_ERROR_RECOMENDACION);
+          return `error: ${mensaje}`;
+        };
 
-    if (
-      !candidatos ||
-      !Array.isArray(candidatos.etapas)
-    ) {
-      return respuestaError(
-        "No se pudieron armar los candidatos"
-      );
-    }
+        // ---------------------------------------------------------------------
+        // 8. ARMAR CANDIDATOS
+        // ---------------------------------------------------------------------
+        //
+        // Se mantiene la validación que ya usamos:
+        // un candidato tiene que tener agente individual existente.
+        //
 
-    // -------------------------------------------------------------------------
-    // 9. ARMAR LISTA ÚNICA DE MÁQUINAS PARA PEDIR SUS FICHAS
-    // -------------------------------------------------------------------------
+        const inicioCandidatos = Date.now();
 
-    const carpetasExcluidas =
-      obtenerCarpetasExcluidas();
+        const candidatos = armarCandidatos(
+          catalogo,
 
-    const maquinasPorId = new Map<
-      string,
-      {
-        idBusquetti: string;
-        nombreModelo: string;
-        tipoEquipo: string;
-        driveFolders: string[];
-      }
-    >();
+          busqueda,
 
-    for (const etapa of candidatos.etapas) {
-      for (
-        const opcion of etapa.opciones || []
-      ) {
+          (id: string) =>
+            Boolean(getAgentById(id))
+        );
+
+        registrarTiempo(
+          sessionId,
+          "armar candidatos",
+          inicioCandidatos
+        );
+
+        console.log(
+          "CANDIDATOS DEL ASESOR:",
+          JSON.stringify(candidatos, null, 2)
+        );
+
+        if (
+          !candidatos ||
+          !Array.isArray(candidatos.etapas)
+        ) {
+          return fallar("No se pudieron armar los candidatos");
+        }
+
+        // ---------------------------------------------------------------------
+        // 9. ARMAR LISTA ÚNICA DE MÁQUINAS PARA PEDIR SUS FICHAS
+        // ---------------------------------------------------------------------
+
+        const carpetasExcluidas =
+          obtenerCarpetasExcluidas();
+
+        const maquinasPorId = new Map<
+          string,
+          {
+            idBusquetti: string;
+            nombreModelo: string;
+            tipoEquipo: string;
+            driveFolders: string[];
+          }
+        >();
+
+        for (const etapa of candidatos.etapas) {
+          for (
+            const opcion of etapa.opciones || []
+          ) {
+            for (
+              const equipo of opcion.equipos || []
+            ) {
+              const id = String(
+                equipo?.id || ""
+              ).trim();
+
+              if (!id) {
+                continue;
+              }
+
+              // Ya debería existir porque armarCandidatos()
+              // lo validó, pero lo verificamos nuevamente
+              // antes de usar sus carpetas.
+              const agente = getAgentById(id);
+
+              if (!agente) {
+                console.warn(
+                  `No se encontró agente para ${id}`
+                );
+
+                continue;
+              }
+
+              const driveFolders = (
+                agente.driveFolders || []
+              ).filter(
+                (folderId: string) =>
+                  !carpetasExcluidas.has(folderId)
+              );
+
+              maquinasPorId.set(id, {
+                idBusquetti: id,
+
+                nombreModelo:
+                  equipo.nombreComercial || id,
+
+                tipoEquipo:
+                  equipo.tipoEquipo || "",
+
+                driveFolders,
+              });
+            }
+          }
+        }
+
+        const maquinas = Array.from(
+          maquinasPorId.values()
+        );
+
+        console.log(
+          "IDS CANDIDATOS:",
+          maquinas.map(
+            (maquina) => maquina.idBusquetti
+          )
+        );
+
+        if (maquinas.length === 0) {
+          return fallar("El diagnóstico terminó pero no hay máquinas candidatas válidas");
+        }
+
+        // ---------------------------------------------------------------------
+        // 10. PEDIR FICHAS AL BACKEND
+        // ---------------------------------------------------------------------
+        //
+        // /advisor/fichas:
+        //
+        // - devuelve ficha vigente si no cambió
+        // - devuelve anterior y actualiza si cambió
+        // - genera ficha si todavía no existe
+        //
+
+        const inicioFichas = Date.now();
+
+        const fichasResponse = await fetch(
+          `${backend}/advisor/fichas`,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type": "application/json",
+            },
+
+            body: JSON.stringify({
+              maquinas,
+            }),
+          }
+        );
+
+        let fichasJson: any;
+
+        try {
+          fichasJson =
+            await fichasResponse.json();
+        } catch {
+          return fallar("El backend devolvió una respuesta inválida al pedir las fichas");
+        }
+
+        registrarTiempo(
+          sessionId,
+          "pedir fichas (llamada completa)",
+          inicioFichas,
+          `${maquinas.length} máquinas`
+        );
+
+        console.log(
+          "FICHAS DEL ASESOR:",
+          JSON.stringify(fichasJson, null, 2)
+        );
+
+        if (
+          !fichasResponse.ok ||
+          !Array.isArray(fichasJson?.resultados)
+        ) {
+          return fallar(
+            fichasJson?.error ||
+              "Error obteniendo las fichas de los candidatos",
+            fichasJson
+          );
+        }
+
+        // ---------------------------------------------------------------------
+        // 11. INDEXAR LAS FICHAS POR ID BUSQUETTI
+        // ---------------------------------------------------------------------
+
+        const fichaPorId = new Map<
+          string,
+          any
+        >();
+
         for (
-          const equipo of opcion.equipos || []
+          const resultado of
+          fichasJson.resultados || []
         ) {
           const id = String(
-            equipo?.id || ""
+            resultado?.idBusquetti || ""
           ).trim();
 
           if (!id) {
             continue;
           }
 
-          // Ya debería existir porque armarCandidatos()
-          // lo validó, pero lo verificamos nuevamente
-          // antes de usar sus carpetas.
-          const agente = getAgentById(id);
+          fichaPorId.set(
+            id,
+            resultado?.ficha || null
+          );
+        }
 
-          if (!agente) {
-            console.warn(
-              `No se encontró agente para ${id}`
-            );
+        // ---------------------------------------------------------------------
+        // 12. INSERTAR LA FICHA EN CADA EQUIPO CANDIDATO
+        // ---------------------------------------------------------------------
+        //
+        // A Prompt 5 no le hace falta:
+        //
+        // - nombre del archivo
+        // - fuentes
+        // - metadata de Drive
+        // - huellas
+        //
+        // Solamente los valores y sus estados.
+        //
+        // Esto además reduce bastante el tamaño del prompt.
+        //
 
-            continue;
-          }
+        const candidatosConFichas =
+          candidatos.etapas.map(
+            (etapa: any) => ({
+              ...etapa,
 
-          const driveFolders = (
-            agente.driveFolders || []
-          ).filter(
-            (folderId: string) =>
-              !carpetasExcluidas.has(folderId)
+              opciones: (
+                etapa.opciones || []
+              ).map((opcion: any) => ({
+                ...opcion,
+
+                equipos: (
+                  opcion.equipos || []
+                ).map((equipo: any) => {
+                  const ficha =
+                    fichaPorId.get(
+                      equipo.id
+                    );
+
+                  return {
+                    ...equipo,
+
+                    ficha: {
+                      valores:
+                        ficha?.valores || {},
+                    },
+                  };
+                }),
+              })),
+            })
           );
 
-          maquinasPorId.set(id, {
-            idBusquetti: id,
-
-            nombreModelo:
-              equipo.nombreComercial || id,
-
-            tipoEquipo:
-              equipo.tipoEquipo || "",
-
-            driveFolders,
-          });
-        }
-      }
-    }
-
-    const maquinas = Array.from(
-      maquinasPorId.values()
-    );
-
-    console.log(
-      "IDS CANDIDATOS:",
-      maquinas.map(
-        (maquina) => maquina.idBusquetti
-      )
-    );
-
-    if (maquinas.length === 0) {
-      return respuestaError(
-        "El diagnóstico terminó pero no hay máquinas candidatas válidas"
-      );
-    }
-
-    // -------------------------------------------------------------------------
-    // 10. PEDIR FICHAS AL BACKEND
-    // -------------------------------------------------------------------------
-    //
-    // /advisor/fichas:
-    //
-    // - devuelve ficha vigente si no cambió
-    // - devuelve anterior y actualiza si cambió
-    // - genera ficha si todavía no existe
-    //
-
-    const fichasResponse = await fetch(
-      `${backend}/advisor/fichas`,
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-        },
-
-        body: JSON.stringify({
-          maquinas,
-        }),
-      }
-    );
-
-    let fichasJson: any;
-
-    try {
-      fichasJson =
-        await fichasResponse.json();
-    } catch {
-      return respuestaError(
-        "El backend devolvió una respuesta inválida al pedir las fichas"
-      );
-    }
-
-    console.log(
-      "FICHAS DEL ASESOR:",
-      JSON.stringify(fichasJson, null, 2)
-    );
-
-  if (
-    !fichasResponse.ok ||
-    !Array.isArray(fichasJson?.resultados)
-  ) {
-    return respuestaError(
-      fichasJson?.error ||
-        "Error obteniendo las fichas de los candidatos",
-      !fichasResponse.ok
-        ? fichasResponse.status
-        : 500,
-      {
-        fichas: fichasJson,
-      }
-    );
-  }
-
-    // -------------------------------------------------------------------------
-    // 11. INDEXAR LAS FICHAS POR ID BUSQUETTI
-    // -------------------------------------------------------------------------
-
-    const fichaPorId = new Map<
-      string,
-      any
-    >();
-
-    for (
-      const resultado of
-      fichasJson.resultados || []
-    ) {
-      const id = String(
-        resultado?.idBusquetti || ""
-      ).trim();
-
-      if (!id) {
-        continue;
-      }
-
-      fichaPorId.set(
-        id,
-        resultado?.ficha || null
-      );
-    }
-
-    // -------------------------------------------------------------------------
-    // 12. INSERTAR LA FICHA EN CADA EQUIPO CANDIDATO
-    // -------------------------------------------------------------------------
-    //
-    // A Prompt 5 no le hace falta:
-    //
-    // - nombre del archivo
-    // - fuentes
-    // - metadata de Drive
-    // - huellas
-    //
-    // Solamente los valores y sus estados.
-    //
-    // Esto además reduce bastante el tamaño del prompt.
-    //
-
-    const candidatosConFichas =
-      candidatos.etapas.map(
-        (etapa: any) => ({
-          ...etapa,
-
-          opciones: (
-            etapa.opciones || []
-          ).map((opcion: any) => ({
-            ...opcion,
-
-            equipos: (
-              opcion.equipos || []
-            ).map((equipo: any) => {
-              const ficha =
-                fichaPorId.get(
-                  equipo.id
-                );
-
-              return {
-                ...equipo,
-
-                ficha: {
-                  valores:
-                    ficha?.valores || {},
-                },
-              };
-            }),
-          })),
-        })
-      );
-
-    console.log(
-      "CANDIDATOS CON FICHAS:",
-      JSON.stringify(
-        candidatosConFichas,
-        null,
-        2
-      )
-    );
-
-    // -------------------------------------------------------------------------
-    // 13. PROMPT 5 - COMPARACIÓN
-    // -------------------------------------------------------------------------
-    //
-    // Prompt 5 recibe:
-    //
-    // - sessionId
-    // - candidatos + fichas
-    // - historial completo
-    // - máximo de preguntas
-    //
-    // El backend recupera de Redis:
-    //
-    // - diagnóstico
-    // - datos ya obtenidos durante comparación
-    // - cantidad de preguntas realizadas
-    //
-    console.log(">>> ANTES DE PROMPT 5");
-    const comparacionResponse =
-      await fetch(
-        `${backend}/advisor/comparison/analyze`,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify({
-            sessionId,
-
-            candidatos:
-              candidatosConFichas,
-
-            historial,
-
-            maxPreguntasComparacion: 3,
-          }),
-        }
-      );
-
-      console.log(
-    ">>> RESPUESTA HTTP PROMPT 5:",
-    comparacionResponse.status
-  );
-    let comparacion: any;
-
-    try {
-      comparacion =
-        await comparacionResponse.json();
-    } catch {
-      return respuestaError(
-        "El backend devolvió una respuesta inválida durante la comparación"
-      );
-    }
-
-    console.log(
-  ">>> PROMPT 5 PARSEADO:",
-  comparacion?.ok,
-  comparacion?.accion,
-  comparacion?.mensajeCliente
-);
-    console.log(
-      "COMPARACION DEL ASESOR:",
-      JSON.stringify(
-        comparacion,
-        null,
-        2
-      )
-    );
-
-    if (
-      !comparacionResponse.ok ||
-      !comparacion?.ok
-    ) {
-      return respuestaError(
-        comparacion?.error ||
-          "Error ejecutando la comparación de equipos",
-        comparacionResponse.status || 500,
-        {
-          comparacion,
-        }
-      );
-    }
-
-    // -------------------------------------------------------------------------
-    // 14. PROMPT 5 NECESITA UNA REPREGUNTA
-    // -------------------------------------------------------------------------
-    //
-    // El mensaje se devuelve con el mismo SSE que ya consume page.tsx.
-    //
-    // El próximo mensaje del cliente vuelve a entrar por este route.ts.
-    // La sesión de comparación se conserva en Redis mediante sessionId.
-    //
-
-    if (
-      comparacion.accion === "listo"
-    ) {
-      // -----------------------------------------------------------------------
-      // PROMPT 6A - RECOMENDACIÓN
-      // -----------------------------------------------------------------------
-      //
-      // La comparación ya quedó guardada en la sesión.
-      // Mandamos los candidatos (nombres, marcas y fichas) porque la sesión
-      // todavía no los tiene; el backend los guarda para el Prompt 6B.
-      //
-
-      const recomendacionResponse = await fetch(
-        `${backend}/advisor/recommendation/generate`,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-          },
-
-          body: JSON.stringify({
-            sessionId,
-            candidatos: candidatosConFichas,
-          }),
-        }
-      );
-
-      let recomendacion: any;
-
-      try {
-        recomendacion = await recomendacionResponse.json();
-      } catch {
-        return respuestaError(
-          "El backend devolvió una respuesta inválida durante la recomendación"
+        console.log(
+          "CANDIDATOS CON FICHAS:",
+          JSON.stringify(
+            candidatosConFichas,
+            null,
+            2
+          )
         );
-      }
 
-      console.log(
-        "RECOMENDACION DEL ASESOR:",
-        JSON.stringify(recomendacion, null, 2)
-      );
+        // ---------------------------------------------------------------------
+        // 13. PROMPT 5 - COMPARACIÓN
+        // ---------------------------------------------------------------------
+        //
+        // Prompt 5 recibe:
+        //
+        // - sessionId
+        // - candidatos + fichas
+        // - historial completo
+        // - máximo de preguntas
+        //
+        // El backend recupera de Redis:
+        //
+        // - diagnóstico
+        // - datos ya obtenidos durante comparación
+        // - cantidad de preguntas realizadas
+        //
+        console.log(">>> ANTES DE PROMPT 5");
 
-      if (
-        !recomendacionResponse.ok ||
-        !recomendacion?.ok ||
-        !recomendacion?.mensajeCliente
-      ) {
-        return respuestaError(
-          recomendacion?.error ||
-            "Error generando la recomendación",
-          recomendacionResponse.status || 500,
-          {
-            recomendacion,
+        const inicioComparacion = Date.now();
+
+        const comparacionResponse =
+          await fetch(
+            `${backend}/advisor/comparison/analyze`,
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body: JSON.stringify({
+                sessionId,
+
+                candidatos:
+                  candidatosConFichas,
+
+                historial,
+
+                maxPreguntasComparacion: 3,
+              }),
+            }
+          );
+
+        console.log(
+          ">>> RESPUESTA HTTP PROMPT 5:",
+          comparacionResponse.status
+        );
+
+        registrarTiempo(
+          sessionId,
+          "comparación (llamada completa)",
+          inicioComparacion
+        );
+
+        let comparacion: any;
+
+        try {
+          comparacion =
+            await comparacionResponse.json();
+        } catch {
+          return fallar("El backend devolvió una respuesta inválida durante la comparación");
+        }
+
+        console.log(
+          ">>> PROMPT 5 PARSEADO:",
+          comparacion?.ok,
+          comparacion?.accion,
+          comparacion?.mensajeCliente
+        );
+
+        console.log(
+          "COMPARACION DEL ASESOR:",
+          JSON.stringify(
+            comparacion,
+            null,
+            2
+          )
+        );
+
+        if (
+          !comparacionResponse.ok ||
+          !comparacion?.ok
+        ) {
+          return fallar(
+            comparacion?.error ||
+              "Error ejecutando la comparación de equipos",
+            comparacion
+          );
+        }
+
+        // ---------------------------------------------------------------------
+        // 14. PROMPT 6A - RECOMENDACIÓN
+        // ---------------------------------------------------------------------
+        //
+        // La comparación ya quedó guardada en la sesión.
+        // Mandamos los candidatos (nombres, marcas y fichas) porque la sesión
+        // todavía no los tiene; el backend los guarda para el Prompt 6B.
+        //
+
+        if (
+          comparacion.accion === "listo"
+        ) {
+          const inicioRecomendacion = Date.now();
+
+          const recomendacionResponse = await fetch(
+            `${backend}/advisor/recommendation/generate`,
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type": "application/json",
+              },
+
+              body: JSON.stringify({
+                sessionId,
+                candidatos: candidatosConFichas,
+                stream: true,
+              }),
+            }
+          );
+
+          const tipoContenido =
+            recomendacionResponse.headers.get("content-type") || "";
+
+          // Si el backend falló antes de empezar a escribir, responde un JSON
+          // de error (no NDJSON).
+          if (
+            !recomendacionResponse.ok ||
+            !recomendacionResponse.body ||
+            !tipoContenido.includes("ndjson")
+          ) {
+            const recomendacion = await recomendacionResponse
+              .json()
+              .catch(() => null);
+
+            return fallar(
+              recomendacion?.error || "Error generando la recomendación",
+              recomendacion
+            );
           }
+
+          // La recomendación se pasa a la página a medida que se escribe.
+          const terminoBien = await canal.pasarRecomendacion(
+            recomendacionResponse.body
+          );
+
+          registrarTiempo(
+            sessionId,
+            "recomendación (llamada completa)",
+            inicioRecomendacion
+          );
+
+          if (!terminoBien) {
+            return fallar("La recomendación se cortó antes de terminar");
+          }
+
+          return "recomendación";
+        }
+
+        // ---------------------------------------------------------------------
+        // 15. PROTECCIÓN
+        // ---------------------------------------------------------------------
+
+        return fallar(
+          "Prompt 5 devolvió una acción no reconocida",
+          comparacion
         );
-      }
-
-      return respuestaSSE(
-        recomendacion.mensajeCliente
-      );
-    }
-    // -------------------------------------------------------------------------
-    // 15. PROMPT 5 TERMINÓ
-    // -------------------------------------------------------------------------
-    //
-    // POR AHORA:
-    //
-    // todavía no conectamos el Prompt de recomendación.
-    //
-    // Este texto es solamente un marcador temporal para comprobar desde
-    // el frontend que:
-    //
-    // diagnóstico
-    // -> candidatos
-    // -> fichas
-    // -> Prompt 5
-    //
-    // funciona de punta a punta.
-    //
-
-    if (
-      comparacion.accion === "listo"
-    ) {
-      return respuestaSSE(
-        "Listo, ya comparé las opciones disponibles con tu necesidad."
-      );
-    }
-
-    // -------------------------------------------------------------------------
-    // 16. PROTECCIÓN
-    // -------------------------------------------------------------------------
-
-    return respuestaError(
-      "Prompt 5 devolvió una acción no reconocida",
-      500,
-      {
-        comparacion,
+      },
+      (resultado) => {
+        registrarTiempo(
+          sessionId,
+          "TOTAL DEL MENSAJE",
+          inicioMensaje,
+          `mensaje ${numeroMensaje} del cliente → ${resultado}`
+        );
       }
     );
   } catch (error) {
@@ -920,5 +1091,14 @@ export async function POST(req: Request) {
         ? error.message
         : "Error interno del asesor"
     );
+  } finally {
+    if (sesionTiempos && !totalEnStream) {
+      registrarTiempo(
+        sesionTiempos,
+        "TOTAL DEL MENSAJE",
+        inicioMensaje,
+        `mensaje ${numeroMensaje} del cliente → ${resultadoMensaje}`
+      );
+    }
   }
 }

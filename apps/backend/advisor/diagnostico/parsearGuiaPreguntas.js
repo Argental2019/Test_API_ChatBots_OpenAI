@@ -5,41 +5,36 @@
  * Formato temporal esperado en el documento:
  *
  * OBLIGATORIA | ¿Pregunta...?
+ * OBLIGATORIA LINEA COMPLETA | ¿Pregunta...?
  * OPCIONAL | ¿Pregunta...?
+ *
+ * - OBLIGATORIA: se pregunta siempre.
+ * - OBLIGATORIA LINEA COMPLETA: obligatoria solo cuando el cliente busca
+ *   una línea completa. Si el cliente dijo que solo necesita equipos
+ *   puntuales (compra puntual), no se pregunta. "LÍNEA" con tilde también vale.
+ * - OPCIONAL: se pregunta solo si es relevante (evaluarOpcionales).
  *
  * IMPORTANTE:
  * El extractor de DOCX puede eliminar los saltos de línea y devolver
  * todo el documento como una única cadena. Por eso NO dependemos
  * de párrafos ni de saltos de línea.
  */
+
+// Marcadores reconocidos. El más largo va primero para que
+// "OBLIGATORIA LINEA COMPLETA" no se tome como "OBLIGATORIA".
+const MARCADOR = "OBLIGATORIA\\s+L[IÍ]NEA\\s+COMPLETA|OBLIGATORIA|OPCIONAL";
+
 export function parsearGuiaPreguntas(contenido) {
   // Validamos que realmente hayamos recibido texto.
   if (typeof contenido !== "string" || !contenido.trim()) {
     throw new Error("La guía de preguntas no contiene texto");
   }
 
-  /**
-   * Buscamos únicamente marcadores que estén seguidos por una
-   * pregunta real que empiece con "¿".
-   *
-   * Esto es importante porque la introducción del documento dice:
-   *
-   * "cada pregunta comienza con OBLIGATORIA | u OPCIONAL |"
-   *
-   * y no queremos interpretar esa explicación como si fuera
-   * una pregunta de la guía.
-   *
-   * La captura termina cuando aparece:
-   *
-   * - otra OBLIGATORIA | ¿...?
-   * - otra OPCIONAL | ¿...?
-   * - el texto final del documento temporal
-   * - o el final del archivo
-   */
 /**
- * Buscamos cualquier bloque que empiece con:
+ * Buscamos cualquier bloque que empiece con un marcador:
  *
  * OBLIGATORIA |
+ * OBLIGATORIA LINEA COMPLETA |
  * OPCIONAL |
  *
  * y termine cuando aparece el próximo marcador o el final del documento.
@@ -49,8 +44,10 @@ export function parsearGuiaPreguntas(contenido) {
  *
  * "Si ya estás produciendo, ¿en qué etapa...?"
  */
-const regex =
-  /(OBLIGATORIA|OPCIONAL)\s*\|\s*([\s\S]*?)(?=\s+(?:OBLIGATORIA|OPCIONAL)\s*\||$)/gi;
+const regex = new RegExp(
+  `(${MARCADOR})\\s*\\|\\s*([\\s\\S]*?)(?=\\s+(?:${MARCADOR})\\s*\\||$)`,
+  "gi"
+);
 
 const preguntas = [];
 
@@ -58,7 +55,11 @@ let coincidencia;
 
 // Recorremos todos los bloques encontrados.
 while ((coincidencia = regex.exec(contenido)) !== null) {
-  const tipo = coincidencia[1].toUpperCase();
+  // Normalizamos el marcador: mayúsculas, sin tilde y con un solo espacio.
+  const tipo = coincidencia[1]
+    .toUpperCase()
+    .replace(/Í/g, "I")
+    .replace(/\s+/g, " ");
 
   // Normalizamos espacios porque el extractor del DOCX
   // devuelve el documento prácticamente como una sola línea.
@@ -67,9 +68,8 @@ while ((coincidencia = regex.exec(contenido)) !== null) {
     .trim();
 
   /**
-   * La introducción del documento también menciona literalmente:
-   *
-   * "OBLIGATORIA | u OPCIONAL |"
+   * La introducción del documento también menciona literalmente
+   * los marcadores ("OBLIGATORIA | u OPCIONAL |").
    *
    * Esos bloques no son preguntas.
    *
@@ -90,6 +90,8 @@ while ((coincidencia = regex.exec(contenido)) !== null) {
    */
   texto = texto.slice(0, ultimoSignoPregunta + 1).trim();
 
+  const soloLineaCompleta = tipo === "OBLIGATORIA LINEA COMPLETA";
+
   preguntas.push({
     // La numeración siempre depende del orden de la guía.
     numero: preguntas.length + 1,
@@ -97,14 +99,20 @@ while ((coincidencia = regex.exec(contenido)) !== null) {
     pregunta: texto,
 
     // Convertimos la marca textual del documento en booleano.
-    obligatoria: tipo === "OBLIGATORIA",
+    // "OBLIGATORIA LINEA COMPLETA" también es obligatoria; la diferencia
+    // la marca soloLineaCompleta.
+    obligatoria: tipo === "OBLIGATORIA" || soloLineaCompleta,
+
+    // true: no se pregunta cuando el cliente busca equipos puntuales
+    // (ver calcularObligatoriasPendientes.js).
+    soloLineaCompleta,
   });
 }
   // Si no encontramos ninguna pregunta, preferimos fallar
   // explícitamente antes que enviar una guía vacía a los prompts.
   if (preguntas.length === 0) {
     throw new Error(
-      "No se encontraron preguntas con formato OBLIGATORIA | ¿...? u OPCIONAL | ¿...?"
+      "No se encontraron preguntas con formato OBLIGATORIA | ¿...?, OBLIGATORIA LINEA COMPLETA | ¿...? u OPCIONAL | ¿...?"
     );
   }
 

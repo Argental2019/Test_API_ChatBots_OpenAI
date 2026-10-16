@@ -191,11 +191,19 @@ Cada campo tiene una condición:
 - "c":
   característica técnica, funcional o relacionada con producto/proceso.
 
-Evaluá TODOS los campos recibidos.
+Revisá TODOS los campos recibidos: no omitas ninguno al analizar.
 
-No omitas campos.
+En "criterios" devolvé solamente:
 
-Para cada campo devolvé:
+- los campos aplicables ("aplicable": true, ver punto 6) cuyo resultado sea
+  "no_cumple" o "no_confirmable";
+- los campos condición "a" que usaste para calcular la capacidad.
+
+Los campos que no aplican, y los aplicables que cumplen sin observaciones, no se
+devuelven. Igual tenés que evaluarlos todos para decidir el resultado del equipo.
+Si un equipo cumple todo y no usa campos "a", "criterios" puede quedar vacío.
+
+Para cada campo devuelto usá:
 
 {
   "campo": "...",
@@ -1141,7 +1149,16 @@ para decidir.
 
 "sin_opciones": true
 
-solo cuando la etapa realmente no tenga opciones candidatas.
+cuando la etapa no tenga ninguna opción para ofrecerle al cliente:
+
+- la etapa no tiene opciones candidatas; o
+- todas sus opciones quedaron con resultado "descartado", de modo que "recomendados" y
+  "alternativas_a_confirmar" quedan vacíos.
+
+Cuando "sin_opciones" es true, completá "motivo" con una frase que explique por qué la
+etapa no tiene un equipo compatible (por ejemplo, que ninguna opción cubre el volumen a
+cubrir), usando solo los motivos de los descartes. Los descartes siguen yendo en
+"descartes_a_explicar".
 
 No uses estos campos como reemplazo de "a_confirmar".
 
@@ -1260,12 +1277,9 @@ Sé preciso.
 
 No repitas explicaciones innecesariamente.
 
-En "detalle" explicá solamente por qué el criterio:
-
-- cumple;
-- no cumple;
-- no puede confirmarse;
-- no aplica.
+En "detalle" escribí una sola frase corta (máximo 15 palabras) con la razón del
+resultado: por qué cumple, no cumple o no puede confirmarse. No repitas el nombre
+del campo ni copies textos de la ficha.
 
 En "motivo" explicá solamente la causa necesaria para justificar:
 
@@ -1442,7 +1456,7 @@ Antes de responder verificá internamente:
 
 1. ¿Evalué TODOS los equipos?
 
-2. ¿Evalué TODOS los campos de cada ficha?
+2. ¿Revisé TODOS los campos de cada ficha y devolví en "criterios" solo los indicados en el punto 5?
 
 3. ¿Usé el volumen futuro confirmado si es mayor al actual?
 

@@ -302,7 +302,7 @@ export function validarFicha(crudo, esquema, maquina, tipoEquipo) {
  * código garantiza igual que la ficha respete el esquema.
  */
 async function ejecutarPromptJson(openai, prompt, formato, avisos) {
-  const modelo = process.env.ADVISOR_PREPARATION_MODEL || "gpt-5.1";
+  const modelo = process.env.ADVISOR_PREPARATION_MODEL || "gpt-5.6-luna";
   const pedir = (response_format) =>
     openai.chat.completions.create({
       model: modelo,
@@ -1150,7 +1150,7 @@ export async function generarEsquemaTipo({
     await openai.chat.completions.create({
       model:
         process.env.ADVISOR_PREPARATION_MODEL ||
-        "gpt-5.1",
+        "gpt-5.6-luna",
 
       stream: false,
       

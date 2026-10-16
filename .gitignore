@@ -147,3 +147,4 @@ apps/**/.env.local
 # next
 .next
 out
+tiempos-advisor.txt

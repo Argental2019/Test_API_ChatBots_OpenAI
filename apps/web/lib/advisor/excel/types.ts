@@ -72,6 +72,13 @@ export interface EquipoCatalogo {
 
   marca: string | null;
   tipoEquipo: string | null;
+
+  /**
+   * Columna "Kg harina por turno 8 h" de COD LISPRE: cuántos kg de harina por
+   * día procesa el equipo trabajando un turno de 8 horas. null si la celda
+   * está vacía o la columna no existe.
+   */
+  kgHarinaTurno8h: number | null;
 }
 /** Todo lo que el sistema necesita del Excel, ya interpretado. */
 export interface Catalogo {
@@ -93,6 +100,12 @@ export interface Busqueda {
   productos_no_disponibles: string[];
   etapas_cubiertas: string[];
   congela: boolean | null;
+
+  /** Horas de producción por día que informó el cliente (turnos × horas por turno). */
+  horas_trabajo_dia?: number | null;
+
+  /** Mayor volumen a cubrir en kg de harina por día (actual o futuro, sumando productos). */
+  volumen_kg_harina_dia?: number | null;
 }
 /** Un equipo dentro de una opción candidata. */
 export interface EquipoOpcion {
@@ -100,11 +113,15 @@ export interface EquipoOpcion {
   nombreComercial: string;
   marca: string | null;
   tipoEquipo: string | null;
-    /**
-   * Mayor "consumo de harina máx. (kg/día)" de las filas de SISTEMAS donde
-   * aparece este equipo, en esta etapa y para los productos del cliente.
-   * Es la capacidad de referencia de Argental; se usa cuando la ficha no
-   * permite calcular la capacidad. null si esas filas no tienen el dato.
+  /**
+   * Capacidad de referencia de Argental, en kg de harina por día, que usa la
+   * comparación cuando la ficha no permite calcular la capacidad.
+   *
+   * - Si el equipo tiene "Kg harina por turno 8 h" en COD LISPRE y se conocen
+   *   las horas de trabajo del cliente: kg por turno de 8 h × horas ÷ 8.
+   * - Si no: el mayor "consumo de harina máx. (kg/día)" de las filas de
+   *   SISTEMAS donde aparece el equipo (el criterio anterior).
+   * - null si no hay ninguno de los dos datos.
    */
   capacidadReferenciaExcel: number | null;
 }

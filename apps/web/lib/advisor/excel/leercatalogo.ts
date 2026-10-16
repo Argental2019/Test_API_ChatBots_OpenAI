@@ -36,6 +36,7 @@ equipos: {
   idBusquetti: "ID BUSQUETTI",
   marca: "MARCA",
   tipoEquipo: "TIPO DE EQUIPO",
+  kgHarinaTurno8h: "KG HARINA POR TURNO 8 H",
 },
 
   // Un grupo cuyo título contiene esta palabra es de alternativas (se elige uno).
@@ -57,7 +58,7 @@ export function normalizar(valor: Celda | undefined): string {
   if (valor === null || valor === undefined) return "";
   return String(valor)
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .toUpperCase()
     .replace(/\s+/g, " ")
     .trim();
@@ -252,10 +253,12 @@ const colCod = buscarColumna(encabezados, cfg.cod);
 const colNombre = buscarColumna(encabezados, cfg.nombreComercial);
 const colMarca = buscarColumna(encabezados, cfg.marca);
 const colTipo = buscarColumna(encabezados, cfg.tipoEquipo);
+const colKgTurno = buscarColumna(encabezados, cfg.kgHarinaTurno8h);
 
 
   if (colMarca < 0) avisos.push({ codigo: "columna_no_encontrada", mensaje: 'Falta la columna "Marca" en COD LISPRE.', hoja: CONFIG_EXCEL.hojaEquipos });
   if (colTipo < 0) avisos.push({ codigo: "columna_no_encontrada", mensaje: 'Falta la columna "Tipo de equipo" en COD LISPRE (necesaria para generar esquemas y fichas).', hoja: CONFIG_EXCEL.hojaEquipos });
+  if (colKgTurno < 0) avisos.push({ codigo: "columna_no_encontrada", mensaje: 'Falta la columna "Kg harina por turno 8 h" en COD LISPRE: la capacidad se toma de la hoja SISTEMAS.', hoja: CONFIG_EXCEL.hojaEquipos });
 
   const equipos: Record<string, EquipoCatalogo> = {};
   for (let r = filaEncabezado + 1; r < hoja.filas.length; r++) {
@@ -284,6 +287,11 @@ equipos[clave] = {
   tipoEquipo:
     colTipo >= 0
       ? limpiar(fila[colTipo]) || null
+      : null,
+  // Solo se acepta un número mayor que 0; una celda vacía o con texto queda en null.
+  kgHarinaTurno8h:
+    colKgTurno >= 0 && (aNumero(fila[colKgTurno]) ?? 0) > 0
+      ? aNumero(fila[colKgTurno])
       : null,
 };
   }

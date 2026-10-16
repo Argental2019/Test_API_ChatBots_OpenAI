@@ -68,10 +68,18 @@ las listas:
 - productos_no_disponibles: productos que el cliente mencionó y que no tienen
   equivalente en PRODUCTOS VÁLIDOS, con el nombre que usó el cliente.
 
-- etapas_cubiertas: etapas del proceso que el cliente ya resuelve con equipos propios y
-  que quiere conservar, usando solo nombres de ETAPAS DEL PROCESO. Si tiene un equipo
-  para una etapa pero no queda claro si lo quiere conservar o reemplazar, generá una
-  aclaración.
+- etapas_cubiertas: etapas del proceso para las que el cliente NO necesita que le
+  recomendemos equipos, usando solo nombres de ETAPAS DEL PROCESO:
+  - las que ya resuelve con equipos propios y quiere conservar;
+    - si "compra_puntual" es true, todas las ETAPAS DEL PROCESO que no corresponden a
+    los equipos que pidió (por ejemplo, si pide una amasadora y un horno, todas menos
+    la de amasado y la de hornos).
+  Si tiene un equipo para una etapa pero no queda claro si lo quiere conservar o
+  reemplazar, generá una aclaración.
+  Cuando el cliente dice que solo necesita algunas etapas, eso también responde la
+  pregunta de la guía sobre los equipos que tiene y quiere conservar: registrala en
+  "respuestas" con lo que dijo (por ejemplo, "Solo necesita amasadora; el resto del
+  proceso ya lo tiene resuelto").
 
 - congela: true, false o null.
 
@@ -80,6 +88,27 @@ las listas:
   guía: completalo siempre, aunque el cliente todavía no haya respondido esa pregunta.
   Usá solo un número que exista en PREGUNTAS DE LA GUÍA. Si ninguna pregunta de la guía
   pide los productos, el valor es null.
+
+- compra_puntual: true si el cliente pide equipos puntuales y no una línea completa:
+  - si dice explícitamente que solo necesita algunos equipos ("solo necesito una
+    amasadora", "quiero comprar solo eso");
+  - o si pide equipos concretos por su nombre o tipo ("quiero comprar una amasadora y
+    un horno") y no habla de armar una línea, una planta o el proceso completo.
+  false si busca una línea completa, si pide "todo lo necesario" para producir, o si
+  todavía no dijo qué busca. Si es true, las demás etapas van en "etapas_cubiertas".
+
+- horas_trabajo_dia: las horas de producción por día que informó el cliente, como
+  número: la cantidad de turnos por día multiplicada por las horas de cada turno (por
+  ejemplo, 2 turnos de 8 horas = 16). Usá solo datos que el cliente confirmó. Si todavía
+  no informó los turnos o las horas, o alguno de esos datos tiene una aclaración
+  pendiente, el valor es null.
+
+- volumen_kg_harina_dia: el volumen que hay que cubrir, en kg de harina por día, como
+  número: la suma de todos los productos de "productos", tomando para cada uno el mayor
+  valor entre su producción actual y la futura que haya confirmado. Si el volumen se
+  registró como un total entre todos los productos (ver punto 5), usá ese total. Usá
+  solo respuestas confirmadas en kg de harina por día. Si falta el volumen de algún
+  producto, o tiene una aclaración pendiente, el valor es null.
 
 
 4. RESPUESTAS A LAS PREGUNTAS DE LA GUÍA
@@ -112,6 +141,12 @@ las listas:
 - Si el cliente respondió una pregunta sin que se la hicieran, registrala igual con su
   número.
 
+- Si una misma frase del cliente responde más de una pregunta de la guía, registrá
+  todas. Por ejemplo, "hasta 300 kg ahora y a futuro" responde el volumen actual y
+  también el volumen futuro (no piensa superar ese valor). Esto vale aunque la frase
+  haya llegado antes de que se definieran los productos: cuando estén definidos,
+  registrá esas respuestas igual que si las hubiera dicho en ese momento.
+
 - La respuesta se escribe como un texto breve y claro, con el valor y la unidad. El
   volumen se expresa en kg de harina por día.
 
@@ -135,12 +170,19 @@ Generá una aclaración, en lugar de registrar la respuesta, cuando:
   únicamente el mayor valor mencionado por el cliente. En "opciones" incluí solo ese
   valor, no todos los valores del rango o de los distintos días.
 
-- Da un valor sin cifra ("bastante", "poco", "lo normal").
+- Intenta dar una cantidad pero sin cifra ("bastante", "poco", "lo normal").
 
 - Da el volumen en kg de pan, unidades u otra medida distinta de kg de harina. No lo
   conviertas.
 
-- Elabora más de un producto y da un volumen total sin repartirlo por producto.
+- Elabora más de un producto y da un volumen total sin repartirlo por producto. En este
+  caso la aclaración pide cómo se reparte ese total entre los productos: no pidas
+  confirmar el total y dejá "opciones" vacío. El reparto se pide una sola vez: si el
+  asesor ya lo pidió y el cliente dice que es indiferente, que no lo sabe o vuelve a
+  dar solo el total, no generes otra aclaración. Registrá una sola respuesta con el
+  volumen total, con "producto": null, indicando que es el total entre todos los
+  productos (por ejemplo, "300 kg de harina por día en total entre pan de molde y pan
+  francés"). Lo mismo vale para el volumen futuro.
 
 - La respuesta contradice algo que dijo antes y no queda claro cuál vale.
 
@@ -148,6 +190,19 @@ Generá una aclaración, en lugar de registrar la respuesta, cuando:
 
 - La respuesta no permite asignar un producto, una variante o una etapa de las listas
   sin interpretar.
+
+No generes una aclaración cuando el cliente niega una necesidad, una restricción o una
+limitación ("no tengo limitaciones", "no tengo restricciones de acceso", "no hay
+problema de espacio"). Una negación es una respuesta completa aunque no tenga cifra:
+registrala como "confirmado" con lo que dijo.
+
+Una misma pregunta nunca puede estar a la vez en "respuestas" con estado "confirmado" y
+en "aclaraciones_pendientes". Si generás una aclaración sobre una pregunta, no registres
+su respuesta; si la registrás como "confirmado", no generes una aclaración sobre ella.
+
+Si al repartir el volumen el cliente indica que un producto no lleva volumen (0 kg, o
+"todo a otro producto"), sacá ese producto de "productos": no se buscan equipos para un
+producto que no se va a elaborar.
 
 Cada aclaración indica: a qué se refiere (el número de pregunta, o "productos" o
 "etapas_cubiertas"), el motivo en una frase y, si corresponde, las opciones que surgen
@@ -222,7 +277,10 @@ Formato de respuesta:
     "productos_no_disponibles": [],
     "etapas_cubiertas": [],
     "congela": null,
-    "pregunta_productos": null
+    "pregunta_productos": null,
+    "compra_puntual": false,
+    "horas_trabajo_dia": null,
+    "volumen_kg_harina_dia": null
   },
   "respuestas": [
     {

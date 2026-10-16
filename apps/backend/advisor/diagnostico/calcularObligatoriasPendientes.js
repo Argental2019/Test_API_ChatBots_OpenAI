@@ -16,7 +16,12 @@
  *    En ese caso deben existir respuestas resueltas para TODOS
  *    los productos actuales de registro.busqueda.productos.
  *
- * 4. Esta función NO llama a la IA y NO modifica el registro.
+ * 4. Si el cliente busca equipos puntuales (registro.busqueda.compra_puntual
+ *    es true), las preguntas marcadas en la guía como
+ *    "OBLIGATORIA LINEA COMPLETA" (soloLineaCompleta) no quedan pendientes:
+ *    solo hacen falta para armar una línea completa.
+ *
+ * 5. Esta función NO llama a la IA y NO modifica el registro.
  *    Solo deriva información a partir de la guía y del diagnóstico.
  */
 export function calcularObligatoriasPendientes({
@@ -45,6 +50,14 @@ export function calcularObligatoriasPendientes({
       ? registro.busqueda.pregunta_productos
       : null;
 
+  /**
+   * El cliente dijo que solo necesita equipos puntuales (lo informa
+   * Prompt 3). En ese caso no se exigen las preguntas que la guía marca
+   * como "solo para línea completa".
+   */
+  const compraPuntual =
+    registro?.busqueda?.compra_puntual === true;
+
   const hayProductos = productos.some(
     (producto) =>
       typeof producto === "string" &&
@@ -68,6 +81,11 @@ export function calcularObligatoriasPendientes({
       // Si la guía tuviera una pregunta sin número válido,
       // no la usamos para evitar resultados inconsistentes.
       if (!Number.isFinite(numero)) {
+        return [];
+      }
+
+      // Compra puntual: las preguntas de "línea completa" no se exigen.
+      if (compraPuntual && pregunta?.soloLineaCompleta === true) {
         return [];
       }
             /**

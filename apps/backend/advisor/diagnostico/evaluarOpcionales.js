@@ -178,7 +178,7 @@ Si ninguna pregunta opcional es relevante:
     await openai.chat.completions.create({
       model:
         process.env.ADVISOR_PREPARATION_MODEL ||
-        "gpt-5.1",
+        "gpt-5.6-luna",
 
       messages: [
         {

@@ -3,7 +3,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Home, Send, Loader2, AudioLines } from "lucide-react";
+import { Home, Send, Loader2, AudioLines, CheckCircle2, AlertCircle } from "lucide-react";
 import Markdown from "@/components/markdown";
 import { getAgentsByIds, getCatalogAsText } from "@/lib/advisorTools";
 import { useElevenLabsVoice } from "@/hooks/useElevenLabsVoice";
@@ -15,6 +15,9 @@ type ChatMessage = {
   content: string;
   ts?: number;
     recommendedAgents?: Array<{ id: string; name: string; url: string; family: string; image?: string; aConfirmar?: boolean }>;
+  // Globo de la recomendación que todavía no recibió texto: mientras está
+  // vacío muestra el indicador de "comparando los equipos".
+  esperandoRecomendacion?: boolean;
 };
 
 function formatTime(ts?: number) {
@@ -44,11 +47,39 @@ function parseRecommendations(text: string): { clean: string; ids: string[]; ids
   return { clean, ids, idsAConfirmar };
 }
 
+// Si la respuesta tarda más que esto, se muestra el aviso de espera.
+// Es solo un respaldo: las preguntas del diagnóstico tardan pocos segundos y,
+// cuando el diagnóstico termina, el aviso de "diagnóstico completo" llega
+// enseguida (lo manda route.ts en su propio globo).
+const MS_AVISO_ESPERA = 30000;
+
+// Texto que se muestra en el globo de la recomendación mientras todavía no
+// llegó ninguna parte (se están comparando los equipos).
+const TEXTO_COMPARANDO = "Comparando los equipos para tu producción…";
+
+// Mensaje de bienvenida que se muestra al abrir el chat.
+// Es solo visual: no se guarda en "messages" ni se manda al backend.
+const MENSAJE_BIENVENIDA =
+  "¡Hola! Soy Busquetti, el asesor integral de Argental. Te voy a hacer algunas preguntas sobre tu producción para recomendarte la línea de equipos que mejor se ajusta a tu necesidad. Cuando quieras, escribime para empezar.";
+
 export default function AdvisorPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
+
+  // Aviso temporal cuando la respuesta tarda (comparación + recomendación).
+  const [esperaLarga, setEsperaLarga] = useState(false);
+
+  // Carga inicial del asesor (catálogo + preparación) al abrir el chat.
+  // Mientras no termina, el chat queda bloqueado, igual que en los chats por agente.
+  const [asesorListo, setAsesorListo] = useState(false);
+  const [errorCarga, setErrorCarga] = useState(false);
+  const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
+
+  // Evita que la carga se dispare dos veces (en desarrollo, React ejecuta
+  // los useEffect dos veces al montar la página).
+  const cargaIniciadaRef = useRef(false);
 
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -318,7 +349,7 @@ const {
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, esperaLarga]);
 
   useEffect(() => {
     const el = inputRef.current;
@@ -326,10 +357,54 @@ const {
     el.style.height = "0px";
     el.style.height = Math.min(el.scrollHeight, 200) + "px";
   }, [input]);
+  // Pone el cursor en el campo de texto cada vez que queda habilitado:
+  // al terminar la carga inicial y después de cada respuesta del asesor.
+  // Se hace acá (y no en sendMessage) porque recién en este render el
+  // textarea dejó de estar "disabled"; antes el navegador ignora el foco.
+  useEffect(() => {
+    if (!loading && asesorListo && !voiceModalOpen) {
+      inputRef.current?.focus();
+    }
+  }, [loading, asesorListo, voiceModalOpen]);
+  // Lee el catálogo y dispara la preparación para esta conversación.
+  const cargarAsesor = async () => {
+    setErrorCarga(false);
+    setToast(null);
+
+    try {
+      const r = await fetch("/api/advisor/iniciar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: sessionIdRef.current }),
+      });
+
+      const data = await r.json().catch(() => null);
+
+      if (!r.ok || !data?.ok) {
+        throw new Error(data?.error || `Error ${r.status}`);
+      }
+
+      setAsesorListo(true);
+      setToast({ type: "ok", msg: "Catálogo cargado correctamente." });
+      setTimeout(() => setToast(null), 2500);
+    } catch (e) {
+      console.error("No se pudo iniciar el asesor:", e);
+      setErrorCarga(true);
+      setToast({ type: "err", msg: "No pude cargar el catálogo del asesor." });
+    }
+  };
+
+  // Al abrir el chat se carga todo una sola vez.
+  useEffect(() => {
+    if (cargaIniciadaRef.current) return;
+    cargaIniciadaRef.current = true;
+    cargarAsesor();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const sendMessage = async (text?: string) => {
     const content = (text ?? input).trim();
-    if (!content || loading) return;
+    if (!content || loading || !asesorListo) return;
     // La primera vez que se envía un mensaje creamos la sesión.
     // Los mensajes siguientes reutilizan exactamente el mismo ID.
     if (!sessionIdRef.current) {
@@ -342,6 +417,10 @@ const {
     setMessages(history);
     setInput("");
     setLoading(true);
+    inputRef.current?.focus();
+
+    // Si la respuesta tarda, se muestra el aviso de espera.
+    const timerEspera = setTimeout(() => setEsperaLarga(true), MS_AVISO_ESPERA);
 
     try {
       const response = await fetch("/api/advisor", {
@@ -359,6 +438,10 @@ const {
             })),
           }),
       });
+
+      // Llegó la respuesta: se saca el aviso antes de mostrarla.
+      clearTimeout(timerEspera);
+      setEsperaLarga(false);
 
       if (!response.ok || !response.body) throw new Error("Error en la respuesta");
 
@@ -385,10 +468,38 @@ const {
           const data = line.slice(6).trim();
           if (data === "[DONE]") continue;
           try {
-            const parsed = JSON.parse(data);
+                     const parsed = JSON.parse(data);
+
+            // Mensaje final ya validado por el backend (recomendación en
+            // streaming): reemplaza todo lo que se fue mostrando.
+            const final = parsed.choices?.[0]?.delta?.advisor_final;
             const delta = parsed.choices?.[0]?.delta?.content;
-            if (!delta) continue;
-            raw += delta;
+
+            // Aviso de "diagnóstico completo": va en su propio globo, y se
+            // abre uno nuevo (vacío) donde se va a escribir la recomendación.
+            const aviso = parsed.choices?.[0]?.delta?.advisor_aviso;
+
+            if (typeof aviso === "string") {
+              const tsRecomendacion = Date.now();
+
+              setMessages((prev) => {
+                const nm = [...prev];
+                nm[nm.length - 1] = { role: "assistant", content: aviso, ts: assistantMessage.ts };
+                return [...nm, { role: "assistant", content: "", ts: tsRecomendacion, esperandoRecomendacion: true }];
+              });
+
+              assistantMessage = { role: "assistant", content: "", ts: tsRecomendacion, esperandoRecomendacion: true };
+              raw = "";
+              continue;
+            }
+
+            if (typeof final === "string") {
+              raw = final;
+            } else if (delta) {
+              raw += delta;
+            } else {
+              continue;
+            }
 
             const { clean } = parseRecommendations(raw);
             assistantMessage.content = clean;
@@ -438,6 +549,8 @@ const finalMessage: ChatMessage = {
         },
       ]);
     } finally {
+      clearTimeout(timerEspera);
+      setEsperaLarga(false);
       setLoading(false);
       inputRef.current?.focus();
     }
@@ -485,13 +598,31 @@ const finalMessage: ChatMessage = {
       </header>
 
       <main className="mx-auto max-w-4xl px-4">
+        {/* Aviso de carga (mismo formato que los chats por agente) */}
+        {toast && (
+          <div
+            className={`mt-4 flex items-center gap-2 rounded-xl border px-4 py-3 text-sm ${
+              toast.type === "ok"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-rose-200 bg-rose-50 text-rose-700"
+            }`}
+          >
+            {toast.type === "ok" ? (
+              <CheckCircle2 className="size-4" />
+            ) : (
+              <AlertCircle className="size-4" />
+            )}
+            {toast.msg}
+          </div>
+        )}
+
         {/* FAQs */}
         <div className="mt-6 flex flex-wrap gap-2">
           {FAQS.map((faq, i) => (
             <button
               key={i}
               onClick={() => sendMessage(faq)}
-              disabled={loading}
+              disabled={loading || !asesorListo}
               className="rounded-full border bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {faq}
@@ -503,19 +634,51 @@ const finalMessage: ChatMessage = {
         <section className="mt-6 rounded-2xl border bg-white shadow-sm">
           <div className="max-h-[64vh] overflow-y-auto p-4 sm:p-6">
 
-            {messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12 text-center text-gray-400">
-                <div className="mb-4 size-16 rounded-full overflow-hidden border border-gray-200 shadow-sm">
+            {!asesorListo ? (
+              errorCarga ? (
+                // La carga falló: se puede reintentar sin recargar la página.
+                <div className="flex flex-col items-start gap-3 text-sm text-gray-700">
+                  <span>No pude cargar el catálogo del asesor.</span>
+                  <button
+                    type="button"
+                    onClick={cargarAsesor}
+                    className="rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              ) : (
+                // Mientras carga (mismo esqueleto que los chats por agente).
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 text-gray-700">
+                    <Loader2 className="size-5 animate-spin" />
+                    <span>Verificando cambios…</span>
+                  </div>
+                  <div className="flex justify-start">
+                    <div className="h-16 w-3/4 max-w-[520px] animate-pulse rounded-2xl bg-gray-100" />
+                  </div>
+                  <div className="flex justify-end">
+                    <div className="h-12 w-2/3 max-w-[420px] animate-pulse rounded-2xl bg-gray-100" />
+                  </div>
+                  <div className="flex justify-start">
+                    <div className="h-24 w-4/5 max-w-[560px] animate-pulse rounded-2xl bg-gray-100" />
+                  </div>
+                </div>
+              )
+            ) : (
+              /* Bienvenida de Busquetti (solo visual, no se manda al backend) */
+              <div className="mb-3 flex items-end gap-2 justify-start">
+                <div className="shrink-0 size-10 rounded-full overflow-hidden border border-gray-200 shadow-sm bg-white">
                   <img
                     src="/busquetti/LogoBusquetti.jpg"
                     alt="Busquetti"
                     className="w-full h-full object-cover object-[center_12%] scale-[1.8]"
                   />
                 </div>
-                <p className="text-sm font-medium text-gray-600">Hola, soy Busquetti</p>
-                <p className="mt-1 text-xs text-gray-400">
-                  Contame qué querés producir y te ayudo a elegir los equipos que necesitás
-                </p>
+                <div className="w-fit max-w-[85%] rounded-2xl border bg-white px-5 py-3 text-sm leading-6 text-gray-900 shadow-sm">
+                  <p className="leading-relaxed">{MENSAJE_BIENVENIDA}</p>
+                  <div className="mt-1 text-[11px] text-gray-500">Busquetti</div>
+                </div>
               </div>
             )}
 
@@ -544,15 +707,24 @@ const finalMessage: ChatMessage = {
                           : "border bg-white text-gray-900 shadow-sm"
                       }`}
                     >
-                      <Markdown
-                        className={
-                          mine
-                            ? "whitespace-pre-wrap leading-relaxed"
-                            : "prose prose-sm sm:prose-base max-w-none leading-relaxed [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5"
-                        }
-                      >
-                        {m.content}
-                      </Markdown>
+                      {!mine && m.esperandoRecomendacion && !m.content ? (
+                        // Globo de la recomendación todavía vacío: se están
+                        // comparando los equipos.
+                        <div className="flex items-center gap-2 text-gray-500">
+                          <Loader2 className="size-4 animate-spin" />
+                          <span>{TEXTO_COMPARANDO}</span>
+                        </div>
+                      ) : (
+                        <Markdown
+                          className={
+                            mine
+                              ? "whitespace-pre-wrap leading-relaxed"
+                              : "prose prose-sm sm:prose-base max-w-none leading-relaxed [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5"
+                          }
+                        >
+                          {m.content}
+                        </Markdown>
+                      )}
                       <div className={`mt-1 text-[11px] ${mine ? "text-gray-300" : "text-gray-500"}`}>
                         {mine ? "Vos" : "Busquetti"} · {formatTime(m.ts)}
                       </div>
@@ -610,6 +782,27 @@ const finalMessage: ChatMessage = {
               );
             })}
 
+            {/* Aviso temporal (respaldo) si una respuesta tarda más de lo normal */}
+            {loading && esperaLarga && (
+              <div className="mb-3 flex items-end gap-2 justify-start">
+                <div className="shrink-0 size-10 rounded-full overflow-hidden border border-gray-200 shadow-sm bg-white">
+                  <img
+                    src="/busquetti/LogoBusquetti.jpg"
+                    alt="Busquetti"
+                    className="w-full h-full object-cover object-[center_12%] scale-[1.8]"
+                  />
+                </div>
+                <div className="w-fit max-w-[85%] rounded-2xl border bg-white px-5 py-3 text-sm leading-6 text-gray-700 shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="size-4 animate-spin text-gray-500" />
+                    <span>
+                      Estoy procesando tu respuesta, aguardá un momento…
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div ref={endRef} />
           </div>
 
@@ -622,16 +815,20 @@ const finalMessage: ChatMessage = {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyPress}
-                disabled={loading}
-                placeholder="Contame qué necesitás producir…"
-                className="max-h-[200px] flex-1 resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
+                               // Solo lectura (no "disabled") mientras espera: así el cursor
+                // no se va del campo y se puede escribir apenas llega la respuesta.
+                readOnly={loading || !asesorListo}
+                placeholder={asesorListo ? "Contame qué necesitás producir…" : "Cargando catálogo…"}
+                className={`max-h-[200px] flex-1 resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none ${
+                  loading || !asesorListo ? "cursor-not-allowed bg-gray-50" : ""
+                }`}
               />
 
               {/* Botón modo voz */}
               <button
                 type="button"
                 onClick={handleOpenVoice}
-                disabled={loading}
+                disabled={loading || !asesorListo}
                 className="mb-1 inline-flex items-center justify-center rounded-full border px-3 py-3 text-sm shadow-sm transition bg-white text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                 title="Modo conversación por voz"
               >
@@ -640,7 +837,7 @@ const finalMessage: ChatMessage = {
 
               <button
                 onClick={() => sendMessage()}
-                disabled={loading || !input.trim()}
+                disabled={loading || !asesorListo || !input.trim()}
                 className="inline-flex items-center gap-2 rounded-2xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {loading ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}

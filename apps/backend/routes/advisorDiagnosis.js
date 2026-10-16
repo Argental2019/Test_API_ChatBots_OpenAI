@@ -3,6 +3,9 @@ import { parsearGuiaPreguntas } from "../advisor/diagnostico/parsearGuiaPregunta
 import { calcularObligatoriasPendientes } from "../advisor/diagnostico/calcularObligatoriasPendientes.js";
 import { prompt4Diagnostico } from "../advisor/prompt/prompt4Diagnostico.js";
 import { evaluarOpcionales } from "../advisor/diagnostico/evaluarOpcionales.js";
+import { SESION_TTL_SEGUNDOS } from "../advisor/sesion.js";
+import { registrarTiempo } from "../advisor/tiempos.js";
+import { opcionesRazonamiento } from "../advisor/razonamiento.js";
 
 export function registerAdvisorDiagnosisRoutes(
   app,
@@ -109,6 +112,10 @@ export function registerAdvisorDiagnosisRoutes(
         req,
         res
       ) => {
+        // Medición de tiempos (archivo de tiempos, ver advisor/tiempos.js).
+        const inicioDiagnostico =
+          Date.now();
+
         const {
           sessionId,
           productosValidos,
@@ -400,7 +407,8 @@ export function registerAdvisorDiagnosisRoutes(
                   model:
                     process.env
                       .ADVISOR_PREPARATION_MODEL ||
-                    "gpt-5.1",
+                    "gpt-5.6-luna",
+                                      ...opcionesRazonamiento("ADVISOR_DIAGNOSIS_REASONING_EFFORT"),
 
                   messages: [
                     {
@@ -464,7 +472,8 @@ export function registerAdvisorDiagnosisRoutes(
                 model:
                   process.env
                     .ADVISOR_PREPARATION_MODEL ||
-                  "gpt-5.1",
+                  "gpt-5.6-luna",
+                                    ...opcionesRazonamiento("ADVISOR_DIAGNOSIS_REASONING_EFFORT"),
 
                 messages: [
                   {
@@ -573,6 +582,9 @@ Devolvé nuevamente el registro COMPLETO y únicamente como JSON.
 
         let resultadoPrompt3;
 
+        const inicioPrompt3 =
+          Date.now();
+
         try {
           resultadoPrompt3 =
             await ejecutarPrompt3(
@@ -597,6 +609,12 @@ Devolvé nuevamente el registro COMPLETO y únicamente como JSON.
             });
         }
 
+        registrarTiempo(
+          sessionId,
+          "Prompt 3",
+          inicioPrompt3
+        );
+
         let registro =
           resultadoPrompt3.registro;
 
@@ -612,10 +630,23 @@ Devolvé nuevamente el registro COMPLETO y únicamente como JSON.
          * Lo excluimos de la comparación para que completarlo no se tome
          * como un dato nuevo del cliente sin respuesta registrada.
          */
+                /**
+         * Campos que no se comparan:
+         * - pregunta_productos sale de la guía, no de lo que dijo el cliente.
+         * - horas_trabajo_dia y volumen_kg_harina_dia se calculan a partir de
+         *   respuestas que ya se controlan en "respuestas" (turnos y volumen).
+         * Si se compararan, completarlos (o pasar de no existir a null) se
+         * tomaría como un dato nuevo sin respuesta y dispararía el reintento.
+         *          * - compra_puntual sale de la misma frase que llena etapas_cubiertas
+         *   y la respuesta de equipos que conserva.
+         */
         const busquedaComparable =
           (busqueda) => {
             const {
               pregunta_productos,
+              horas_trabajo_dia,
+              volumen_kg_harina_dia,
+              compra_puntual,
               ...resto
             } = busqueda ?? {};
 
@@ -706,6 +737,20 @@ Devolvé nuevamente el registro COMPLETO y únicamente como JSON.
           console.warn(
             "[advisor][prompt3] Se detectó una posible inconsistencia. Ejecutando revisión."
           );
+          // TEMPORAL: para ver qué disparó el reintento. Borrar después.
+          console.log("[advisor][prompt3] REINTENTO - busqueda antes:", busquedaAntes);
+          console.log("[advisor][prompt3] REINTENTO - busqueda después:", busquedaDespues);
+          console.log(
+            "[advisor][prompt3] REINTENTO - respuestas antes/después:",
+            cantidadRespuestasAntes,
+            cantidadRespuestasDespues
+          );
+          console.log(
+            "[advisor][prompt3] REINTENTO - respuestas del primer intento:",
+            JSON.stringify(registro?.respuestas, null, 2)
+          );
+          const inicioReintento =
+            Date.now();
 
           try {
             const resultadoReintento =
@@ -716,6 +761,12 @@ Devolvé nuevamente el registro COMPLETO y únicamente como JSON.
 
             registro =
               resultadoReintento.registro;
+
+            registrarTiempo(
+              sessionId,
+              "Prompt 3 (reintento)",
+              inicioReintento
+            );
           } catch (error) {
             return res
               .status(500)
@@ -887,6 +938,9 @@ Devolvé nuevamente el registro COMPLETO y únicamente como JSON.
         if (
           puedeEvaluarOpcionales
         ) {
+          const inicioOpcionales =
+            Date.now();
+
           try {
             evaluacionOpcionales =
               await evaluarOpcionales({
@@ -900,6 +954,12 @@ Devolvé nuevamente el registro COMPLETO y únicamente como JSON.
 
                 historial,
               });
+
+            registrarTiempo(
+              sessionId,
+              "evaluar opcionales",
+              inicioOpcionales
+            );
           } catch (error) {
             return res
               .status(500)
@@ -970,6 +1030,9 @@ Devolvé nuevamente el registro COMPLETO y únicamente como JSON.
                   .pregunta,
             });
 
+          const inicioPrompt4 =
+            Date.now();
+
           const completion4 =
             await openai
               .chat
@@ -978,7 +1041,8 @@ Devolvé nuevamente el registro COMPLETO y únicamente como JSON.
                 model:
                   process.env
                     .ADVISOR_PREPARATION_MODEL ||
-                  "gpt-5.1",
+                  "gpt-5.6-luna",
+                                    ...opcionesRazonamiento("ADVISOR_DIAGNOSIS_REASONING_EFFORT"),
 
                 messages: [
                   {
@@ -990,6 +1054,12 @@ Devolvé nuevamente el registro COMPLETO y únicamente como JSON.
                   },
                 ],
               });
+
+          registrarTiempo(
+            sessionId,
+            "Prompt 4",
+            inicioPrompt4
+          );
 
           mensajeCliente =
             completion4
@@ -1033,7 +1103,16 @@ Devolvé nuevamente el registro COMPLETO y únicamente como JSON.
                 .toISOString(),
           },
 
-          0
+          SESION_TTL_SEGUNDOS
+        );
+
+        registrarTiempo(
+          sessionId,
+          "diagnóstico (total backend)",
+          inicioDiagnostico,
+          diagnosticoSigue
+            ? "el diagnóstico sigue"
+            : "diagnóstico terminado"
         );
 
         // ---------------------------------------------------------------------
